@@ -17,8 +17,10 @@ def create_app():
     # Register blueprints
     from blueprints.todos import todos_bp
     from blueprints.dailies import dailies_bp
+    from blueprints.habits import habits_bp
     app.register_blueprint(todos_bp, url_prefix='/todos')
     app.register_blueprint(dailies_bp, url_prefix='/dailies')
+    app.register_blueprint(habits_bp, url_prefix='/habits')
     
     @app.route('/')
     def index():

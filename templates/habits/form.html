@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} Habit - Orbis{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2>{{ action }} Habit</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{{ habit.title if habit else '' }}" required
+                               placeholder="e.g., Exercise Daily, No Smoking, Read Books">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Optional details about this habit">{{ habit.description if habit else '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="difficulty" class="form-label">Difficulty *</label>
+                        <select class="form-select" id="difficulty" name="difficulty">
+                            <option value="easy" {% if habit and habit.difficulty == 'easy' %}selected{% endif %}>
+                                <i class="bi bi-feather"></i> Easy (Goal: 30)
+                            </option>
+                            <option value="normal" {% if habit and habit.difficulty == 'normal' %}selected{% elif not habit %}selected{% endif %}>
+                                <i class="bi bi-bullseye"></i> Normal (Goal: 100)
+                            </option>
+                            <option value="hard" {% if habit and habit.difficulty == 'hard' %}selected{% endif %}>
+                                <i class="bi bi-fire"></i> Hard (Goal: 300)
+                            </option>
+                        </select>
+                        <small class="form-text text-muted">
+                            Easy = 30 completions, Normal = 100, Hard = 300. You can change this later by clicking the icon.
+                        </small>
+                    </div>
+                    
+                    {% if habit %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Current Progress:</strong> 
+                        Count: <span class="{% if habit.count < 0 %}text-danger{% else %}text-success{% endif %}">{{ habit.count }}</span> 
+                        / {{ habit.get_max_count() }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('habits.list_habits') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> {{ action }} Habit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
