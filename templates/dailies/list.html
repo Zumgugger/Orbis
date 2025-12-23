@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Dailies - Orbis{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-calendar-check"></i> My Dailies</h1>
+        <p class="text-muted">Recurring tasks to complete every day</p>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('dailies.create_daily') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Daily
+        </a>
+    </div>
+</div>
+
+{% if dailies %}
+    <div class="row">
+        <div class="col">
+            <div class="list-group">
+                {% for daily in dailies %}
+                <div class="list-group-item">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <form action="{{ url_for('dailies.toggle_daily', daily_id=daily.id) }}" method="POST" style="display: inline;">
+                                {% if daily.is_completed_today() %}
+                                    <button type="submit" class="btn btn-success" title="Completed today! Click to undo">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-outline-secondary" title="Mark as complete for today">
+                                        <i class="bi bi-circle"></i>
+                                    </button>
+                                {% endif %}
+                            </form>
+                        </div>
+                        <div class="col">
+                            <h5 class="mb-1">
+                                {{ daily.title }}
+                                {% if daily.streak_count > 0 %}
+                                    <span class="badge bg-warning text-dark ms-2">
+                                        <i class="bi bi-fire"></i> {{ daily.streak_count }} day{% if daily.streak_count != 1 %}s{% endif %}
+                                    </span>
+                                {% endif %}
+                            </h5>
+                            {% if daily.description %}
+                                <p class="mb-1 text-muted">{{ daily.description }}</p>
+                            {% endif %}
+                            <small class="text-muted">
+                                <i class="bi bi-trophy"></i> Total: {{ daily.total_completions }} time{% if daily.total_completions != 1 %}s{% endif %}
+                                {% if daily.last_completed_date %}
+                                    | <i class="bi bi-calendar-event"></i> Last: {{ daily.last_completed_date }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{{ url_for('dailies.edit_daily', daily_id=daily.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <form action="{{ url_for('dailies.delete_daily', daily_id=daily.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure? This will delete all history.');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No dailies yet. Create your first recurring daily task!
+    </div>
+{% endif %}
+
+<div class="mt-4 p-3 bg-light rounded">
+    <h6><i class="bi bi-info-circle"></i> How Dailies Work:</h6>
+    <ul class="mb-0">
+        <li><strong>Check off</strong> your dailies each day to build streaks 🔥</li>
+        <li><strong>Streaks</strong> increase when you complete a daily on consecutive days</li>
+        <li><strong>Total completions</strong> track how many times you've done this daily overall</li>
+        <li>If you miss a day, your streak resets (but total completions stay!)</li>
+    </ul>
+</div>
+{% endblock %}
