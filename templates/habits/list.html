@@ -66,7 +66,7 @@
                         
                         <!-- Action Buttons -->
                         <div class="col-auto">
-                            <div class="btn-group-vertical" role="group">
+                            <div class="btn-group" role="group">
                                 <form action="{{ url_for('habits.increment_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
                                     <button type="submit" class="btn btn-success btn-lg" title="Success (+1)">
                                         <i class="bi bi-plus-circle-fill"></i> +1
