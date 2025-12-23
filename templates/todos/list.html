@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Todos - Orbis{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-check2-square"></i> My Todos</h1>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('todos.create_todo') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Todo
+        </a>
+    </div>
+</div>
+
+<!-- Pending Todos -->
+<div class="row mb-4">
+    <div class="col">
+        <h3>Pending ({{ pending|length }})</h3>
+        {% if pending %}
+            <div class="list-group">
+                {% for todo in pending %}
+                <div class="list-group-item priority-{{ todo.priority }}">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as complete">
+                                    <i class="bi bi-circle"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col">
+                            <h5 class="mb-1">{{ todo.title }}</h5>
+                            {% if todo.description %}
+                                <p class="mb-1 text-muted">{{ todo.description }}</p>
+                            {% endif %}
+                            <small class="text-muted">
+                                <span class="badge bg-{{ 'danger' if todo.priority == 'high' else ('warning' if todo.priority == 'medium' else 'success') }}">
+                                    {{ todo.priority }}
+                                </span>
+                                {% if todo.due_date %}
+                                    <i class="bi bi-calendar-event"></i> Due: {{ todo.due_date }}
+                                {% endif %}
+                                <i class="bi bi-clock"></i> Created: {{ todo.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            </small>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{{ url_for('todos.edit_todo', todo_id=todo.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <form action="{{ url_for('todos.delete_todo', todo_id=todo.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">No pending todos. Great job! 🎉</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Completed Todos -->
+<div class="row">
+    <div class="col">
+        <h3>Completed ({{ completed|length }})</h3>
+        {% if completed %}
+            <div class="list-group">
+                {% for todo in completed %}
+                <div class="list-group-item priority-{{ todo.priority }}">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Mark as incomplete">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col completed-task">
+                            <h5 class="mb-1">{{ todo.title }}</h5>
+                            {% if todo.description %}
+                                <p class="mb-1 text-muted">{{ todo.description }}</p>
+                            {% endif %}
+                            <small class="text-muted">
+                                <i class="bi bi-check-circle"></i> Completed: {{ todo.completed_at.strftime('%Y-%m-%d %H:%M') if todo.completed_at else 'N/A' }}
+                            </small>
+                        </div>
+                        <div class="col-auto">
+                            <form action="{{ url_for('todos.delete_todo', todo_id=todo.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">No completed todos yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
