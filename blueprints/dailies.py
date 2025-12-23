@@ -96,10 +96,16 @@ def toggle_daily(daily_id):
     if not daily.should_complete_today():
         frequency_name = daily.frequency.capitalize()
         flash(f'This daily is not available today. It is set to {frequency_name}.', 'warning')
+        next_page = request.args.get('next')
+        if next_page:
+            return redirect(next_page)
         return redirect(url_for('dailies.list_dailies'))
     
     daily.toggle_completion()
     db.session.commit()
+    next_page = request.args.get('next')
+    if next_page:
+        return redirect(next_page)
     return redirect(url_for('dailies.list_dailies'))
 
 @dailies_bp.route('/<int:daily_id>/delete', methods=['POST'])

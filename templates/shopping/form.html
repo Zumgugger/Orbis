@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}{% if shopping_list %}Edit List{% else %}New List{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1>
+        <i class="bi bi-cart3"></i> 
+        {% if shopping_list %}Edit Shopping List{% else %}New Shopping List{% endif %}
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{% if shopping_list %}{{ shopping_list.title }}{% endif %}" 
+                               placeholder="e.g., Groceries, Work Supplies, Hobby Materials" required autofocus>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="items" class="form-label">Items</label>
+                        <textarea class="form-control" id="items" name="items" rows="15" 
+                                  placeholder="Enter items, one per line:&#10;Milk&#10;Bread&#10;Eggs&#10;...">{% if shopping_list %}{{ shopping_list.items }}{% endif %}</textarea>
+                        <div class="form-text">Enter each item on a new line</div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save List
+                        </button>
+                        <a href="{{ url_for('shopping.list') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> About Shopping Lists</h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2">Create separate lists for different purposes:</p>
+                <ul class="small mb-0">
+                    <li>Groceries</li>
+                    <li>Work Supplies</li>
+                    <li>Hobby Materials</li>
+                    <li>Weekly Errands</li>
+                </ul>
+                <hr>
+                <p class="small mb-0 text-muted">Simply list items one per line - no need for checkboxes or categories.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

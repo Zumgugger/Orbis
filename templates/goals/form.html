@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}{% if goal %}Edit Goal{% else %}New Goal{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1>
+        <i class="bi bi-bullseye"></i> 
+        {% if goal %}Edit Goal{% else %}New Goal{% endif %}
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{% if goal %}{{ goal.title }}{% endif %}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{% if goal %}{{ goal.description }}{% endif %}</textarea>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Goal
+                        </button>
+                        <a href="{{ url_for('goals.list') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        {% if goal %}
+        <!-- Milestones section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-stars"></i> Milestones</h5>
+            </div>
+            <div class="card-body">
+                <!-- Add milestone form -->
+                <form method="POST" action="{{ url_for('goals.add_milestone', id=goal.id) }}" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="milestone_title" 
+                               placeholder="Enter milestone title..." required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add Milestone
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Existing milestones -->
+                {% if goal.milestones %}
+                <div class="list-group">
+                    {% for milestone in goal.milestones|sort(attribute='order') %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3 flex-grow-1">
+                            <span style="font-size: 1.3rem;">
+                                {% if milestone.completed %}
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                {% else %}
+                                    <i class="bi bi-star text-secondary"></i>
+                                {% endif %}
+                            </span>
+                            <div class="form-check mb-0 flex-grow-1">
+                                <form action="{{ url_for('goals.toggle_milestone', goal_id=goal.id, milestone_id=milestone.id) }}" method="POST" class="d-inline">
+                                    <input class="form-check-input" type="checkbox" {% if milestone.completed %}checked{% endif %} onchange="this.form.submit()" id="edit-milestone-{{ milestone.id }}">
+                                    <label class="form-check-label {% if milestone.completed %}text-decoration-line-through text-muted{% endif %}" for="edit-milestone-{{ milestone.id }}">
+                                        {{ milestone.title }}
+                                    </label>
+                                </form>
+                            </div>
+                        </div>
+                        <form action="{{ url_for('goals.delete_milestone', goal_id=goal.id, milestone_id=milestone.id) }}" 
+                              method="POST" 
+                              onsubmit="return confirm('Are you sure you want to delete this milestone?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> No milestones yet. Add milestones to track your progress toward this goal.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> About Goals</h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2">Goals help you track long-term objectives with milestones.</p>
+                <ul class="small mb-0">
+                    <li>Add milestones to break down your goal</li>
+                    <li>Click stars to mark milestones complete</li>
+                    <li>Goal completes when all milestones are done</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -87,6 +87,9 @@ def toggle_todo(todo_id):
         todo.completed_at = None
     
     db.session.commit()
+    next_page = request.args.get('next')
+    if next_page:
+        return redirect(next_page)
     return redirect(url_for('todos.list_todos'))
 
 @todos_bp.route('/<int:todo_id>/delete', methods=['POST'])

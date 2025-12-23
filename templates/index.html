@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Today's List{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-calendar-check"></i> Today's List</h1>
+
+{% if everything_done %}
+    <div class="alert alert-success alert-lg py-5 text-center mb-4">
+        <h2 class="mb-3">
+            <i class="bi bi-check-circle" style="font-size: 3rem;"></i>
+        </h2>
+        <h3 class="mb-0">Great job! Free time now!</h3>
+    </div>
+{% endif %}
+
+{% if dailies or todos %}
+    <div class="card">
+        <div class="list-group list-group-flush">
+            <!-- Dailies first -->
+            {% for daily in dailies %}
+            <div class="list-group-item {% if daily.is_completed_today() %}bg-light{% endif %}">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('dailies.toggle_daily', daily_id=daily.id) }}?next=/" method="POST" class="d-inline">
+                        <input type="checkbox" class="form-check-input" style="width: 1.5em; height: 1.5em; cursor: pointer;" 
+                               {% if daily.is_completed_today() %}checked{% endif %} onchange="this.form.submit()">
+                    </form>
+                    <span class="flex-grow-1 {% if daily.is_completed_today() %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</span>
+                    <span class="text-muted small">🔥 {{ daily.streak_count }}</span>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Todos after -->
+            {% for todo in todos %}
+            <div class="list-group-item {% if todo.status == 'completed' %}bg-light{% endif %}">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/" method="POST" class="d-inline">
+                        <input type="checkbox" class="form-check-input" style="width: 1.5em; height: 1.5em; cursor: pointer;" 
+                               {% if todo.status == 'completed' %}checked{% endif %} onchange="this.form.submit()">
+                    </form>
+                    <span class="flex-grow-1 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</span>
+                    <span class="badge bg-{{ 'danger' if todo.priority == 'high' else 'warning' if todo.priority == 'medium' else 'success' }} ms-2">
+                        {{ todo.priority[0]|upper }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No tasks for today.
+    </div>
+{% endif %}
+
+<!-- Quick Links -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <a href="{{ url_for('todos.list_todos') }}" class="btn btn-outline-primary w-100">
+            <i class="bi bi-check2-square"></i> Todos
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ url_for('dailies.list_dailies') }}" class="btn btn-outline-info w-100">
+            <i class="bi bi-calendar-check"></i> Dailies
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ url_for('habits.list_habits') }}" class="btn btn-outline-success w-100">
+            <i class="bi bi-arrow-repeat"></i> Habits
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ url_for('goals.list') }}" class="btn btn-outline-warning w-100">
+            <i class="bi bi-bullseye"></i> Goals
+        </a>
+    </div>
+</div>
+
+{% endblock %}

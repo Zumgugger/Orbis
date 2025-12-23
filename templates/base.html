@@ -48,8 +48,13 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link disabled" href="#">
-                            <i class="bi bi-trophy"></i> Goals (Coming Soon)
+                        <a class="nav-link" href="{{ url_for('goals.list') }}">
+                            <i class="bi bi-bullseye"></i> Goals
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('shopping.list') }}">
+                            <i class="bi bi-cart3"></i> Shopping
                         </a>
                     </li>
                 </ul>
