@@ -2,7 +2,8 @@
 Database models and initialization
 """
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+import json
 
 db = SQLAlchemy()
 
@@ -53,8 +54,52 @@ class Daily(db.Model):
     last_completed_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Frequency fields
+    frequency = db.Column(db.String(20), default='daily')  # daily, weekly, monthly, custom
+    weekdays = db.Column(db.Text, nullable=True)  # JSON: ["monday", "wednesday", "friday"]
+    
     def __repr__(self):
         return f'<Daily {self.id}: {self.title}>'
+    
+    def get_weekdays(self):
+        """Get list of weekdays for this daily (if frequency is custom)"""
+        if not self.weekdays:
+            return []
+        try:
+            return json.loads(self.weekdays)
+        except:
+            return []
+    
+    def set_weekdays(self, weekdays_list):
+        """Set weekdays for this daily"""
+        self.weekdays = json.dumps(weekdays_list)
+    
+    def should_complete_today(self):
+        """Check if this daily should be completable today based on frequency"""
+        today = date.today()
+        weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        today_weekday = weekday_names[today.weekday()]
+        
+        if self.frequency == 'daily':
+            return True
+        elif self.frequency == 'weekly':
+            # Check if last_completed_date exists and is within the same week
+            if not self.last_completed_date:
+                return True
+            # Week starts on Monday
+            days_since_last = (today - self.last_completed_date).days
+            return days_since_last >= 7
+        elif self.frequency == 'monthly':
+            # Can complete once per month (30+ days)
+            if not self.last_completed_date:
+                return True
+            days_since_last = (today - self.last_completed_date).days
+            return days_since_last >= 30
+        elif self.frequency == 'custom':
+            # Check if today is in the selected weekdays
+            return today_weekday in self.get_weekdays()
+        
+        return True
     
     def is_completed_today(self):
         """Check if this daily was completed today"""
@@ -71,9 +116,8 @@ class Daily(db.Model):
             # Reduce streak and total
             self.streak_count = max(0, self.streak_count - 1)
             self.total_completions = max(0, self.total_completions - 1)
-            # Set last completed to yesterday if there was a streak, else None
+            # Set last completed to previous completion date if there was a streak, else None
             if self.streak_count > 0:
-                from datetime import timedelta
                 self.last_completed_date = today - timedelta(days=1)
             else:
                 self.last_completed_date = None
@@ -81,19 +125,44 @@ class Daily(db.Model):
             # Complete today's daily
             self.total_completions += 1
             
-            # Calculate streak
-            if self.last_completed_date:
-                from datetime import timedelta
-                yesterday = today - timedelta(days=1)
-                if self.last_completed_date == yesterday:
-                    # Continuing streak
-                    self.streak_count += 1
+            # Calculate streak based on frequency
+            if self.frequency == 'daily':
+                if self.last_completed_date:
+                    yesterday = today - timedelta(days=1)
+                    if self.last_completed_date == yesterday:
+                        self.streak_count += 1
+                    else:
+                        self.streak_count = 1
                 else:
-                    # Streak broken, start new
                     self.streak_count = 1
-            else:
-                # First completion
-                self.streak_count = 1
+            elif self.frequency == 'weekly':
+                if self.last_completed_date:
+                    days_since = (today - self.last_completed_date).days
+                    if days_since >= 7 and days_since < 14:
+                        self.streak_count += 1
+                    else:
+                        self.streak_count = 1
+                else:
+                    self.streak_count = 1
+            elif self.frequency == 'monthly':
+                if self.last_completed_date:
+                    days_since = (today - self.last_completed_date).days
+                    if days_since >= 30 and days_since < 60:
+                        self.streak_count += 1
+                    else:
+                        self.streak_count = 1
+                else:
+                    self.streak_count = 1
+            elif self.frequency == 'custom':
+                # For custom, streak works like daily within selected days
+                if self.last_completed_date:
+                    yesterday = today - timedelta(days=1)
+                    if self.last_completed_date == yesterday:
+                        self.streak_count += 1
+                    else:
+                        self.streak_count = 1
+                else:
+                    self.streak_count = 1
             
             self.last_completed_date = today
     
@@ -107,6 +176,9 @@ class Daily(db.Model):
             'total_completions': self.total_completions,
             'last_completed_date': self.last_completed_date.isoformat() if self.last_completed_date else None,
             'created_at': self.created_at.isoformat(),
-            'is_completed_today': self.is_completed_today()
+            'is_completed_today': self.is_completed_today(),
+            'frequency': self.frequency,
+            'weekdays': self.get_weekdays()
         }
+
 

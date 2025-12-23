@@ -10,7 +10,7 @@
                 <h2>{{ action }} Daily</h2>
             </div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" id="dailyForm">
                     <div class="mb-3">
                         <label for="title" class="form-label">Title *</label>
                         <input type="text" class="form-control" id="title" name="title" 
@@ -22,6 +22,37 @@
                         <label for="description" class="form-label">Description</label>
                         <textarea class="form-control" id="description" name="description" rows="3"
                                   placeholder="Optional details about this daily task">{{ daily.description if daily else '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="frequency" class="form-label">Frequency *</label>
+                        <select class="form-select" id="frequency" name="frequency" onchange="handleFrequencyChange()">
+                            <option value="daily" {% if daily and daily.frequency == 'daily' %}selected{% elif not daily %}selected{% endif %}>Daily</option>
+                            <option value="weekly" {% if daily and daily.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+                            <option value="monthly" {% if daily and daily.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+                            <option value="custom" {% if daily and daily.frequency == 'custom' %}selected{% endif %}>Specific Weekdays</option>
+                        </select>
+                        <small class="form-text text-muted">Choose how often you want to complete this task</small>
+                    </div>
+                    
+                    <!-- Custom Weekdays Section -->
+                    <div id="weekdaysSection" class="mb-3" style="display: {% if daily and daily.frequency == 'custom' %}block{% else %}none{% endif %};">
+                        <label class="form-label">Select Weekdays *</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for weekday in weekdays %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="weekday_{{ loop.index }}" 
+                                       name="weekdays" value="{{ weekday }}"
+                                       {% if daily and weekday in daily.get_weekdays() %}checked{% endif %}>
+                                <label class="form-check-label" for="weekday_{{ loop.index }}">
+                                    {{ weekday.capitalize() }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="form-text text-danger" id="weekdaysError" style="display: none;">
+                            Please select at least one weekday
+                        </small>
                     </div>
                     
                     {% if daily %}
@@ -46,4 +77,31 @@
         </div>
     </div>
 </div>
+
+<script>
+    function handleFrequencyChange() {
+        const frequency = document.getElementById('frequency').value;
+        const weekdaysSection = document.getElementById('weekdaysSection');
+        const weekdaysError = document.getElementById('weekdaysError');
+        
+        if (frequency === 'custom') {
+            weekdaysSection.style.display = 'block';
+        } else {
+            weekdaysSection.style.display = 'none';
+            weekdaysError.style.display = 'none';
+        }
+    }
+    
+    document.getElementById('dailyForm').addEventListener('submit', function(e) {
+        const frequency = document.getElementById('frequency').value;
+        if (frequency === 'custom') {
+            const checkboxes = document.querySelectorAll('input[name="weekdays"]:checked');
+            if (checkboxes.length === 0) {
+                e.preventDefault();
+                document.getElementById('weekdaysError').style.display = 'block';
+            }
+        }
+    });
+</script>
 {% endblock %}
+

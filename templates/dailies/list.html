@@ -6,7 +6,7 @@
 <div class="row mb-4">
     <div class="col">
         <h1><i class="bi bi-calendar-check"></i> My Dailies</h1>
-        <p class="text-muted">Recurring tasks to complete every day</p>
+        <p class="text-muted">Recurring tasks on your schedule</p>
     </div>
     <div class="col text-end">
         <a href="{{ url_for('dailies.create_daily') }}" class="btn btn-primary">
@@ -23,26 +23,43 @@
                 <div class="list-group-item">
                     <div class="row align-items-center">
                         <div class="col-auto">
-                            <form action="{{ url_for('dailies.toggle_daily', daily_id=daily.id) }}" method="POST" style="display: inline;">
-                                {% if daily.is_completed_today() %}
-                                    <button type="submit" class="btn btn-success" title="Completed today! Click to undo">
-                                        <i class="bi bi-check-circle-fill"></i>
-                                    </button>
-                                {% else %}
-                                    <button type="submit" class="btn btn-outline-secondary" title="Mark as complete for today">
-                                        <i class="bi bi-circle"></i>
-                                    </button>
-                                {% endif %}
-                            </form>
+                            {% if daily.should_complete_today() %}
+                                <form action="{{ url_for('dailies.toggle_daily', daily_id=daily.id) }}" method="POST" style="display: inline;">
+                                    {% if daily.is_completed_today() %}
+                                        <button type="submit" class="btn btn-success" title="Completed today! Click to undo">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                        </button>
+                                    {% else %}
+                                        <button type="submit" class="btn btn-outline-secondary" title="Mark as complete for today">
+                                            <i class="bi bi-circle"></i>
+                                        </button>
+                                    {% endif %}
+                                </form>
+                            {% else %}
+                                <button class="btn btn-outline-secondary" disabled title="Not available today">
+                                    <i class="bi bi-circle-slash"></i>
+                                </button>
+                            {% endif %}
                         </div>
                         <div class="col">
                             <h5 class="mb-1">
                                 {{ daily.title }}
                                 {% if daily.streak_count > 0 %}
                                     <span class="badge bg-warning text-dark ms-2">
-                                        <i class="bi bi-fire"></i> {{ daily.streak_count }} day{% if daily.streak_count != 1 %}s{% endif %}
+                                        <i class="bi bi-fire"></i> {{ daily.streak_count }}
                                     </span>
                                 {% endif %}
+                                <span class="badge bg-secondary ms-2">
+                                    {% if daily.frequency == 'daily' %}
+                                        📅 Daily
+                                    {% elif daily.frequency == 'weekly' %}
+                                        📅 Weekly
+                                    {% elif daily.frequency == 'monthly' %}
+                                        📅 Monthly
+                                    {% elif daily.frequency == 'custom' %}
+                                        📅 {{ daily.get_weekdays()|join(', ')|title }}
+                                    {% endif %}
+                                </span>
                             </h5>
                             {% if daily.description %}
                                 <p class="mb-1 text-muted">{{ daily.description }}</p>
@@ -72,17 +89,19 @@
     </div>
 {% else %}
     <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> No dailies yet. Create your first recurring daily task!
+        <i class="bi bi-info-circle"></i> No dailies yet. Create your first recurring task!
     </div>
 {% endif %}
 
 <div class="mt-4 p-3 bg-light rounded">
-    <h6><i class="bi bi-info-circle"></i> How Dailies Work:</h6>
+    <h6><i class="bi bi-info-circle"></i> Frequency Types:</h6>
     <ul class="mb-0">
-        <li><strong>Check off</strong> your dailies each day to build streaks 🔥</li>
-        <li><strong>Streaks</strong> increase when you complete a daily on consecutive days</li>
-        <li><strong>Total completions</strong> track how many times you've done this daily overall</li>
-        <li>If you miss a day, your streak resets (but total completions stay!)</li>
+        <li><strong>Daily:</strong> Complete every day to build your streak 🔥</li>
+        <li><strong>Weekly:</strong> Complete once per week (resets every 7 days)</li>
+        <li><strong>Monthly:</strong> Complete once per month (resets every 30 days)</li>
+        <li><strong>Specific Weekdays:</strong> Only complete on selected days (e.g., Mon, Wed, Fri)</li>
+        <li><strong>Streaks</strong> increase when you complete on schedule, reset if you miss</li>
     </ul>
 </div>
 {% endblock %}
+
