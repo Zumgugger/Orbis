@@ -24,15 +24,25 @@
                                   placeholder="Optional details about this daily task">{{ daily.description if daily else '' }}</textarea>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="frequency" class="form-label">Frequency *</label>
-                        <select class="form-select" id="frequency" name="frequency" onchange="handleFrequencyChange()">
-                            <option value="daily" {% if daily and daily.frequency == 'daily' %}selected{% elif not daily %}selected{% endif %}>Daily</option>
-                            <option value="weekly" {% if daily and daily.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
-                            <option value="monthly" {% if daily and daily.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
-                            <option value="custom" {% if daily and daily.frequency == 'custom' %}selected{% endif %}>Specific Weekdays</option>
-                        </select>
-                        <small class="form-text text-muted">Choose how often you want to complete this task</small>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="frequency" class="form-label">Frequency *</label>
+                            <select class="form-select" id="frequency" name="frequency" onchange="handleFrequencyChange()">
+                                <option value="daily" {% if daily and daily.frequency == 'daily' %}selected{% elif not daily %}selected{% endif %}>Daily</option>
+                                <option value="weekly" {% if daily and daily.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+                                <option value="monthly" {% if daily and daily.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+                                <option value="custom" {% if daily and daily.frequency == 'custom' %}selected{% endif %}>Specific Weekdays</option>
+                            </select>
+                            <small class="form-text text-muted">Choose how often you want to complete this task</small>
+                        </div>
+                        
+                        <!-- Interval for daily/weekly/monthly -->
+                        <div id="intervalSection" class="col-md-6 mb-3" style="display: {% if daily and daily.frequency in ['daily', 'weekly', 'monthly'] %}block{% elif not daily %}block{% else %}none{% endif %};">
+                            <label for="frequency_interval" class="form-label">Repeat Every <span id="intervalUnit">day</span> *</label>
+                            <input type="number" class="form-control" id="frequency_interval" name="frequency_interval" 
+                                   value="{{ daily.frequency_interval if daily else 1 }}" min="1" max="365">
+                            <small class="form-text text-muted">Number of <span id="intervalUnitSmall">days</span> between completions</small>
+                        </div>
                     </div>
                     
                     <!-- Custom Weekdays Section -->
@@ -81,14 +91,30 @@
 <script>
     function handleFrequencyChange() {
         const frequency = document.getElementById('frequency').value;
+        const intervalSection = document.getElementById('intervalSection');
         const weekdaysSection = document.getElementById('weekdaysSection');
         const weekdaysError = document.getElementById('weekdaysError');
+        const intervalUnit = document.getElementById('intervalUnit');
+        const intervalUnitSmall = document.getElementById('intervalUnitSmall');
         
-        if (frequency === 'custom') {
-            weekdaysSection.style.display = 'block';
-        } else {
+        if (frequency === 'daily') {
+            intervalSection.style.display = 'block';
+            intervalUnit.textContent = 'day';
+            intervalUnitSmall.textContent = 'days';
             weekdaysSection.style.display = 'none';
-            weekdaysError.style.display = 'none';
+        } else if (frequency === 'weekly') {
+            intervalSection.style.display = 'block';
+            intervalUnit.textContent = 'week';
+            intervalUnitSmall.textContent = 'weeks';
+            weekdaysSection.style.display = 'none';
+        } else if (frequency === 'monthly') {
+            intervalSection.style.display = 'block';
+            intervalUnit.textContent = 'month';
+            intervalUnitSmall.textContent = 'months';
+            weekdaysSection.style.display = 'none';
+        } else if (frequency === 'custom') {
+            intervalSection.style.display = 'none';
+            weekdaysSection.style.display = 'block';
         }
     }
     

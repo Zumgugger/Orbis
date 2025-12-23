@@ -51,11 +51,23 @@
                                 {% endif %}
                                 <span class="badge bg-secondary ms-2">
                                     {% if daily.frequency == 'daily' %}
-                                        📅 Daily
+                                        {% if daily.frequency_interval == 1 %}
+                                            📅 Daily
+                                        {% else %}
+                                            📅 Every {{ daily.frequency_interval }} days
+                                        {% endif %}
                                     {% elif daily.frequency == 'weekly' %}
-                                        📅 Weekly
+                                        {% if daily.frequency_interval == 1 %}
+                                            📅 Weekly
+                                        {% else %}
+                                            📅 Every {{ daily.frequency_interval }} weeks
+                                        {% endif %}
                                     {% elif daily.frequency == 'monthly' %}
-                                        📅 Monthly
+                                        {% if daily.frequency_interval == 1 %}
+                                            📅 Monthly
+                                        {% else %}
+                                            📅 Every {{ daily.frequency_interval }} months
+                                        {% endif %}
                                     {% elif daily.frequency == 'custom' %}
                                         📅 {{ daily.get_weekdays()|join(', ')|title }}
                                     {% endif %}
@@ -96,11 +108,12 @@
 <div class="mt-4 p-3 bg-light rounded">
     <h6><i class="bi bi-info-circle"></i> Frequency Types:</h6>
     <ul class="mb-0">
-        <li><strong>Daily:</strong> Complete every day to build your streak 🔥</li>
-        <li><strong>Weekly:</strong> Complete once per week (resets every 7 days)</li>
-        <li><strong>Monthly:</strong> Complete once per month (resets every 30 days)</li>
+        <li><strong>Daily:</strong> Complete every day (or every N days) to build your streak 🔥</li>
+        <li><strong>Weekly:</strong> Complete once per week (or every N weeks)</li>
+        <li><strong>Monthly:</strong> Complete once per month (or every N months)</li>
         <li><strong>Specific Weekdays:</strong> Only complete on selected days (e.g., Mon, Wed, Fri)</li>
         <li><strong>Streaks</strong> increase when you complete on schedule, reset if you miss</li>
+        <li><strong>Example:</strong> "Every 3 days" means you can complete it once every 3 days (streak breaks after 3+ days without completion)</li>
     </ul>
 </div>
 {% endblock %}

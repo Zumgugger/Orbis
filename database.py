@@ -56,6 +56,7 @@ class Daily(db.Model):
     
     # Frequency fields
     frequency = db.Column(db.String(20), default='daily')  # daily, weekly, monthly, custom
+    frequency_interval = db.Column(db.Integer, default=1)  # For daily/weekly/monthly: repeat every N units
     weekdays = db.Column(db.Text, nullable=True)  # JSON: ["monday", "wednesday", "friday"]
     
     def __repr__(self):
@@ -81,20 +82,23 @@ class Daily(db.Model):
         today_weekday = weekday_names[today.weekday()]
         
         if self.frequency == 'daily':
-            return True
+            # Every N days
+            if not self.last_completed_date:
+                return True
+            days_since_last = (today - self.last_completed_date).days
+            return days_since_last >= self.frequency_interval
         elif self.frequency == 'weekly':
-            # Check if last_completed_date exists and is within the same week
+            # Every N weeks
             if not self.last_completed_date:
                 return True
-            # Week starts on Monday
             days_since_last = (today - self.last_completed_date).days
-            return days_since_last >= 7
+            return days_since_last >= (7 * self.frequency_interval)
         elif self.frequency == 'monthly':
-            # Can complete once per month (30+ days)
+            # Every N months (approximated as 30 days per month)
             if not self.last_completed_date:
                 return True
             days_since_last = (today - self.last_completed_date).days
-            return days_since_last >= 30
+            return days_since_last >= (30 * self.frequency_interval)
         elif self.frequency == 'custom':
             # Check if today is in the selected weekdays
             return today_weekday in self.get_weekdays()
@@ -128,8 +132,9 @@ class Daily(db.Model):
             # Calculate streak based on frequency
             if self.frequency == 'daily':
                 if self.last_completed_date:
-                    yesterday = today - timedelta(days=1)
-                    if self.last_completed_date == yesterday:
+                    # Check if last completion was exactly (frequency_interval - 1) days ago
+                    days_since = (today - self.last_completed_date).days
+                    if days_since == self.frequency_interval:
                         self.streak_count += 1
                     else:
                         self.streak_count = 1
@@ -138,7 +143,8 @@ class Daily(db.Model):
             elif self.frequency == 'weekly':
                 if self.last_completed_date:
                     days_since = (today - self.last_completed_date).days
-                    if days_since >= 7 and days_since < 14:
+                    week_interval = 7 * self.frequency_interval
+                    if days_since >= week_interval and days_since < (week_interval + 7):
                         self.streak_count += 1
                     else:
                         self.streak_count = 1
@@ -147,7 +153,8 @@ class Daily(db.Model):
             elif self.frequency == 'monthly':
                 if self.last_completed_date:
                     days_since = (today - self.last_completed_date).days
-                    if days_since >= 30 and days_since < 60:
+                    month_interval = 30 * self.frequency_interval
+                    if days_since >= month_interval and days_since < (month_interval + 30):
                         self.streak_count += 1
                     else:
                         self.streak_count = 1
@@ -156,8 +163,8 @@ class Daily(db.Model):
             elif self.frequency == 'custom':
                 # For custom, streak works like daily within selected days
                 if self.last_completed_date:
-                    yesterday = today - timedelta(days=1)
-                    if self.last_completed_date == yesterday:
+                    days_since = (today - self.last_completed_date).days
+                    if days_since == 1:
                         self.streak_count += 1
                     else:
                         self.streak_count = 1
