@@ -2,6 +2,7 @@
 Database models and initialization
 """
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 from datetime import datetime, date, timedelta
 import json
 
@@ -13,11 +14,45 @@ def init_db(app):
     with app.app_context():
         db.create_all()
 
+class User(UserMixin, db.Model):
+    """User model for authentication"""
+    __tablename__ = 'users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    google_id = db.Column(db.String(255), unique=True, nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    name = db.Column(db.String(255), nullable=True)
+    profile_pic = db.Column(db.String(500), nullable=True)
+    role = db.Column(db.String(20), default='user')  # 'admin' or 'user'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<User {self.id}: {self.email}>'
+    
+    def is_admin(self):
+        """Check if user is admin"""
+        return self.role == 'admin'
+    
+    def to_dict(self):
+        """Convert to dictionary"""
+        return {
+            'id': self.id,
+            'google_id': self.google_id,
+            'email': self.email,
+            'name': self.name,
+            'profile_pic': self.profile_pic,
+            'role': self.role,
+            'created_at': self.created_at.isoformat(),
+            'last_login': self.last_login.isoformat() if self.last_login else None
+        }
+
 class Todo(db.Model):
     """Todo/Task model"""
     __tablename__ = 'todos'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), default='pending')  # pending, completed
@@ -47,6 +82,7 @@ class Daily(db.Model):
     __tablename__ = 'dailies'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     streak_count = db.Column(db.Integer, default=0)
@@ -193,6 +229,7 @@ class Habit(db.Model):
     __tablename__ = 'habits'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     difficulty = db.Column(db.String(20), default='normal')  # easy, normal, hard
@@ -253,6 +290,7 @@ class Goal(db.Model):
     __tablename__ = 'goals'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), default='active')  # active, completed
@@ -343,6 +381,7 @@ class ShoppingList(db.Model):
     __tablename__ = 'shopping_lists'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     items = db.Column(db.Text, nullable=True)  # Text field for list items
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

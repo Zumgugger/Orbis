@@ -2,6 +2,7 @@
 Dailies Blueprint - handles recurring daily tasks
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import login_required, current_user
 from database import db, Daily
 import json
 
@@ -10,12 +11,14 @@ dailies_bp = Blueprint('dailies', __name__)
 WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
 @dailies_bp.route('/')
+@login_required
 def list_dailies():
     """Display all dailies"""
-    dailies = Daily.query.order_by(Daily.created_at.desc()).all()
+    dailies = Daily.query.filter_by(user_id=current_user.id).order_by(Daily.created_at.desc()).all()
     return render_template('dailies/list.html', dailies=dailies, weekdays=WEEKDAYS)
 
 @dailies_bp.route('/create', methods=['GET', 'POST'])
+@login_required
 def create_daily():
     """Create a new daily"""
     if request.method == 'POST':
@@ -37,7 +40,8 @@ def create_daily():
             title=title,
             description=description,
             frequency=frequency,
-            frequency_interval=frequency_interval
+            frequency_interval=frequency_interval,
+            user_id=current_user.id
         )
         
         # Handle custom weekdays
@@ -57,9 +61,10 @@ def create_daily():
     return render_template('dailies/form.html', daily=None, action='Create', weekdays=WEEKDAYS)
 
 @dailies_bp.route('/<int:daily_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_daily(daily_id):
     """Edit an existing daily"""
-    daily = Daily.query.get_or_404(daily_id)
+    daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
         daily.title = request.form.get('title')
@@ -89,9 +94,10 @@ def edit_daily(daily_id):
     return render_template('dailies/form.html', daily=daily, action='Edit', weekdays=WEEKDAYS)
 
 @dailies_bp.route('/<int:daily_id>/toggle', methods=['POST'])
+@login_required
 def toggle_daily(daily_id):
     """Toggle daily completion status"""
-    daily = Daily.query.get_or_404(daily_id)
+    daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
     
     if not daily.should_complete_today():
         frequency_name = daily.frequency.capitalize()
@@ -109,9 +115,10 @@ def toggle_daily(daily_id):
     return redirect(url_for('dailies.list_dailies'))
 
 @dailies_bp.route('/<int:daily_id>/delete', methods=['POST'])
+@login_required
 def delete_daily(daily_id):
     """Delete a daily"""
-    daily = Daily.query.get_or_404(daily_id)
+    daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
     db.session.delete(daily)
     db.session.commit()
     flash('Daily deleted successfully!', 'success')

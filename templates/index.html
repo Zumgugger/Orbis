@@ -26,7 +26,7 @@
                                {% if daily.is_completed_today() %}checked{% endif %} onchange="this.form.submit()">
                     </form>
                     <span class="flex-grow-1 {% if daily.is_completed_today() %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</span>
-                    <span class="text-muted small">🔥 {{ daily.streak_count }}</span>
+                    <span class="text-muted small"><i class="bi bi-link-45deg"></i> {{ daily.streak_count }}</span>
                 </div>
             </div>
             {% endfor %}

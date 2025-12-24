@@ -2,17 +2,20 @@
 Habits Blueprint - handles habit tracking with +/- counters
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
 from database import db, Habit
 
 habits_bp = Blueprint('habits', __name__)
 
 @habits_bp.route('/')
+@login_required
 def list_habits():
     """Display all habits"""
-    habits = Habit.query.order_by(Habit.created_at.desc()).all()
+    habits = Habit.query.filter_by(user_id=current_user.id).order_by(Habit.created_at.desc()).all()
     return render_template('habits/list.html', habits=habits)
 
 @habits_bp.route('/create', methods=['GET', 'POST'])
+@login_required
 def create_habit():
     """Create a new habit"""
     if request.method == 'POST':
@@ -27,7 +30,8 @@ def create_habit():
         habit = Habit(
             title=title,
             description=description,
-            difficulty=difficulty
+            difficulty=difficulty,
+            user_id=current_user.id
         )
         db.session.add(habit)
         db.session.commit()
@@ -38,9 +42,10 @@ def create_habit():
     return render_template('habits/form.html', habit=None, action='Create')
 
 @habits_bp.route('/<int:habit_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_habit(habit_id):
     """Edit an existing habit"""
-    habit = Habit.query.get_or_404(habit_id)
+    habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
         habit.title = request.form.get('title')
@@ -54,25 +59,28 @@ def edit_habit(habit_id):
     return render_template('habits/form.html', habit=habit, action='Edit')
 
 @habits_bp.route('/<int:habit_id>/increment', methods=['POST'])
+@login_required
 def increment_habit(habit_id):
     """Increment habit count (+1)"""
-    habit = Habit.query.get_or_404(habit_id)
+    habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first_or_404()
     habit.increment()
     db.session.commit()
     return redirect(url_for('habits.list_habits'))
 
 @habits_bp.route('/<int:habit_id>/decrement', methods=['POST'])
+@login_required
 def decrement_habit(habit_id):
     """Decrement habit count (-1)"""
-    habit = Habit.query.get_or_404(habit_id)
+    habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first_or_404()
     habit.decrement()
     db.session.commit()
     return redirect(url_for('habits.list_habits'))
 
 @habits_bp.route('/<int:habit_id>/cycle_difficulty', methods=['POST'])
+@login_required
 def cycle_difficulty(habit_id):
     """Cycle through difficulty levels: easy -> normal -> hard -> easy"""
-    habit = Habit.query.get_or_404(habit_id)
+    habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first_or_404()
     
     if habit.difficulty == 'easy':
         habit.difficulty = 'normal'
@@ -85,9 +93,10 @@ def cycle_difficulty(habit_id):
     return redirect(url_for('habits.list_habits'))
 
 @habits_bp.route('/<int:habit_id>/delete', methods=['POST'])
+@login_required
 def delete_habit(habit_id):
     """Delete a habit"""
-    habit = Habit.query.get_or_404(habit_id)
+    habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first_or_404()
     db.session.delete(habit)
     db.session.commit()
     flash('Habit deleted successfully!', 'success')

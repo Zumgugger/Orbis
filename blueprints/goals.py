@@ -3,17 +3,20 @@ Goals Blueprint
 Handles goal tracking with milestone management
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
 from database import db, Goal, Milestone
 
 bp = Blueprint('goals', __name__, url_prefix='/goals')
 
 @bp.route('/')
+@login_required
 def list():
     """List all goals"""
-    goals = Goal.query.order_by(Goal.created_at.desc()).all()
+    goals = Goal.query.filter_by(user_id=current_user.id).order_by(Goal.created_at.desc()).all()
     return render_template('goals/list.html', goals=goals)
 
 @bp.route('/create', methods=['GET', 'POST'])
+@login_required
 def create():
     """Create a new goal"""
     if request.method == 'POST':
@@ -24,7 +27,7 @@ def create():
             flash('Title is required!', 'error')
             return redirect(url_for('goals.create'))
         
-        goal = Goal(title=title, description=description)
+        goal = Goal(title=title, description=description, user_id=current_user.id)
         db.session.add(goal)
         db.session.commit()
         
@@ -34,9 +37,10 @@ def create():
     return render_template('goals/form.html', goal=None)
 
 @bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit(id):
     """Edit a goal"""
-    goal = Goal.query.get_or_404(id)
+    goal = Goal.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
         goal.title = request.form.get('title')
@@ -53,18 +57,20 @@ def edit(id):
     return render_template('goals/form.html', goal=goal)
 
 @bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
 def delete(id):
     """Delete a goal"""
-    goal = Goal.query.get_or_404(id)
+    goal = Goal.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     db.session.delete(goal)
     db.session.commit()
     flash('Goal deleted successfully!', 'success')
     return redirect(url_for('goals.list'))
 
 @bp.route('/<int:id>/add_milestone', methods=['POST'])
+@login_required
 def add_milestone(id):
     """Add a milestone to a goal"""
-    goal = Goal.query.get_or_404(id)
+    goal = Goal.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     title = request.form.get('milestone_title')
     
     if not title:
@@ -86,10 +92,11 @@ def add_milestone(id):
     return redirect(url_for('goals.edit', id=id))
 
 @bp.route('/<int:goal_id>/milestone/<int:milestone_id>/toggle', methods=['POST'])
+@login_required
 def toggle_milestone(goal_id, milestone_id):
     """Toggle milestone completion status"""
     milestone = Milestone.query.get_or_404(milestone_id)
-    goal = Goal.query.get_or_404(goal_id)
+    goal = Goal.query.filter_by(id=goal_id, user_id=current_user.id).first_or_404()
     
     if milestone.goal_id != goal_id:
         flash('Invalid milestone!', 'error')
@@ -102,9 +109,11 @@ def toggle_milestone(goal_id, milestone_id):
     return redirect(url_for('goals.list'))
 
 @bp.route('/<int:goal_id>/milestone/<int:milestone_id>/delete', methods=['POST'])
+@login_required
 def delete_milestone(goal_id, milestone_id):
     """Delete a milestone"""
     milestone = Milestone.query.get_or_404(milestone_id)
+    goal = Goal.query.filter_by(id=goal_id, user_id=current_user.id).first_or_404()
     
     if milestone.goal_id != goal_id:
         flash('Invalid milestone!', 'error')
@@ -114,9 +123,9 @@ def delete_milestone(goal_id, milestone_id):
     db.session.commit()
     
     # Update goal status after deleting milestone
-    goal = Goal.query.get_or_404(goal_id)
     goal.update_status()
     db.session.commit()
+
     
     flash('Milestone deleted successfully!', 'success')
     return redirect(url_for('goals.edit', id=goal_id))

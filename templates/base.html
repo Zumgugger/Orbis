@@ -58,6 +58,38 @@
                         </a>
                     </li>
                 </ul>
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                {% if current_user.profile_pic %}
+                                    <img src="{{ current_user.profile_pic }}" alt="{{ current_user.name }}" class="rounded-circle" style="width: 30px; height: 30px;">
+                                {% else %}
+                                    <i class="bi bi-person-circle"></i>
+                                {% endif %}
+                                {{ current_user.name }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><h6 class="dropdown-header">{{ current_user.email }}</h6></li>
+                                {% if current_user.is_admin() %}
+                                    <li><a class="dropdown-item" href="{{ url_for('admin.users') }}">
+                                        <i class="bi bi-shield-check"></i> Admin Panel
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                {% endif %}
+                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Logout
+                                </a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">
+                                <i class="bi bi-google"></i> Login with Google
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
             </div>
         </div>
     </nav>
