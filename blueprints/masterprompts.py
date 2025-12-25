@@ -247,4 +247,3 @@ def builder_move(sec_id, direction):
 def builder_clear():
     _save_builder([])
     return redirect(url_for('masterprompts.index'))
-*** End Patch
