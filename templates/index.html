@@ -5,6 +5,12 @@
 {% block content %}
 <h1 class="mb-4"><i class="bi bi-calendar-check"></i> Today's List</h1>
 
+<div class="mb-3 text-end">
+    <a href="{{ url_for('tomorrow') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-sunrise"></i> View Tomorrow
+    </a>
+</div>
+
 {% if everything_done %}
     <div class="alert alert-success alert-lg py-5 text-center mb-4">
         <h2 class="mb-3">
@@ -55,27 +61,5 @@
 {% endif %}
 
 <!-- Quick Links -->
-<div class="row mt-4">
-    <div class="col-md-3">
-        <a href="{{ url_for('todos.list_todos') }}" class="btn btn-outline-primary w-100">
-            <i class="bi bi-check2-square"></i> Todos
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{{ url_for('dailies.list_dailies') }}" class="btn btn-outline-info w-100">
-            <i class="bi bi-calendar-check"></i> Dailies
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{{ url_for('habits.list_habits') }}" class="btn btn-outline-success w-100">
-            <i class="bi bi-arrow-repeat"></i> Habits
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{{ url_for('goals.list') }}" class="btn btn-outline-warning w-100">
-            <i class="bi bi-bullseye"></i> Goals
-        </a>
-    </div>
-</div>
 
 {% endblock %}

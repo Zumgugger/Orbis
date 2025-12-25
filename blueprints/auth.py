@@ -46,8 +46,10 @@ def callback():
             flash('Failed to get user info from Google', 'error')
             return redirect(url_for('index'))
         
-        # Check if user exists
+        # Check if user exists by google_id OR email
         user = User.query.filter_by(google_id=user_info['sub']).first()
+        if not user:
+            user = User.query.filter_by(email=user_info['email']).first()
         
         if not user:
             # Create new user
@@ -56,13 +58,15 @@ def callback():
                 email=user_info['email'],
                 name=user_info.get('name'),
                 profile_pic=user_info.get('picture'),
-                role='user'  # Default role
+                role='user',  # Default role
+                created_at=datetime.utcnow()
             )
             db.session.add(user)
             db.session.commit()
             flash(f'Welcome {user.name}! Your account has been created.', 'success')
         else:
-            # Update last login
+            # Update existing user with OAuth info
+            user.google_id = user_info['sub']
             user.last_login = datetime.utcnow()
             user.name = user_info.get('name', user.name)
             user.profile_pic = user_info.get('picture', user.profile_pic)

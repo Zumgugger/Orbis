@@ -113,39 +113,45 @@ class Daily(db.Model):
     
     def should_complete_today(self):
         """Check if this daily should be completable today based on frequency"""
-        today = date.today()
+        return self.should_complete_on(date.today())
+
+    def should_complete_on(self, target_date):
+        """Check if this daily should be completable on a specific date"""
         weekday_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-        today_weekday = weekday_names[today.weekday()]
-        
+        target_weekday = weekday_names[target_date.weekday()]
+
+        if self.last_completed_date and target_date < self.last_completed_date:
+            return False
+
         if self.frequency == 'daily':
-            # Every N days
             if not self.last_completed_date:
                 return True
-            days_since_last = (today - self.last_completed_date).days
+            days_since_last = (target_date - self.last_completed_date).days
             return days_since_last >= self.frequency_interval
-        elif self.frequency == 'weekly':
-            # Every N weeks
+        if self.frequency == 'weekly':
             if not self.last_completed_date:
                 return True
-            days_since_last = (today - self.last_completed_date).days
+            days_since_last = (target_date - self.last_completed_date).days
             return days_since_last >= (7 * self.frequency_interval)
-        elif self.frequency == 'monthly':
-            # Every N months (approximated as 30 days per month)
+        if self.frequency == 'monthly':
             if not self.last_completed_date:
                 return True
-            days_since_last = (today - self.last_completed_date).days
+            days_since_last = (target_date - self.last_completed_date).days
             return days_since_last >= (30 * self.frequency_interval)
-        elif self.frequency == 'custom':
-            # Check if today is in the selected weekdays
-            return today_weekday in self.get_weekdays()
-        
+        if self.frequency == 'custom':
+            return target_weekday in self.get_weekdays()
+
         return True
+
+    def is_completed_on(self, target_date):
+        """Check if this daily was completed on a specific date"""
+        if not self.last_completed_date:
+            return False
+        return self.last_completed_date == target_date
     
     def is_completed_today(self):
         """Check if this daily was completed today"""
-        if not self.last_completed_date:
-            return False
-        return self.last_completed_date == date.today()
+        return self.is_completed_on(date.today())
     
     def toggle_completion(self):
         """Toggle daily completion and update streak/totals"""
@@ -398,4 +404,24 @@ class ShoppingList(db.Model):
             'items': self.items,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
+        }
+
+
+class RolloverState(db.Model):
+    """Track per-user rollover processing to avoid double-shifting tasks"""
+    __tablename__ = 'rollover_state'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    last_processed_date = db.Column(db.Date, nullable=False, default=date.today)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<RolloverState user={self.user_id} last={self.last_processed_date}>'
+
+    def to_dict(self):
+        return {
+            'user_id': self.user_id,
+            'last_processed_date': self.last_processed_date.isoformat() if self.last_processed_date else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }

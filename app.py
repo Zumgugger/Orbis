@@ -4,8 +4,8 @@ Main application entry point
 """
 from flask import Flask, render_template, redirect, url_for
 from flask_login import LoginManager, login_required, current_user
-from database import init_db, db, Todo, Daily, User
-from datetime import datetime, date
+from database import init_db, db, Todo, Daily, User, RolloverState
+from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 import os
 
@@ -51,10 +51,51 @@ def create_app():
     app.register_blueprint(shopping_bp, url_prefix='/shopping')
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+
+    def process_rollover_for_user(user):
+        """Shift unfinished items forward once per day and break missed streaks."""
+        if not user.is_authenticated:
+            return
+
+        today = date.today()
+        state = RolloverState.query.filter_by(user_id=user.id).first()
+
+        if not state:
+            state = RolloverState(user_id=user.id, last_processed_date=today)
+            db.session.add(state)
+            db.session.commit()
+            return
+
+        current_day = state.last_processed_date
+
+        while current_day < today:
+            next_day = current_day + timedelta(days=1)
+
+            # Move pending todos forward by one day
+            pending_todos = Todo.query.filter(
+                Todo.user_id == user.id,
+                Todo.status == 'pending',
+                Todo.due_date == current_day
+            ).all()
+            for todo in pending_todos:
+                todo.due_date = next_day
+
+            # Break streak for dailies missed on the day
+            user_dailies = Daily.query.filter_by(user_id=user.id).all()
+            for daily in user_dailies:
+                if daily.should_complete_on(current_day) and not daily.is_completed_on(current_day):
+                    daily.streak_count = 0
+
+            db.session.commit()
+            current_day = next_day
+
+        state.last_processed_date = today
+        db.session.commit()
     
     @app.route('/')
     @login_required
     def index():
+        process_rollover_for_user(current_user)
         # Get todos due today for current user (all, including completed)
         today = date.today()
         todos_today = Todo.query.filter(
@@ -82,6 +123,42 @@ def create_app():
                              todos=todos_today, 
                              dailies=dailies_today,
                              everything_done=everything_done)
+
+    @app.route('/tomorrow')
+    @login_required
+    def tomorrow():
+        process_rollover_for_user(current_user)
+
+        today = date.today()
+        target_date = today + timedelta(days=1)
+
+        todos_tomorrow = Todo.query.filter(
+            Todo.user_id == current_user.id,
+            Todo.due_date == target_date
+        ).all()
+
+        all_dailies = Daily.query.filter_by(user_id=current_user.id).all()
+        carryover_ids = set()
+        due_ids = set()
+
+        for daily in all_dailies:
+            if daily.should_complete_on(today) and not daily.is_completed_on(today):
+                carryover_ids.add(daily.id)
+            if daily.should_complete_on(target_date):
+                due_ids.add(daily.id)
+
+        dailies_tomorrow = [
+            daily for daily in all_dailies
+            if daily.id in carryover_ids or daily.id in due_ids
+        ]
+
+        return render_template(
+            'tomorrow.html',
+            todos=todos_tomorrow,
+            dailies=dailies_tomorrow,
+            carryover_ids=carryover_ids,
+            target_date=target_date
+        )
     
     return app
 

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Tomorrow's List{% endblock %}
+
+{% block content %}
+<h1 class="mb-2"><i class="bi bi-sunrise"></i> Tomorrow's List</h1>
+<p class="text-muted mb-4">Preview for {{ target_date.strftime('%A, %B %d, %Y') }}. Unfinished items from today roll over automatically.</p>
+
+{% if dailies or todos %}
+    <div class="card mb-4">
+        <div class="list-group list-group-flush">
+            <!-- Dailies first -->
+            {% for daily in dailies %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-3">
+                    <input type="checkbox" class="form-check-input mt-1" disabled>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <strong>{{ daily.title }}</strong>
+                            {% if daily.id in carryover_ids %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-arrow-return-right"></i> Carry over</span>
+                            {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-calendar-event"></i> Scheduled</span>
+                            {% endif %}
+                            {% if daily.streak_count > 0 %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-fire"></i> {{ daily.streak_count }}</span>
+                            {% endif %}
+                        </div>
+                        {% if daily.description %}
+                            <p class="mb-1 text-muted">{{ daily.description }}</p>
+                        {% endif %}
+                        <small class="text-muted">
+                            {% if daily.frequency == 'custom' %}
+                                📅 {{ daily.get_weekdays()|join(', ')|title }}
+                            {% elif daily.frequency == 'daily' %}
+                                📅 Every {{ daily.frequency_interval }} day{% if daily.frequency_interval != 1 %}s{% endif %}
+                            {% elif daily.frequency == 'weekly' %}
+                                📅 Every {{ daily.frequency_interval }} week{% if daily.frequency_interval != 1 %}s{% endif %}
+                            {% elif daily.frequency == 'monthly' %}
+                                📅 Every {{ daily.frequency_interval }} month{% if daily.frequency_interval != 1 %}s{% endif %}
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Todos next -->
+            {% for todo in todos %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-3">
+                    <input type="checkbox" class="form-check-input mt-1" disabled>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <strong>{{ todo.title }}</strong>
+                            <span class="badge bg-{{ 'danger' if todo.priority == 'high' else 'warning' if todo.priority == 'medium' else 'success' }}">
+                                {{ todo.priority|title }}
+                            </span>
+                        </div>
+                        {% if todo.description %}
+                            <p class="mb-1 text-muted">{{ todo.description }}</p>
+                        {% endif %}
+                        <small class="text-muted">
+                            <i class="bi bi-calendar-event"></i> Due: {{ target_date }}
+                            {% if todo.created_at %} | <i class="bi bi-clock"></i> Created: {{ todo.created_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Nothing scheduled for tomorrow yet.
+    </div>
+{% endif %}
+
+<div class="text-end">
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Today
+    </a>
+</div>
+{% endblock %}
