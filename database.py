@@ -425,3 +425,35 @@ class RolloverState(db.Model):
             'last_processed_date': self.last_processed_date.isoformat() if self.last_processed_date else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+class MasterCategory(db.Model):
+    """Masterprompt category per user"""
+    __tablename__ = 'master_categories'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    position = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    sections = db.relationship('MasterSection', backref='category', lazy=True, cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<MasterCategory {self.id}: {self.name}>'
+
+
+class MasterSection(db.Model):
+    """Reusable masterprompt section grouped by category"""
+    __tablename__ = 'master_sections'
+
+    id = db.Column(db.Integer, primary_key=True)
+    category_id = db.Column(db.Integer, db.ForeignKey('master_categories.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    position = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<MasterSection {self.id}: {self.title}>'

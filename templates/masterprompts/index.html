@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Masterprompts{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <!-- Categories -->
+    <div class="col-lg-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h5 class="mb-0"><i class="bi bi-stars"></i> Categories</h5>
+            <form class="d-flex" method="POST" action="{{ url_for('masterprompts.create_category') }}">
+                <input type="text" class="form-control form-control-sm me-2" name="name" placeholder="New category" required>
+                <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus"></i></button>
+            </form>
+        </div>
+        <div class="list-group">
+            {% for cat in categories %}
+            <div class="list-group-item d-flex align-items-center justify-content-between {% if cat.id == selected_id %}active{% endif %}">
+                <div class="flex-grow-1">
+                    <a class="stretched-link text-reset text-decoration-none {% if cat.id == selected_id %}text-white{% endif %}"
+                       href="{{ url_for('masterprompts.index', category_id=cat.id) }}">{{ cat.name }}</a>
+                </div>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Category actions">
+                    <form method="POST" action="{{ url_for('masterprompts.move_category', cat_id=cat.id, direction='up') }}">
+                        <button class="btn btn-outline-light" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                    </form>
+                    <form method="POST" action="{{ url_for('masterprompts.move_category', cat_id=cat.id, direction='down') }}">
+                        <button class="btn btn-outline-light" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                    </form>
+                    <form method="POST" action="{{ url_for('masterprompts.delete_category', cat_id=cat.id) }}" onsubmit="return confirm('Delete category and its sections?');">
+                        <button class="btn btn-outline-light" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not categories %}
+            <div class="list-group-item text-muted">No categories yet</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sections -->
+    <div class="col-lg-5">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h5 class="mb-0"><i class="bi bi-collection"></i> Sections</h5>
+            {% if selected_id %}
+            <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#newSectionForm">
+                <i class="bi bi-plus"></i> New Section
+            </button>
+            {% endif %}
+        </div>
+
+        {% if selected_id %}
+        <div class="collapse mb-3" id="newSectionForm">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('masterprompts.create_section', cat_id=selected_id) }}">
+                        <div class="mb-2">
+                            <label class="form-label">Title</label>
+                            <input type="text" name="title" class="form-control" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Body (Markdown supported)</label>
+                            <textarea name="body" class="form-control" rows="4" required></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#newSectionForm">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Section</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if sections %}
+            {% for sec in sections %}
+            <div class="card mb-2">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">{{ sec.title }}</h6>
+                            <div class="text-muted small mb-2">Created {{ sec.created_at.strftime('%Y-%m-%d') }}</div>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Section actions">
+                            <form method="POST" action="{{ url_for('masterprompts.move_section', sec_id=sec.id, direction='up') }}">
+                                <button class="btn btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                            </form>
+                            <form method="POST" action="{{ url_for('masterprompts.move_section', sec_id=sec.id, direction='down') }}">
+                                <button class="btn btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                            </form>
+                            <form method="POST" action="{{ url_for('masterprompts.delete_section', sec_id=sec.id) }}" onsubmit="return confirm('Delete this section?');">
+                                <button class="btn btn-outline-danger" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="mt-2">{{ sec.body | markdown }}</div>
+                    <div class="mt-3 d-flex gap-2 flex-wrap">
+                        <button class="btn btn-outline-secondary btn-sm copy-section" data-section-text="{{ sec.body | e }}">
+                            <i class="bi bi-clipboard"></i> Copy section
+                        </button>
+                        <form method="POST" action="{{ url_for('masterprompts.builder_add', sec_id=sec.id) }}">
+                            <button class="btn btn-outline-primary btn-sm" type="submit">
+                                <i class="bi bi-plus-square"></i> Add to builder
+                            </button>
+                        </form>
+                        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#editSection{{ sec.id }}">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                    </div>
+                    <div class="collapse mt-3" id="editSection{{ sec.id }}">
+                        <div class="card card-body">
+                            <form method="POST" action="{{ url_for('masterprompts.edit_section', sec_id=sec.id) }}">
+                                <div class="mb-2">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" name="title" class="form-control" value="{{ sec.title }}" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Body (Markdown supported)</label>
+                                    <textarea name="body" class="form-control" rows="4" required>{{ sec.body }}</textarea>
+                                </div>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#editSection{{ sec.id }}">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">No sections yet in this category.</div>
+        {% endif %}
+    </div>
+
+    <!-- Builder -->
+    <div class="col-lg-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h5 class="mb-0"><i class="bi bi-clipboard2-check"></i> Builder</h5>
+            <form method="POST" action="{{ url_for('masterprompts.builder_clear') }}">
+                <button class="btn btn-sm btn-outline-danger" type="submit" {% if not builder_sections %}disabled{% endif %}>Clear</button>
+            </form>
+        </div>
+        <div class="list-group mb-3">
+            {% for sec in builder_sections %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>{{ sec.title }}</strong>
+                        <div class="text-muted small">From {{ sec.category.name if sec.category else 'Unknown' }}</div>
+                    </div>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <form method="POST" action="{{ url_for('masterprompts.builder_move', sec_id=sec.id, direction='up') }}">
+                            <button class="btn btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('masterprompts.builder_move', sec_id=sec.id, direction='down') }}">
+                            <button class="btn btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('masterprompts.builder_remove', sec_id=sec.id) }}">
+                            <button class="btn btn-outline-danger" type="submit" title="Remove"><i class="bi bi-x-lg"></i></button>
+                        </form>
+                    </div>
+                </div>
+                <div class="mt-2 text-muted small">{{ sec.body[:140] }}{% if sec.body|length > 140 %}…{% endif %}</div>
+            </div>
+            {% endfor %}
+            {% if not builder_sections %}
+            <div class="list-group-item text-muted">Builder is empty</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-2 d-flex gap-2">
+            <button class="btn btn-primary w-100" id="copyCombined" {% if not builder_sections %}disabled{% endif %}>
+                <i class="bi bi-clipboard-check"></i> Copy Combined
+            </button>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Preview (combined)</label>
+            <textarea class="form-control" id="combinedPreview" rows="8" readonly>{{ combined_text }}</textarea>
+        </div>
+        <div id="copyStatus" class="text-muted small">Last copied will appear here.</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  // Copy a single section body
+  document.querySelectorAll('.copy-section').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = btn.getAttribute('data-section-text');
+      await copyText(text, 'Section copied');
+    });
+  });
+
+  // Copy combined
+  const copyCombinedBtn = document.getElementById('copyCombined');
+  if (copyCombinedBtn) {
+    copyCombinedBtn.addEventListener('click', async () => {
+      const text = document.getElementById('combinedPreview').value || '';
+      await copyText(text, 'Combined masterprompt copied');
+    });
+  }
+
+  async function copyText(text, label) {
+    const status = document.getElementById('copyStatus');
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      if (status) status.textContent = `${label}. Last copied (${text.length} chars):`;
+      showLastCopied(text);
+    } catch (err) {
+      if (status) status.textContent = 'Copy failed: ' + err;
+    }
+  }
+
+  function showLastCopied(text) {
+    let preview = document.getElementById('lastCopiedPreview');
+    if (!preview) {
+      preview = document.createElement('div');
+      preview.id = 'lastCopiedPreview';
+      preview.className = 'mt-1 small text-muted';
+      document.getElementById('copyStatus').after(preview);
+    }
+    preview.textContent = text;
+  }
+})();
+</script>
+{% endblock %}

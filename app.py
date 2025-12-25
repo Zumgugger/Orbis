@@ -2,11 +2,13 @@
 Orbis - Habit and Task Management System
 Main application entry point
 """
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, session
 from flask_login import LoginManager, login_required, current_user
-from database import init_db, db, Todo, Daily, User, RolloverState
+from database import init_db, db, Todo, Daily, User, RolloverState, MasterCategory, MasterSection
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
+from markupsafe import Markup
+from markdown import markdown as md_to_html
 import os
 
 # Load environment variables
@@ -17,6 +19,9 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbis.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Markdown filter for rendering section bodies
+    app.jinja_env.filters['markdown'] = lambda text: Markup(md_to_html(text or '', extensions=['extra']))
     
     # Initialize database
     init_db(app)
@@ -43,6 +48,7 @@ def create_app():
     from blueprints.shopping import bp as shopping_bp
     from blueprints.auth import bp as auth_bp
     from blueprints.admin import bp as admin_bp
+    from blueprints.masterprompts import bp as masterprompts_bp
     
     app.register_blueprint(todos_bp, url_prefix='/todos')
     app.register_blueprint(dailies_bp, url_prefix='/dailies')
@@ -51,6 +57,7 @@ def create_app():
     app.register_blueprint(shopping_bp, url_prefix='/shopping')
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(masterprompts_bp, url_prefix='/masterprompts')
 
     def process_rollover_for_user(user):
         """Shift unfinished items forward once per day and break missed streaks."""
