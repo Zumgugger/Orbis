@@ -4,7 +4,12 @@
 
 {% block content %}
 <h1 class="mb-2"><i class="bi bi-sunrise"></i> Tomorrow's List</h1>
-<p class="text-muted mb-4">Preview for {{ target_date.strftime('%A, %B %d, %Y') }}. Unfinished items from today roll over automatically.</p>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted mb-0">Preview for {{ target_date.strftime('%A, %B %d, %Y') }}. Unfinished items from today roll over automatically.</p>
+    <a href="{{ url_for('todos.create_todo_tomorrow') }}" class="btn btn-outline-primary" title="Add todo for tomorrow">
+        <i class="bi bi-plus"></i>
+    </a>
+</div>
 
 {% if dailies or todos %}
     <div class="card mb-4">

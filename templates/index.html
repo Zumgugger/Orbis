@@ -9,6 +9,9 @@
     <a href="{{ url_for('tomorrow') }}" class="btn btn-outline-secondary">
         <i class="bi bi-sunrise"></i> View Tomorrow
     </a>
+    <a href="{{ url_for('todos.create_todo_today') }}" class="btn btn-outline-primary ms-2" title="Add todo for today">
+        <i class="bi bi-plus"></i>
+    </a>
 </div>
 
 {% if everything_done %}

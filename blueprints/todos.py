@@ -50,8 +50,68 @@ def create_todo():
         
         flash('Todo created successfully!', 'success')
         return redirect(url_for('todos.list_todos'))
-    
-    return render_template('todos/form.html', todo=None, action='Create')
+
+    return render_template('todos/form.html', todo=None, action='Create', show_due_date=True, preset_due_date='')
+
+
+@todos_bp.route('/create/today', methods=['GET', 'POST'])
+@login_required
+def create_todo_today():
+    """Create a new todo due today without showing date picker"""
+    preset_date = date.today()
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        priority = request.form.get('priority', 'medium')
+
+        if not title:
+            flash('Title is required!', 'error')
+            return redirect(url_for('todos.create_todo_today'))
+
+        todo = Todo(
+            title=title,
+            description=description,
+            priority=priority,
+            due_date=preset_date,
+            user_id=current_user.id
+        )
+        db.session.add(todo)
+        db.session.commit()
+
+        flash('Todo for today created!', 'success')
+        return redirect(url_for('todos.list_todos'))
+
+    return render_template('todos/form.html', todo=None, action='Create', show_due_date=False, preset_due_date=preset_date.isoformat())
+
+
+@todos_bp.route('/create/tomorrow', methods=['GET', 'POST'])
+@login_required
+def create_todo_tomorrow():
+    """Create a new todo due tomorrow without showing date picker"""
+    preset_date = date.today() + timedelta(days=1)
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        priority = request.form.get('priority', 'medium')
+
+        if not title:
+            flash('Title is required!', 'error')
+            return redirect(url_for('todos.create_todo_tomorrow'))
+
+        todo = Todo(
+            title=title,
+            description=description,
+            priority=priority,
+            due_date=preset_date,
+            user_id=current_user.id
+        )
+        db.session.add(todo)
+        db.session.commit()
+
+        flash('Todo for tomorrow created!', 'success')
+        return redirect(url_for('todos.list_todos'))
+
+    return render_template('todos/form.html', todo=None, action='Create', show_due_date=False, preset_due_date=preset_date.isoformat())
 
 @todos_bp.route('/<int:todo_id>/edit', methods=['GET', 'POST'])
 @login_required
