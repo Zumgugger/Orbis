@@ -25,7 +25,9 @@
                         <!-- Difficulty Icon (Clickable) -->
                         <div class="col-auto">
                             <form action="{{ url_for('habits.cycle_difficulty', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-outline-secondary btn-lg" title="Click to change difficulty: {{ habit.difficulty }}">
+                                <button type="submit" class="btn btn-outline-secondary btn-lg"
+                                        data-bs-toggle="tooltip" data-bs-placement="top"
+                                        title="Difficulty: cycle Easy → Normal → Hard">
                                     <i class="bi bi-{{ habit.get_difficulty_icon() }}"></i>
                                 </button>
                             </form>
@@ -43,7 +45,9 @@
                             
                             <!-- Count Display -->
                             <div class="mb-2">
-                                <span class="fs-4 {% if habit.count < 0 %}text-danger{% else %}text-success{% endif %}">
+                                <span class="fs-4 {% if habit.count < 0 %}text-danger{% else %}text-success{% endif %}"
+                                      data-bs-toggle="tooltip" data-bs-placement="top"
+                                      title="Count display: red when negative, green when positive">
                                     <strong>{{ habit.count }}</strong>
                                 </span>
                                 <small class="text-muted">/ {{ habit.get_max_count() }}</small>
@@ -51,12 +55,14 @@
                             
                             <!-- Progress Bar -->
                             <div class="progress" style="height: 25px;">
-                                <div class="progress-bar {% if habit.count < 0 %}bg-danger{% else %}bg-success{% endif %}" 
-                                     role="progressbar" 
-                                     style="width: {{ habit.get_progress_percentage() }}%;" 
-                                     aria-valuenow="{{ habit.count }}" 
-                                     aria-valuemin="0" 
-                                     aria-valuemax="{{ habit.get_max_count() }}">
+                                <div class="progress-bar {% if habit.count < 0 %}bg-danger{% else %}bg-success{% endif %}"
+                                     role="progressbar"
+                                     style="width: {{ habit.get_progress_percentage() }}%;"
+                                     aria-valuenow="{{ habit.count }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="{{ habit.get_max_count() }}"
+                                     data-bs-toggle="tooltip" data-bs-placement="top"
+                                     title="Progress toward goal. Green when positive, red when negative">
                                     {% if habit.get_progress_percentage() > 10 %}
                                         {{ "%.1f"|format(habit.get_progress_percentage()) }}%
                                     {% endif %}
@@ -68,12 +74,16 @@
                         <div class="col-auto">
                             <div class="btn-group" role="group">
                                 <form action="{{ url_for('habits.increment_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                    <button type="submit" class="btn btn-success btn-lg" title="Success (+1)">
+                                    <button type="submit" class="btn btn-success btn-lg"
+                                            data-bs-toggle="tooltip" data-bs-placement="top"
+                                            title="+1 increases count for a successful habit">
                                         <i class="bi bi-plus-circle-fill"></i> +1
                                     </button>
                                 </form>
                                 <form action="{{ url_for('habits.decrement_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                    <button type="submit" class="btn btn-danger btn-lg" title="Failure (-1)">
+                                    <button type="submit" class="btn btn-danger btn-lg"
+                                            data-bs-toggle="tooltip" data-bs-placement="top"
+                                            title="-1 decreases count for a negative habit">
                                         <i class="bi bi-dash-circle-fill"></i> -1
                                     </button>
                                 </form>
@@ -103,15 +113,5 @@
     </div>
 {% endif %}
 
-<div class="mt-4 p-3 bg-light rounded">
-    <h6><i class="bi bi-info-circle"></i> How Habits Work:</h6>
-    <ul class="mb-0">
-        <li><strong>+1 Button:</strong> Increases count when you successfully complete the habit</li>
-        <li><strong>-1 Button:</strong> Decreases count when you fail or do a negative habit</li>
-        <li><strong>Difficulty:</strong> Click the icon to cycle through Easy (🪶 30), Normal (🎯 100), Hard (🔥 300)</li>
-        <li><strong>Progress Bar:</strong> Shows progress toward goal. Green when positive, red when negative</li>
-        <li><strong>Count Display:</strong> Shows current count (can be negative). Red text for negative, green for positive</li>
-        <li><strong>Goal:</strong> Easy = 30, Normal = 100, Hard = 300 successful completions</li>
-    </ul>
-</div>
+ 
 {% endblock %}
