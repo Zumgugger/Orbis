@@ -23,7 +23,37 @@
     </div>
 {% endif %}
 
-{% if dailies or todos %}
+{% if dailies or todos or focused_habits %}
+    {% if focused_habits %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div><i class="bi bi-lightning-charge"></i> Focused Habits</div>
+        </div>
+        <div class="list-group list-group-flush">
+            {% for habit in focused_habits %}
+            <div class="list-group-item d-flex align-items-center gap-3 {% if habit.last_increment_date == target_date %}bg-light{% endif %}">
+                <form action="{{ url_for('habits.increment_habit', habit_id=habit.id) }}?next=/" method="POST" class="d-inline">
+                    <input type="hidden" name="target_date" value="{{ target_date }}">
+                    <button class="btn btn-success btn-sm" type="submit" title="+1 for today">
+                        <i class="bi bi-plus-circle-fill"></i>
+                    </button>
+                </form>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-semibold {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</span>
+                        <span class="badge bg-warning text-dark">Focus</span>
+                        <span class="badge bg-secondary">{{ habit.difficulty|title }}</span>
+                    </div>
+                    {% if habit.description %}
+                        <small class="text-muted">{{ habit.description }}</small>
+                    {% endif %}
+                </div>
+                <span class="badge bg-{% if habit.count < 0 %}danger{% else %}success{% endif %}">{{ habit.count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
     <div class="card">
         <div class="list-group list-group-flush">
             <!-- Dailies first -->

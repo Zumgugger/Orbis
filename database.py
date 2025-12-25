@@ -13,6 +13,25 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
+        _ensure_habit_columns()
+
+
+def _ensure_habit_columns():
+    """Add missing habit columns for ordering, focus, and last increment date (SQLite-safe)."""
+    from sqlalchemy import inspect, text
+    insp = inspect(db.engine)
+    columns = {col['name'] for col in insp.get_columns('habits')}
+    ddl = []
+    if 'position' not in columns:
+        ddl.append('ALTER TABLE habits ADD COLUMN position INTEGER DEFAULT 0')
+    if 'focused' not in columns:
+        ddl.append('ALTER TABLE habits ADD COLUMN focused BOOLEAN DEFAULT 0')
+    if 'last_increment_date' not in columns:
+        ddl.append('ALTER TABLE habits ADD COLUMN last_increment_date DATE')
+    for stmt in ddl:
+        db.session.execute(text(stmt))
+    if ddl:
+        db.session.commit()
 
 class User(UserMixin, db.Model):
     """User model for authentication"""
@@ -241,6 +260,9 @@ class Habit(db.Model):
     difficulty = db.Column(db.String(20), default='normal')  # easy, normal, hard
     count = db.Column(db.Integer, default=0)  # Can be positive or negative
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    position = db.Column(db.Integer, default=0)
+    focused = db.Column(db.Boolean, default=False)
+    last_increment_date = db.Column(db.Date, nullable=True)
     
     def __repr__(self):
         return f'<Habit {self.id}: {self.title}>'
@@ -262,9 +284,10 @@ class Habit(db.Model):
         percentage = (self.count / max_count) * 100
         return min(100, percentage)
     
-    def increment(self):
-        """Increment count by 1"""
+    def increment(self, target_date=None):
+        """Increment count by 1 for the given date (defaults to today)."""
         self.count += 1
+        self.last_increment_date = target_date or date.today()
     
     def decrement(self):
         """Decrement count by 1"""
@@ -289,7 +312,10 @@ class Habit(db.Model):
             'count': self.count,
             'max_count': self.get_max_count(),
             'progress_percentage': self.get_progress_percentage(),
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'position': self.position,
+            'focused': self.focused,
+            'last_increment_date': self.last_increment_date.isoformat() if self.last_increment_date else None
         }
 class Goal(db.Model):
     """Goal tracking model with milestones"""

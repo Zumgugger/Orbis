@@ -4,7 +4,7 @@ Main application entry point
 """
 from flask import Flask, render_template, redirect, url_for, session
 from flask_login import LoginManager, login_required, current_user
-from database import init_db, db, Todo, Daily, User, RolloverState, MasterCategory, MasterSection
+from database import init_db, db, Todo, Daily, User, RolloverState, MasterCategory, MasterSection, Habit
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 from markupsafe import Markup
@@ -105,6 +105,7 @@ def create_app():
         process_rollover_for_user(current_user)
         # Get todos due today for current user (all, including completed)
         today = date.today()
+        target_date = today
         todos_today = Todo.query.filter(
             Todo.user_id == current_user.id,
             Todo.due_date == today
@@ -121,15 +122,20 @@ def create_app():
         
         # Get only the ones not yet completed for the "everything_done" check
         dailies_not_done = [d for d in dailies_today if not d.is_completed_today()]
+
+        focused_habits = Habit.query.filter_by(user_id=current_user.id, focused=True).order_by(Habit.position.asc(), Habit.id.asc()).all()
+        focused_not_done = [h for h in focused_habits if h.last_increment_date != today]
         
         # Check if everything is done (no pending items)
         pending_todos = [t for t in todos_today if t.status == 'pending']
-        everything_done = len(pending_todos) == 0 and len(dailies_not_done) == 0
+        everything_done = len(pending_todos) == 0 and len(dailies_not_done) == 0 and len(focused_not_done) == 0
         
         return render_template('index.html', 
                              todos=todos_today, 
                              dailies=dailies_today,
-                             everything_done=everything_done)
+                     focused_habits=focused_habits,
+                     target_date=target_date,
+                     everything_done=everything_done)
 
     @app.route('/tomorrow')
     @login_required
@@ -159,11 +165,14 @@ def create_app():
             if daily.id in carryover_ids or daily.id in due_ids
         ]
 
+        focused_habits = Habit.query.filter_by(user_id=current_user.id, focused=True).order_by(Habit.position.asc(), Habit.id.asc()).all()
+
         return render_template(
             'tomorrow.html',
             todos=todos_tomorrow,
             dailies=dailies_tomorrow,
             carryover_ids=carryover_ids,
+            focused_habits=focused_habits,
             target_date=target_date
         )
     
