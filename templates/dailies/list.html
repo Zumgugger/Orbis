@@ -45,7 +45,9 @@
                             <h5 class="mb-1">
                                 {{ daily.title }}
                                 {% if daily.streak_count > 0 %}
-                                    <span class="badge bg-warning text-dark ms-2">
+                                    <span class="badge bg-warning text-dark ms-2"
+                                          data-bs-toggle="tooltip" data-bs-placement="top"
+                                          title="Streak: {{ daily.streak_count }} day{% if daily.streak_count != 1 %}s{% endif %} on schedule">
                                         <i class="bi bi-fire"></i> {{ daily.streak_count }}
                                     </span>
                                 {% endif %}
@@ -105,16 +107,6 @@
     </div>
 {% endif %}
 
-<div class="mt-4 p-3 bg-light rounded">
-    <h6><i class="bi bi-info-circle"></i> Frequency Types:</h6>
-    <ul class="mb-0">
-        <li><strong>Daily:</strong> Complete every day (or every N days) to build your streak 🔥</li>
-        <li><strong>Weekly:</strong> Complete once per week (or every N weeks)</li>
-        <li><strong>Monthly:</strong> Complete once per month (or every N months)</li>
-        <li><strong>Specific Weekdays:</strong> Only complete on selected days (e.g., Mon, Wed, Fri)</li>
-        <li><strong>Streaks</strong> increase when you complete on schedule, reset if you miss</li>
-        <li><strong>Example:</strong> "Every 3 days" means you can complete it once every 3 days (streak breaks after 3+ days without completion)</li>
-    </ul>
-</div>
+ 
 {% endblock %}
 
