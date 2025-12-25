@@ -24,7 +24,7 @@
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="priority" class="form-label">Priority</label>
+                            <label for="priority" class="form-label">Importance</label>
                             <select class="form-select" id="priority" name="priority">
                                 <option value="low" {% if todo and todo.priority == 'low' %}selected{% endif %}>Low</option>
                                 <option value="medium" {% if todo and todo.priority == 'medium' %}selected{% elif not todo %}selected{% endif %}>Medium</option>
@@ -34,8 +34,16 @@
                         
                         <div class="col-md-6 mb-3">
                             <label for="due_date" class="form-label">Due Date</label>
-                            <input type="date" class="form-control" id="due_date" name="due_date" 
-                                   value="{{ todo.due_date if todo and todo.due_date else '' }}">
+                            <div class="input-group">
+                                <input type="date" class="form-control" id="due_date" name="due_date" 
+                                       value="{{ todo.due_date if todo and todo.due_date else '' }}">
+                                <button class="btn btn-outline-secondary" id="btnDueToday" type="button" title="Set to today">
+                                    <i class="bi bi-calendar-check"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" id="btnDueTomorrow" type="button" title="Set to tomorrow">
+                                    <i class="bi bi-sunrise"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -52,4 +60,37 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    function formatDate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    const dueInput = document.getElementById('due_date');
+    const btnToday = document.getElementById('btnDueToday');
+    const btnTomorrow = document.getElementById('btnDueTomorrow');
+    if (btnToday && dueInput) {
+        btnToday.addEventListener('click', function(e) {
+            e.preventDefault();
+            const today = new Date();
+            dueInput.value = formatDate(today);
+            dueInput.dispatchEvent(new Event('change'));
+        });
+    }
+    if (btnTomorrow && dueInput) {
+        btnTomorrow.addEventListener('click', function(e) {
+            e.preventDefault();
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            dueInput.value = formatDate(tomorrow);
+            dueInput.dispatchEvent(new Event('change'));
+        });
+    }
+})();
+</script>
 {% endblock %}

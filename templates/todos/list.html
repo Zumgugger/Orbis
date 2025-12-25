@@ -37,7 +37,7 @@
                             {% endif %}
                             <small class="text-muted">
                                 <span class="badge bg-{{ 'danger' if todo.priority == 'high' else ('warning' if todo.priority == 'medium' else 'success') }}">
-                                    {{ todo.priority }}
+                                    Importance: {{ todo.priority|title }}
                                 </span>
                                 {% if todo.due_date %}
                                     <i class="bi bi-calendar-event"></i> Due: {{ todo.due_date }}
