@@ -49,6 +49,16 @@
                             <a href="{{ url_for('todos.edit_todo', todo_id=todo.id) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-pencil"></i> Edit
                             </a>
+                            <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to today">
+                                    <i class="bi bi-calendar-check"></i> Today
+                                </button>
+                            </form>
+                            <form action="{{ url_for('todos.set_due_tomorrow', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to tomorrow">
+                                    <i class="bi bi-sunrise"></i> Tomorrow
+                                </button>
+                            </form>
                             <form action="{{ url_for('todos.delete_todo', todo_id=todo.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                     <i class="bi bi-trash"></i> Delete
@@ -91,6 +101,16 @@
                             </small>
                         </div>
                         <div class="col-auto">
+                            <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to today">
+                                    <i class="bi bi-calendar-check"></i> Today
+                                </button>
+                            </form>
+                            <form action="{{ url_for('todos.set_due_tomorrow', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to tomorrow">
+                                    <i class="bi bi-sunrise"></i> Tomorrow
+                                </button>
+                            </form>
                             <form action="{{ url_for('todos.delete_todo', todo_id=todo.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                     <i class="bi bi-trash"></i> Delete

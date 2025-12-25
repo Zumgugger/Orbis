@@ -4,7 +4,7 @@ Todos Blueprint - handles all todo/task related routes
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from database import db, Todo
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 todos_bp = Blueprint('todos', __name__)
 
@@ -106,4 +106,24 @@ def delete_todo(todo_id):
     db.session.delete(todo)
     db.session.commit()
     flash('Todo deleted successfully!', 'success')
+    return redirect(url_for('todos.list_todos'))
+
+
+@todos_bp.route('/<int:todo_id>/due/today', methods=['POST'])
+@login_required
+def set_due_today(todo_id):
+    """Set todo due date to today"""
+    todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+    todo.due_date = date.today()
+    db.session.commit()
+    return redirect(url_for('todos.list_todos'))
+
+
+@todos_bp.route('/<int:todo_id>/due/tomorrow', methods=['POST'])
+@login_required
+def set_due_tomorrow(todo_id):
+    """Set todo due date to tomorrow"""
+    todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+    todo.due_date = date.today() + timedelta(days=1)
+    db.session.commit()
     return redirect(url_for('todos.list_todos'))
