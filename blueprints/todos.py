@@ -196,7 +196,6 @@ def schedule_todo(todo_id):
     """Schedule a todo as a Google Calendar event"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
     
-    event_title = (request.form.get('event_title') or '').strip()
     event_date_str = request.form.get('event_date')
     event_time_str = request.form.get('event_time')
     duration_hours_str = request.form.get('duration_hours') or '1'
@@ -245,7 +244,7 @@ def schedule_todo(todo_id):
             return redirect(url_for('auth.login'))
 
         tz = os.getenv('DEFAULT_TIMEZONE', 'Europe/Zurich')
-        title = event_title if event_title else (str(todo.title).strip() if todo.title else '').strip()
+        title = (str(todo.title).strip() if todo.title else '').strip()
         if not title:
             title = f'Todo #{todo.id}'
         event = {
