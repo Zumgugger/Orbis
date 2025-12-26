@@ -251,14 +251,14 @@
                     // Alt + H: Go to home
                     if (e.altKey && e.key === 'h') {
                         e.preventDefault();
-                        window.location.href = '{{ url_for(\"index\") }}';
+                        window.location.href = '{{ url_for("index") }}';
                         return;
                     }
                     
                     // Alt + T: Go to tomorrow view
                     if (e.altKey && e.key === 't') {
                         e.preventDefault();
-                        window.location.href = '{{ url_for(\"tomorrow\") }}';
+                        window.location.href = '{{ url_for("tomorrow") }}';
                         return;
                     }
                     
@@ -285,17 +285,17 @@
                     modal.className = 'modal fade';
                     modal.setAttribute('tabindex', '-1');
                     modal.innerHTML = `
-                        <div class=\"modal-dialog modal-dialog-centered\">
-                            <div class=\"modal-content\">
-                                <div class=\"modal-header\">
-                                    <h5 class=\"modal-title\"><i class=\"bi bi-keyboard\"></i> Keyboard Shortcuts</h5>
-                                    <button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"modal\"></button>
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="bi bi-keyboard"></i> Keyboard Shortcuts</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
-                                <div class=\"modal-body\">
-                                    <div class=\"row\">
-                                        <div class=\"col-md-6\">
-                                            <h6 class=\"text-muted\">Forms & Actions</h6>
-                                            <table class=\"table table-sm\">
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted">Forms & Actions</h6>
+                                            <table class="table table-sm">
                                                 <tbody>
                                                     <tr><td><kbd>Ctrl/Cmd + Enter</kbd></td><td>Submit form</td></tr>
                                                     <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Save</td></tr>
@@ -304,9 +304,9 @@
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <div class=\"col-md-6\">
-                                            <h6 class=\"text-muted\">Navigation</h6>
-                                            <table class=\"table table-sm\">
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted">Navigation</h6>
+                                            <table class="table table-sm">
                                                 <tbody>
                                                     <tr><td><kbd>Alt + H</kbd></td><td>Home</td></tr>
                                                     <tr><td><kbd>Alt + T</kbd></td><td>Tomorrow</td></tr>
@@ -316,8 +316,8 @@
                                             </table>
                                         </div>
                                     </div>
-                                    <div class=\"alert alert-info mb-0 mt-2\">
-                                        <small><i class=\"bi bi-info-circle\"></i> Some pages may have additional shortcuts specific to their features.</small>
+                                    <div class="alert alert-info mb-0 mt-2">
+                                        <small><i class="bi bi-info-circle"></i> Some pages may have additional shortcuts specific to their features.</small>
                                     </div>
                                 </div>
                             </div>
