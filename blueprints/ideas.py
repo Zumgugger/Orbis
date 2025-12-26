@@ -4,6 +4,7 @@ Ideas Blueprint - handles idea management with notes, mindmaps, and files
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
 from database import db, Idea, IdeaFile
+from sqlalchemy.orm import load_only, selectinload
 from datetime import datetime
 import os
 import json
@@ -21,7 +22,15 @@ def allowed_file(filename):
 @login_required
 def list_ideas():
     """List all ideas"""
-    ideas = Idea.query.filter_by(user_id=current_user.id).order_by(Idea.updated_at.desc()).all()
+    ideas = (
+        Idea.query.options(
+            load_only(Idea.id, Idea.title, Idea.description, Idea.updated_at, Idea.mindmap_data, Idea.notes),
+            selectinload(Idea.files).load_only(IdeaFile.id)
+        )
+        .filter_by(user_id=current_user.id)
+        .order_by(Idea.updated_at.desc())
+        .all()
+    )
     return render_template('ideas/list.html', ideas=ideas)
 
 @ideas_bp.route('/create', methods=['GET', 'POST'])

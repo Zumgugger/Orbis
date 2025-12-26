@@ -68,6 +68,10 @@ class User(UserMixin, db.Model):
 class Todo(db.Model):
     """Todo/Task model"""
     __tablename__ = 'todos'
+    __table_args__ = (
+        db.Index('ix_todos_user_status_due', 'user_id', 'status', 'due_date'),
+        db.Index('ix_todos_user_due', 'user_id', 'due_date'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -98,6 +102,9 @@ class Todo(db.Model):
 class Daily(db.Model):
     """Daily recurring task model"""
     __tablename__ = 'dailies'
+    __table_args__ = (
+        db.Index('ix_dailies_user_id', 'user_id'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -311,6 +318,9 @@ class Daily(db.Model):
 class Habit(db.Model):
     """Habit tracking model with positive/negative counters"""
     __tablename__ = 'habits'
+    __table_args__ = (
+        db.Index('ix_habits_user_focus_pos', 'user_id', 'focused', 'position'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -379,6 +389,9 @@ class Habit(db.Model):
 class Goal(db.Model):
     """Goal tracking model with milestones"""
     __tablename__ = 'goals'
+    __table_args__ = (
+        db.Index('ix_goals_user_status', 'user_id', 'status'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -441,6 +454,9 @@ class Goal(db.Model):
 class Milestone(db.Model):
     """Milestone model for goals"""
     __tablename__ = 'milestones'
+    __table_args__ = (
+        db.Index('ix_milestones_goal_id', 'goal_id'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     goal_id = db.Column(db.Integer, db.ForeignKey('goals.id'), nullable=False)
@@ -470,6 +486,9 @@ class Milestone(db.Model):
 class ShoppingList(db.Model):
     """Shopping list model with title and text-based items"""
     __tablename__ = 'shopping_lists'
+    __table_args__ = (
+        db.Index('ix_shopping_lists_user_updated', 'user_id', 'updated_at'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -515,6 +534,9 @@ class RolloverState(db.Model):
 class MasterCategory(db.Model):
     """Masterprompt category per user"""
     __tablename__ = 'master_categories'
+    __table_args__ = (
+        db.Index('ix_master_categories_user_position', 'user_id', 'position'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -531,6 +553,9 @@ class MasterCategory(db.Model):
 class MasterSection(db.Model):
     """Reusable masterprompt section grouped by category"""
     __tablename__ = 'master_sections'
+    __table_args__ = (
+        db.Index('ix_master_sections_cat_user_position', 'category_id', 'user_id', 'position'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     category_id = db.Column(db.Integer, db.ForeignKey('master_categories.id'), nullable=False)
@@ -546,6 +571,9 @@ class MasterSection(db.Model):
 class Idea(db.Model):
     """Idea model for storing ideas with notes, mindmaps, and files"""
     __tablename__ = 'ideas'
+    __table_args__ = (
+        db.Index('ix_ideas_user_updated', 'user_id', 'updated_at'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -580,6 +608,9 @@ class Idea(db.Model):
 class IdeaFile(db.Model):
     """File attachments for ideas"""
     __tablename__ = 'idea_files'
+    __table_args__ = (
+        db.Index('ix_idea_files_idea_id', 'idea_id'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     idea_id = db.Column(db.Integer, db.ForeignKey('ideas.id'), nullable=False)
