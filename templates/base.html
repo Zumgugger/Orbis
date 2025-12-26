@@ -7,8 +7,18 @@
     <title>{% block title %}Orbis{% endblock %}</title>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon.png') }}?v=1">
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}?v=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Bootstrap CSS with SRI -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
+          rel="stylesheet" 
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" 
+          crossorigin="anonymous"
+          onerror="this.onerror=null;this.removeAttribute('integrity');this.href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css';">
+    <!-- Bootstrap Icons with SRI -->
+    <link rel="stylesheet" 
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+          integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+"
+          crossorigin="anonymous"
+          onerror="this.onerror=null;this.removeAttribute('integrity');this.href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css';">
     <style>
         body {
             padding-top: 60px;
@@ -128,10 +138,26 @@
         {% block content %}{% endblock %}
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS with SRI and fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" 
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" 
+            crossorigin="anonymous"
+            onerror="this.onerror=null;this.removeAttribute('integrity');this.src='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js';"></script>
     <script>
-        // Initialize Bootstrap tooltips globally
+        // Check if Bootstrap loaded successfully
         (function() {
+            if (typeof bootstrap === 'undefined') {
+                console.error('Bootstrap failed to load from CDN');
+                document.body.insertAdjacentHTML('afterbegin', 
+                    '<div class="alert alert-warning alert-dismissible m-3" role="alert">' +
+                    '<strong>Warning:</strong> Some UI features may be limited due to CDN connectivity issues. ' +
+                    '<button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>' +
+                    '</div>'
+                );
+                return;
+            }
+            
+            // Initialize Bootstrap tooltips globally
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.forEach(function (tooltipTriggerEl) {
                 new bootstrap.Tooltip(tooltipTriggerEl);
@@ -157,6 +183,191 @@
 
                 // Expose token for fetch usage
                 window.csrfToken = token;
+            })();
+        </script>
+        
+        <!-- Global keyboard shortcuts -->\n        <script>
+            (function() {
+                document.addEventListener('keydown', function(e) {
+                    // Ctrl/Cmd + K: Focus search or main navigation
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        const firstNavLink = document.querySelector('.navbar-nav .nav-link');
+                        if (firstNavLink) firstNavLink.focus();
+                        return;
+                    }
+                    
+                    // Escape: Close modals, clear focused elements
+                    if (e.key === 'Escape') {
+                        const activeElement = document.activeElement;
+                        if (activeElement && activeElement !== document.body) {
+                            activeElement.blur();
+                        }
+                        return;
+                    }
+                    
+                    // Ctrl/Cmd + Enter: Submit focused form or click primary button
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        const activeElement = document.activeElement;
+                        
+                        // If in a textarea or form, submit the form
+                        if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+                            e.preventDefault();
+                            const form = activeElement.closest('form');
+                            if (form) {
+                                form.requestSubmit();
+                            }
+                            return;
+                        }
+                        
+                        // Otherwise, click the primary button if visible
+                        const primaryBtn = document.querySelector('.btn-primary:not([disabled])');
+                        if (primaryBtn && primaryBtn.offsetParent !== null) {
+                            e.preventDefault();
+                            primaryBtn.click();
+                        }
+                        return;
+                    }
+                    
+                    // Ctrl/Cmd + S: Save action (prevent default browser save)
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        const saveBtn = document.querySelector('[id*=\"save\" i]:not([disabled]), [id*=\"Save\" i]:not([disabled])');
+                        if (saveBtn && saveBtn.offsetParent !== null) {
+                            saveBtn.click();
+                        }
+                        return;
+                    }
+                    
+                    // Alt + N: New item (click first "New" or "Create" button)
+                    if (e.altKey && e.key === 'n') {
+                        e.preventDefault();
+                        const newBtn = document.querySelector('a[href*=\"create\"]:not([disabled]), button:not([disabled])');\n                        if (newBtn && newBtn.offsetParent !== null && (newBtn.textContent.includes('New') || newBtn.textContent.includes('Create'))) {
+                            newBtn.click();
+                        }
+                        return;
+                    }
+                    
+                    // Alt + H: Go to home
+                    if (e.altKey && e.key === 'h') {
+                        e.preventDefault();
+                        window.location.href = '{{ url_for(\"index\") }}';
+                        return;
+                    }
+                    
+                    // Alt + T: Go to tomorrow view
+                    if (e.altKey && e.key === 't') {
+                        e.preventDefault();
+                        window.location.href = '{{ url_for(\"tomorrow\") }}';
+                        return;
+                    }
+                    
+                    // ? key: Show keyboard shortcuts help
+                    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        const activeTag = document.activeElement.tagName;
+                        // Only trigger if not in an input field
+                        if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
+                            e.preventDefault();
+                            showKeyboardShortcutsModal();
+                            return;
+                        }
+                    }
+                });
+                
+                // Keyboard shortcuts modal
+                function showKeyboardShortcutsModal() {
+                    // Remove existing modal if present
+                    const existing = document.getElementById('keyboardShortcutsModal');
+                    if (existing) existing.remove();
+                    
+                    const modal = document.createElement('div');
+                    modal.id = 'keyboardShortcutsModal';
+                    modal.className = 'modal fade';
+                    modal.setAttribute('tabindex', '-1');
+                    modal.innerHTML = `
+                        <div class=\"modal-dialog modal-dialog-centered\">
+                            <div class=\"modal-content\">
+                                <div class=\"modal-header\">
+                                    <h5 class=\"modal-title\"><i class=\"bi bi-keyboard\"></i> Keyboard Shortcuts</h5>
+                                    <button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"modal\"></button>
+                                </div>
+                                <div class=\"modal-body\">
+                                    <div class=\"row\">
+                                        <div class=\"col-md-6\">
+                                            <h6 class=\"text-muted\">Forms & Actions</h6>
+                                            <table class=\"table table-sm\">
+                                                <tbody>
+                                                    <tr><td><kbd>Ctrl/Cmd + Enter</kbd></td><td>Submit form</td></tr>
+                                                    <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Save</td></tr>
+                                                    <tr><td><kbd>Alt + N</kbd></td><td>New item</td></tr>
+                                                    <tr><td><kbd>Esc</kbd></td><td>Clear focus</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class=\"col-md-6\">
+                                            <h6 class=\"text-muted\">Navigation</h6>
+                                            <table class=\"table table-sm\">
+                                                <tbody>
+                                                    <tr><td><kbd>Alt + H</kbd></td><td>Home</td></tr>
+                                                    <tr><td><kbd>Alt + T</kbd></td><td>Tomorrow</td></tr>
+                                                    <tr><td><kbd>Ctrl/Cmd + K</kbd></td><td>Focus nav</td></tr>
+                                                    <tr><td><kbd>?</kbd></td><td>Show this help</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class=\"alert alert-info mb-0 mt-2\">
+                                        <small><i class=\"bi bi-info-circle\"></i> Some pages may have additional shortcuts specific to their features.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                    
+                    if (typeof bootstrap !== 'undefined') {
+                        const bsModal = new bootstrap.Modal(modal);
+                        bsModal.show();
+                        modal.addEventListener('hidden.bs.modal', () => modal.remove());
+                    } else {
+                        modal.style.display = 'block';
+                        modal.classList.add('show');
+                        modal.querySelector('.btn-close').addEventListener('click', () => modal.remove());
+                    }
+                }
+                
+                // Expose globally for manual triggering
+                window.showKeyboardShortcuts = showKeyboardShortcutsModal;
+                
+                // Show keyboard shortcuts hint on first visit
+                if (!localStorage.getItem('keyboardHintsShown')) {
+                    setTimeout(function() {
+                        const hint = document.createElement('div');
+                        hint.className = 'alert alert-info alert-dismissible fade show';
+                        hint.style.cssText = 'position: fixed; bottom: 20px; right: 20px; max-width: 350px; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+                        hint.innerHTML = `
+                            <strong><i class="bi bi-keyboard"></i> Keyboard Shortcuts Available</strong>
+                            <p class="mb-2 mt-2 small">
+                                Press <kbd>?</kbd> to see all keyboard shortcuts, or try:
+                            </p>
+                            <ul class="mb-0 small">
+                                <li><kbd>Ctrl/Cmd + Enter</kbd> Submit</li>
+                                <li><kbd>Alt + N</kbd> New item</li>
+                                <li><kbd>Alt + H</kbd> Home</li>
+                            </ul>
+                            <button type="button" class="btn-close" onclick="this.parentElement.remove(); localStorage.setItem('keyboardHintsShown', 'true');"></button>
+                        `;
+                        document.body.appendChild(hint);
+                        
+                        // Auto-dismiss after 12 seconds
+                        setTimeout(function() {
+                            if (hint.parentElement) {
+                                hint.remove();
+                                localStorage.setItem('keyboardHintsShown', 'true');
+                            }
+                        }, 12000);
+                    }, 2000);
+                }
             })();
         </script>
     {% block extra_js %}{% endblock %}

@@ -177,7 +177,23 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/mind-elixir@0.18.1/dist/MindElixir.js"></script>
+<!-- MindElixir with SRI and fallback -->
+<script src=\"https://cdn.jsdelivr.net/npm/mind-elixir@0.18.1/dist/MindElixir.js\"
+        integrity=\"sha384-9FZY8Y8cGHP0vS0+LcL8mMNLpPLPPP6qLJp4dN5xvFvqHLv8YXdFE9iNJLdz8fR1\"
+        crossorigin=\"anonymous\"
+        onerror=\"this.onerror=null;this.removeAttribute('integrity');this.src='https://unpkg.com/mind-elixir@0.18.1/dist/MindElixir.js';\"></script>
+<script>
+    // Check if MindElixir loaded
+    if (typeof MindElixir === 'undefined') {
+        console.error('MindElixir failed to load from CDN');
+        document.getElementById('mindmap-tab').addEventListener('click', function(e) {
+            if (typeof MindElixir === 'undefined') {
+                e.preventDefault();
+                alert('Mindmap library failed to load. Please check your internet connection and refresh the page.');
+            }
+        });
+    }
+</script>
 <script>
     const ideaId = {{ idea.id }};
     let mindElixir;
@@ -224,27 +240,48 @@
     
     document.getElementById('mindmap-tab').addEventListener('shown.bs.tab', () => {
         if (!mindElixir) {
-            mindElixir = new MindElixir({
-                el: '#mindmap-container',
-                direction: MindElixir.RIGHT,
-                data: mindmapData || defaultData,
-                draggable: true,
-                contextMenu: true,
-                toolBar: false,
-                nodeMenu: true,
-                keypress: true,
-                locale: 'en',
-                overflowHidden: false
-            });
+            // Check if MindElixir is available
+            if (typeof MindElixir === 'undefined') {
+                document.getElementById('mindmap-container').innerHTML = 
+                    '<div class=\"alert alert-danger m-4\" role=\"alert\">' +
+                    '<h5><i class=\"bi bi-exclamation-triangle\"></i> Mindmap Library Unavailable</h5>' +
+                    '<p>The mindmap library failed to load. This could be due to:</p>' +
+                    '<ul><li>Network connectivity issues</li><li>CDN service disruption</li></ul>' +
+                    '<p class=\"mb-0\"><button class=\"btn btn-primary\" onclick=\"location.reload()\">Retry</button></p>' +
+                    '</div>';
+                return;
+            }
             
-            mindElixir.init();
-            
-            // Select root node by default after a short delay
-            setTimeout(() => {
-                if (mindElixir && mindElixir.nodeData) {
-                    mindElixir.selectNode(mindElixir.nodeData.id);
-                }
-            }, 100);
+            try {
+                mindElixir = new MindElixir({
+                    el: '#mindmap-container',
+                    direction: MindElixir.RIGHT,
+                    data: mindmapData || defaultData,
+                    draggable: true,
+                    contextMenu: true,
+                    toolBar: false,
+                    nodeMenu: true,
+                    keypress: true,
+                    locale: 'en',
+                    overflowHidden: false
+                });
+                
+                mindElixir.init();
+                
+                // Select root node by default after a short delay
+                setTimeout(() => {
+                    if (mindElixir && mindElixir.nodeData) {
+                        mindElixir.selectNode(mindElixir.nodeData.id);
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Failed to initialize MindElixir:', error);
+                document.getElementById('mindmap-container').innerHTML = 
+                    '<div class=\"alert alert-danger m-4\" role=\"alert\">' +
+                    '<h5><i class=\"bi bi-exclamation-triangle\"></i> Mindmap Initialization Failed</h5>' +
+                    '<p>Error: ' + error.message + '</p>' +
+                    '</div>';
+            }
         }
     });
     
@@ -361,6 +398,27 @@
                 location.reload();
             }
         });
+    });
+    
+    // Idea-specific keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + 1/2/3: Switch tabs
+        if ((e.ctrlKey || e.metaKey) && ['1', '2', '3'].includes(e.key)) {
+            e.preventDefault();
+            const tabs = ['notes-tab', 'mindmap-tab', 'files-tab'];
+            const tabIndex = parseInt(e.key) - 1;
+            if (tabs[tabIndex]) {
+                document.getElementById(tabs[tabIndex]).click();
+            }
+            return;
+        }
+        
+        // Ctrl/Cmd + M: Toggle to mindmap tab
+        if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+            e.preventDefault();
+            document.getElementById('mindmap-tab').click();
+            return;
+        }
     });
 </script>
 {% endblock %}
