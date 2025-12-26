@@ -8,6 +8,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from database import db, User
 from datetime import datetime
 import os
+import json
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -16,23 +17,36 @@ oauth = OAuth()
 
 def init_oauth(app):
     """Initialize OAuth with app"""
+    client_id = os.getenv('GOOGLE_CLIENT_ID')
+    client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
+
+    secrets_path = os.getenv('GOOGLE_CLIENT_SECRETS_FILE')
+    if secrets_path and os.path.exists(secrets_path):
+        try:
+            with open(secrets_path, 'r', encoding='utf-8') as fh:
+                data = json.load(fh)
+            config = data.get('web') or data.get('installed') or {}
+            client_id = config.get('client_id', client_id)
+            client_secret = config.get('client_secret', client_secret)
+        except Exception:
+            app.logger.warning('Failed to load Google client secrets file; falling back to env vars')
+
     oauth.init_app(app)
     oauth.register(
         name='google',
-        client_id=os.getenv('GOOGLE_CLIENT_ID'),
-        client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+        client_id=client_id,
+        client_secret=client_secret,
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
         client_kwargs={'scope': 'openid email profile'}
     )
 
 @bp.route('/login')
 def login():
-    """Redirect to Google OAuth login or show dev login"""
-    # Check if development mode is enabled
-    if os.getenv('DEVELOPMENT_MODE', 'False').lower() == 'true':
-        return redirect(url_for('auth.dev_login'))
-    
-    redirect_uri = url_for('auth.callback', _external=True)
+    """Redirect to Google OAuth login"""
+    # Prefer explicit override, otherwise derive from current request host to keep session state aligned.
+    redirect_uri = os.getenv('GOOGLE_REDIRECT_URI')
+    if not redirect_uri:
+        redirect_uri = url_for('auth.callback', _external=True, _scheme=request.scheme)
     return oauth.google.authorize_redirect(redirect_uri)
 
 @bp.route('/callback')
