@@ -32,6 +32,7 @@ Thumbs.db
 
 # Project specific
 orbis.db
+db_backups/
 *.log
 client_secret_*.json
 credentials.json

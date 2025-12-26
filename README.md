@@ -81,16 +81,19 @@ The app uses a modular blueprint structure to keep files small and focused:
 3. Create templates in `templates/<feature>/`
 4. Register the blueprint in `app.py`
 
-### Database Changes
+### Database Changes (Alembic)
 
 After modifying models in `database.py`:
 
 ```bash
-# Delete the database to recreate with new schema
-rm orbis.db
-# Restart the app - it will recreate the database
-python app.py
+# Create a new migration (auto-generates based on models)
+alembic revision --autogenerate -m "describe change"
+
+# Apply migrations
+alembic upgrade head
 ```
+
+Existing runtime schema patching (`_ensure_*`) has been removed; use migrations to evolve the schema.
 
 ## Future Deployment (Planned)
 

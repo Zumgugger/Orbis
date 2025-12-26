@@ -13,39 +13,6 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
-        _ensure_habit_columns()
-        _ensure_user_columns()
-
-
-def _ensure_habit_columns():
-    """Add missing habit columns for ordering, focus, and last increment date (SQLite-safe)."""
-    from sqlalchemy import inspect, text
-    insp = inspect(db.engine)
-    columns = {col['name'] for col in insp.get_columns('habits')}
-    ddl = []
-    if 'position' not in columns:
-        ddl.append('ALTER TABLE habits ADD COLUMN position INTEGER DEFAULT 0')
-    if 'focused' not in columns:
-        ddl.append('ALTER TABLE habits ADD COLUMN focused BOOLEAN DEFAULT 0')
-    if 'last_increment_date' not in columns:
-        ddl.append('ALTER TABLE habits ADD COLUMN last_increment_date DATE')
-    for stmt in ddl:
-        db.session.execute(text(stmt))
-    if ddl:
-        db.session.commit()
-
-def _ensure_user_columns():
-    """Add missing user columns for OAuth token (SQLite-safe)."""
-    from sqlalchemy import inspect, text
-    insp = inspect(db.engine)
-    columns = {col['name'] for col in insp.get_columns('users')}
-    ddl = []
-    if 'oauth_token' not in columns:
-        ddl.append('ALTER TABLE users ADD COLUMN oauth_token TEXT')
-    for stmt in ddl:
-        db.session.execute(text(stmt))
-    if ddl:
-        db.session.commit()
 
 class User(UserMixin, db.Model):
     """User model for authentication"""
