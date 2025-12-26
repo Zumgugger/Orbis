@@ -8,6 +8,10 @@ from datetime import datetime, date, timedelta
 import requests
 import os
 from time_utils import today_local, tomorrow_local, now_local, get_local_tz
+from validation import (
+    validate_title, validate_text, validate_date, validate_time,
+    validate_priority, validate_duration, ValidationError
+)
 
 todos_bp = Blueprint('todos', __name__)
 
@@ -25,34 +29,27 @@ def list_todos():
 def create_todo():
     """Create a new todo"""
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        priority = request.form.get('priority', 'medium')
-        due_date_str = request.form.get('due_date')
-        
-        if not title:
-            flash('Title is required!', 'error')
+        try:
+            title = validate_title(request.form.get('title'), max_length=200)
+            description = validate_text(request.form.get('description'), max_length=5000)
+            priority = validate_priority(request.form.get('priority'))
+            due_date = validate_date(request.form.get('due_date'))
+            
+            todo = Todo(
+                title=title,
+                description=description,
+                priority=priority,
+                due_date=due_date,
+                user_id=current_user.id
+            )
+            db.session.add(todo)
+            db.session.commit()
+            
+            flash('Todo created successfully!', 'success')
+            return redirect(url_for('todos.list_todos'))
+        except ValidationError as e:
+            flash(str(e), 'error')
             return redirect(url_for('todos.create_todo'))
-        
-        due_date = None
-        if due_date_str:
-            try:
-                due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                pass
-        
-        todo = Todo(
-            title=title,
-            description=description,
-            priority=priority,
-            due_date=due_date,
-            user_id=current_user.id
-        )
-        db.session.add(todo)
-        db.session.commit()
-        
-        flash('Todo created successfully!', 'success')
-        return redirect(url_for('todos.list_todos'))
 
     return render_template('todos/form.html', todo=None, action='Create', show_due_date=True, preset_due_date='')
 
@@ -63,26 +60,26 @@ def create_todo_today():
     """Create a new todo due today without showing date picker"""
     preset_date = today_local()
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        priority = request.form.get('priority', 'medium')
+        try:
+            title = validate_title(request.form.get('title'), max_length=200)
+            description = validate_text(request.form.get('description'), max_length=5000)
+            priority = validate_priority(request.form.get('priority'))
 
-        if not title:
-            flash('Title is required!', 'error')
+            todo = Todo(
+                title=title,
+                description=description,
+                priority=priority,
+                due_date=preset_date,
+                user_id=current_user.id
+            )
+            db.session.add(todo)
+            db.session.commit()
+
+            flash('Todo for today created!', 'success')
+            return redirect(url_for('index'))
+        except ValidationError as e:
+            flash(str(e), 'error')
             return redirect(url_for('todos.create_todo_today'))
-
-        todo = Todo(
-            title=title,
-            description=description,
-            priority=priority,
-            due_date=preset_date,
-            user_id=current_user.id
-        )
-        db.session.add(todo)
-        db.session.commit()
-
-        flash('Todo for today created!', 'success')
-        return redirect(url_for('index'))
 
     return render_template('todos/form.html', todo=None, action='Create', show_due_date=False, preset_due_date=preset_date.isoformat())
 
@@ -93,26 +90,26 @@ def create_todo_tomorrow():
     """Create a new todo due tomorrow without showing date picker"""
     preset_date = tomorrow_local()
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        priority = request.form.get('priority', 'medium')
+        try:
+            title = validate_title(request.form.get('title'), max_length=200)
+            description = validate_text(request.form.get('description'), max_length=5000)
+            priority = validate_priority(request.form.get('priority'))
 
-        if not title:
-            flash('Title is required!', 'error')
+            todo = Todo(
+                title=title,
+                description=description,
+                priority=priority,
+                due_date=preset_date,
+                user_id=current_user.id
+            )
+            db.session.add(todo)
+            db.session.commit()
+
+            flash('Todo for tomorrow created!', 'success')
+            return redirect(url_for('tomorrow'))
+        except ValidationError as e:
+            flash(str(e), 'error')
             return redirect(url_for('todos.create_todo_tomorrow'))
-
-        todo = Todo(
-            title=title,
-            description=description,
-            priority=priority,
-            due_date=preset_date,
-            user_id=current_user.id
-        )
-        db.session.add(todo)
-        db.session.commit()
-
-        flash('Todo for tomorrow created!', 'success')
-        return redirect(url_for('tomorrow'))
 
     return render_template('todos/form.html', todo=None, action='Create', show_due_date=False, preset_due_date=preset_date.isoformat())
 
@@ -123,22 +120,18 @@ def edit_todo(todo_id):
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
-        todo.title = request.form.get('title')
-        todo.description = request.form.get('description')
-        todo.priority = request.form.get('priority', 'medium')
-        due_date_str = request.form.get('due_date')
-        
-        if due_date_str:
-            try:
-                todo.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                todo.due_date = None
-        else:
-            todo.due_date = None
-        
-        db.session.commit()
-        flash('Todo updated successfully!', 'success')
-        return redirect(url_for('todos.list_todos'))
+        try:
+            todo.title = validate_title(request.form.get('title'), max_length=200)
+            todo.description = validate_text(request.form.get('description'), max_length=5000)
+            todo.priority = validate_priority(request.form.get('priority'))
+            todo.due_date = validate_date(request.form.get('due_date'))
+            
+            db.session.commit()
+            flash('Todo updated successfully!', 'success')
+            return redirect(url_for('todos.list_todos'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('todos/form.html', todo=todo, action='Edit')
     
     return render_template('todos/form.html', todo=todo, action='Edit')
 
@@ -197,54 +190,31 @@ def schedule_todo(todo_id):
     """Schedule a todo as a Google Calendar event"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
     
-    event_date_str = request.form.get('event_date')
-    event_time_str = request.form.get('event_time')
-    duration_hours_str = request.form.get('duration_hours') or '1'
-    duration_minutes_str = request.form.get('duration_minutes') or '0'
-    
-    if not event_date_str:
-        flash('Date is required to schedule.', 'error')
-        return redirect(url_for('todos.list_todos'))
-    
     try:
-        event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
-    except ValueError:
-        flash('Invalid date format.', 'error')
+        event_date = validate_date(request.form.get('event_date'), required=True)
+        event_time = validate_time(request.form.get('event_time'))
+        duration_hours, duration_minutes = validate_duration(
+            request.form.get('duration_hours'),
+            request.form.get('duration_minutes')
+        )
+    except ValidationError as e:
+        flash(str(e), 'error')
         return redirect(url_for('todos.list_todos'))
     
     # Warn if scheduling in the past
     if event_date < today_local():
         flash('Warning: You are scheduling an event in the past.', 'warning')
-    elif event_date == today_local() and event_time_str:
-        try:
-            event_time_obj = datetime.strptime(event_time_str, '%H:%M').time()
-            now = now_local()
-            if datetime.combine(event_date, event_time_obj, tzinfo=now.tzinfo) < now:
-                flash('Warning: You are scheduling an event in the past.', 'warning')
-        except ValueError:
-            pass
+    elif event_date == today_local() and event_time:
+        now = now_local()
+        tzinfo = get_local_tz()
+        if datetime.combine(event_date, event_time, tzinfo=tzinfo) < now:
+            flash('Warning: You are scheduling an event in the past.', 'warning')
     
     # Build event start/end time
-    if event_time_str:
-        try:
-            start_time = datetime.strptime(event_time_str, '%H:%M').time()
-            tzinfo = get_local_tz()
-            start_dt = datetime.combine(event_date, start_time, tzinfo=tzinfo)
-            # Duration from form (defaults to 1 hour)
-            try:
-                dh = max(0, int(duration_hours_str))
-            except Exception:
-                dh = 1
-            try:
-                dm = max(0, int(duration_minutes_str))
-            except Exception:
-                dm = 0
-            if dh == 0 and dm == 0:
-                dm = 45
-            end_dt = start_dt + timedelta(hours=dh, minutes=dm)
-        except ValueError:
-            flash('Invalid time format.', 'error')
-            return redirect(url_for('todos.list_todos'))
+    if event_time:
+        tzinfo = get_local_tz()
+        start_dt = datetime.combine(event_date, event_time, tzinfo=tzinfo)
+        end_dt = start_dt + timedelta(hours=duration_hours, minutes=duration_minutes)
     else:
         # All-day event
         start_dt = None

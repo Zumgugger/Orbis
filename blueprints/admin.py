@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from database import db, User
 from functools import wraps
 from datetime import datetime
+from validation import validate_title, validate_email, ValidationError
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -57,33 +58,37 @@ def toggle_role(user_id):
 def create_user():
     """Create a new user"""
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        role = request.form.get('role', 'user')
-        
-        if not name or not email:
-            flash('Name and email are required.', 'error')
-            return redirect(url_for('admin.create_user'))
-        
-        # Check if user already exists
-        existing = User.query.filter_by(email=email).first()
-        if existing:
-            flash(f'User with email {email} already exists.', 'error')
-            return redirect(url_for('admin.create_user'))
-        
-        # Create user
-        user = User(
-            google_id=f'admin_created_{email}',
-            email=email,
-            name=name,
-            role=role,
-            created_at=datetime.utcnow()
-        )
-        db.session.add(user)
-        db.session.commit()
-        
-        flash(f'User {name} ({email}) created successfully as {role}.', 'success')
-        return redirect(url_for('admin.users'))
+        try:
+            name = validate_title(request.form.get('name'), field_name="Name", max_length=255)
+            email = validate_email(request.form.get('email'))
+            role = request.form.get('role', 'user')
+            
+            if role not in ['user', 'admin']:
+                flash('Invalid role selected.', 'error')
+                return render_template('admin/create_user.html')
+            
+            # Check if user already exists
+            existing = User.query.filter_by(email=email).first()
+            if existing:
+                flash(f'User with email {email} already exists.', 'error')
+                return render_template('admin/create_user.html')
+            
+            # Create user
+            user = User(
+                google_id=f'admin_created_{email}',
+                email=email,
+                name=name,
+                role=role,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(user)
+            db.session.commit()
+            
+            flash(f'User {name} ({email}) created successfully as {role}.', 'success')
+            return redirect(url_for('admin.users'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('admin/create_user.html')
     
     return render_template('admin/create_user.html')
 

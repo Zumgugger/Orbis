@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from database import db, MasterCategory, MasterSection
+from validation import validate_title, validate_text, ValidationError
 
 bp = Blueprint('masterprompts', __name__)
 
@@ -84,30 +85,32 @@ def index():
 @bp.route('/category/create', methods=['POST'])
 @login_required
 def create_category():
-    name = (request.form.get('name') or '').strip()
-    if not name:
-        flash('Category name is required', 'error')
+    try:
+        name = validate_title(request.form.get('name'), field_name="Category name", max_length=200)
+        
+        max_pos = db.session.query(func.max(MasterCategory.position)).filter_by(user_id=current_user.id).scalar()
+        next_pos = (max_pos or 0) + 1
+        cat = MasterCategory(user_id=current_user.id, name=name, position=next_pos)
+        db.session.add(cat)
+        db.session.commit()
+        return redirect(url_for('masterprompts.index', category_id=cat.id))
+    except ValidationError as e:
+        flash(str(e), 'error')
         return redirect(url_for('masterprompts.index'))
-
-    max_pos = db.session.query(func.max(MasterCategory.position)).filter_by(user_id=current_user.id).scalar()
-    next_pos = (max_pos or 0) + 1
-    cat = MasterCategory(user_id=current_user.id, name=name, position=next_pos)
-    db.session.add(cat)
-    db.session.commit()
-    return redirect(url_for('masterprompts.index', category_id=cat.id))
 
 
 @bp.route('/category/<int:cat_id>/edit', methods=['POST'])
 @login_required
 def edit_category(cat_id):
     cat = MasterCategory.query.filter_by(id=cat_id, user_id=current_user.id).first_or_404()
-    name = (request.form.get('name') or '').strip()
-    if not name:
-        flash('Category name is required', 'error')
+    try:
+        name = validate_title(request.form.get('name'), field_name="Category name", max_length=200)
+        cat.name = name
+        db.session.commit()
         return redirect(url_for('masterprompts.index', category_id=cat.id))
-    cat.name = name
-    db.session.commit()
-    return redirect(url_for('masterprompts.index', category_id=cat.id))
+    except ValidationError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('masterprompts.index', category_id=cat.id))
 
 
 @bp.route('/category/<int:cat_id>/delete', methods=['POST'])
@@ -147,33 +150,35 @@ def move_category(cat_id, direction):
 @login_required
 def create_section(cat_id):
     cat = MasterCategory.query.filter_by(id=cat_id, user_id=current_user.id).first_or_404()
-    title = (request.form.get('title') or '').strip()
-    body = (request.form.get('body') or '').strip()
-    if not title or not body:
-        flash('Section title and body are required', 'error')
+    try:
+        title = validate_title(request.form.get('title'), field_name="Section title", max_length=255)
+        body = validate_text(request.form.get('body'), field_name="Section body", required=True, max_length=50000)
+        
+        max_pos = db.session.query(func.max(MasterSection.position)).filter_by(category_id=cat.id, user_id=current_user.id).scalar()
+        next_pos = (max_pos or 0) + 1
+        sec = MasterSection(category_id=cat.id, user_id=current_user.id, title=title, body=body, position=next_pos)
+        db.session.add(sec)
+        db.session.commit()
         return redirect(url_for('masterprompts.index', category_id=cat.id))
-
-    max_pos = db.session.query(func.max(MasterSection.position)).filter_by(category_id=cat.id, user_id=current_user.id).scalar()
-    next_pos = (max_pos or 0) + 1
-    sec = MasterSection(category_id=cat.id, user_id=current_user.id, title=title, body=body, position=next_pos)
-    db.session.add(sec)
-    db.session.commit()
-    return redirect(url_for('masterprompts.index', category_id=cat.id))
+    except ValidationError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('masterprompts.index', category_id=cat.id))
 
 
 @bp.route('/section/<int:sec_id>/edit', methods=['POST'])
 @login_required
 def edit_section(sec_id):
     sec = MasterSection.query.filter_by(id=sec_id, user_id=current_user.id).first_or_404()
-    title = (request.form.get('title') or '').strip()
-    body = (request.form.get('body') or '').strip()
-    if not title or not body:
-        flash('Section title and body are required', 'error')
+    try:
+        title = validate_title(request.form.get('title'), field_name="Section title", max_length=255)
+        body = validate_text(request.form.get('body'), field_name="Section body", required=True, max_length=50000)
+        sec.title = title
+        sec.body = body
+        db.session.commit()
         return redirect(url_for('masterprompts.index', category_id=sec.category_id))
-    sec.title = title
-    sec.body = body
-    db.session.commit()
-    return redirect(url_for('masterprompts.index', category_id=sec.category_id))
+    except ValidationError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('masterprompts.index', category_id=sec.category_id))
 
 
 @bp.route('/section/<int:sec_id>/delete', methods=['POST'])

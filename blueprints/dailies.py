@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from database import db, Daily
 from datetime import datetime
 import json
+from validation import validate_title, validate_text, validate_frequency, validate_integer, validate_weekdays, ValidationError
 
 dailies_bp = Blueprint('dailies', __name__)
 
@@ -23,41 +24,33 @@ def list_dailies():
 def create_daily():
     """Create a new daily"""
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        frequency = request.form.get('frequency', 'daily')
-        
-        # Get frequency interval (default 1)
         try:
-            frequency_interval = max(1, int(request.form.get('frequency_interval', 1)))
-        except:
-            frequency_interval = 1
-        
-        if not title:
-            flash('Title is required!', 'error')
-            return redirect(url_for('dailies.create_daily'))
-        
-        daily = Daily(
-            title=title,
-            description=description,
-            frequency=frequency,
-            frequency_interval=frequency_interval,
-            user_id=current_user.id
-        )
-        
-        # Handle custom weekdays
-        if frequency == 'custom':
-            selected_weekdays = request.form.getlist('weekdays')
-            if not selected_weekdays:
-                flash('Please select at least one weekday for custom frequency!', 'error')
-                return render_template('dailies/form.html', daily=None, action='Create', weekdays=WEEKDAYS)
-            daily.set_weekdays(selected_weekdays)
-        
-        db.session.add(daily)
-        db.session.commit()
-        
-        flash('Daily created successfully!', 'success')
-        return redirect(url_for('dailies.list_dailies'))
+            title = validate_title(request.form.get('title'), max_length=200)
+            description = validate_text(request.form.get('description'), max_length=5000)
+            frequency = validate_frequency(request.form.get('frequency'))
+            frequency_interval = validate_integer(request.form.get('frequency_interval'), min_val=1, max_val=365) or 1
+            
+            daily = Daily(
+                title=title,
+                description=description,
+                frequency=frequency,
+                frequency_interval=frequency_interval,
+                user_id=current_user.id
+            )
+            
+            # Handle custom weekdays
+            if frequency == 'custom':
+                selected_weekdays = validate_weekdays(request.form.getlist('weekdays'), required=True)
+                daily.set_weekdays(selected_weekdays)
+            
+            db.session.add(daily)
+            db.session.commit()
+            
+            flash('Daily created successfully!', 'success')
+            return redirect(url_for('dailies.list_dailies'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('dailies/form.html', daily=None, action='Create', weekdays=WEEKDAYS)
     
     return render_template('dailies/form.html', daily=None, action='Create', weekdays=WEEKDAYS)
 
@@ -68,29 +61,25 @@ def edit_daily(daily_id):
     daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
-        daily.title = request.form.get('title')
-        daily.description = request.form.get('description')
-        daily.frequency = request.form.get('frequency', 'daily')
-        
-        # Get frequency interval (default 1)
         try:
-            daily.frequency_interval = max(1, int(request.form.get('frequency_interval', 1)))
-        except:
-            daily.frequency_interval = 1
-        
-        # Handle custom weekdays
-        if daily.frequency == 'custom':
-            selected_weekdays = request.form.getlist('weekdays')
-            if not selected_weekdays:
-                flash('Please select at least one weekday for custom frequency!', 'error')
-                return render_template('dailies/form.html', daily=daily, action='Edit', weekdays=WEEKDAYS)
-            daily.set_weekdays(selected_weekdays)
-        else:
-            daily.weekdays = None
-        
-        db.session.commit()
-        flash('Daily updated successfully!', 'success')
-        return redirect(url_for('dailies.list_dailies'))
+            daily.title = validate_title(request.form.get('title'), max_length=200)
+            daily.description = validate_text(request.form.get('description'), max_length=5000)
+            daily.frequency = validate_frequency(request.form.get('frequency'))
+            daily.frequency_interval = validate_integer(request.form.get('frequency_interval'), min_val=1, max_val=365) or 1
+            
+            # Handle custom weekdays
+            if daily.frequency == 'custom':
+                selected_weekdays = validate_weekdays(request.form.getlist('weekdays'), required=True)
+                daily.set_weekdays(selected_weekdays)
+            else:
+                daily.weekdays = None
+            
+            db.session.commit()
+            flash('Daily updated successfully!', 'success')
+            return redirect(url_for('dailies.list_dailies'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('dailies/form.html', daily=daily, action='Edit', weekdays=WEEKDAYS)
     
     return render_template('dailies/form.html', daily=daily, action='Edit', weekdays=WEEKDAYS)
 

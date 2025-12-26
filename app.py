@@ -2,7 +2,7 @@
 Orbis - Habit and Task Management System
 Main application entry point
 """
-from flask import Flask, render_template, redirect, url_for, session
+from flask import Flask, render_template, redirect, url_for, session, request, jsonify
 from flask_login import LoginManager, login_required, current_user
 from database import init_db, db, Todo, Daily, User, RolloverState, MasterCategory, MasterSection, Habit
 from datetime import datetime, date, timedelta, time
@@ -69,6 +69,46 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(masterprompts_bp, url_prefix='/masterprompts')
     app.register_blueprint(ideas_bp)
+
+    # Error handlers
+    @app.errorhandler(400)
+    def bad_request(e):
+        """Handle 400 Bad Request errors"""
+        if request.path.startswith('/api/') or request.is_json:
+            return jsonify({'error': 'Bad request', 'message': str(e)}), 400
+        return render_template('errors/400.html'), 400
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        """Handle 403 Forbidden errors"""
+        if request.path.startswith('/api/') or request.is_json:
+            return jsonify({'error': 'Forbidden', 'message': 'Access denied'}), 403
+        return render_template('errors/403.html'), 403
+
+    @app.errorhandler(404)
+    def not_found(e):
+        """Handle 404 Not Found errors"""
+        if request.path.startswith('/api/') or request.is_json:
+            return jsonify({'error': 'Not found', 'message': 'Resource not found'}), 404
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        """Handle 500 Internal Server errors"""
+        db.session.rollback()  # Rollback any failed transactions
+        app.logger.error(f'Server Error: {e}')
+        if request.path.startswith('/api/') or request.is_json:
+            return jsonify({'error': 'Internal server error', 'message': 'An unexpected error occurred'}), 500
+        return render_template('errors/500.html'), 500
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        """Handle uncaught exceptions"""
+        db.session.rollback()
+        app.logger.exception(f'Unhandled exception: {e}')
+        if request.path.startswith('/api/') or request.is_json:
+            return jsonify({'error': 'Internal server error', 'message': 'An unexpected error occurred'}), 500
+        return render_template('errors/500.html'), 500
 
     def fetch_calendar_events(user, start_date, end_date):
         """Fetch primary calendar events between start_date (inclusive) and end_date (exclusive)."""

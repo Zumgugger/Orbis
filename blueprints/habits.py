@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from datetime import datetime
 from database import db, Habit
+from validation import validate_title, validate_text, validate_difficulty, ValidationError
 
 habits_bp = Blueprint('habits', __name__)
 
@@ -20,25 +21,25 @@ def list_habits():
 def create_habit():
     """Create a new habit"""
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        difficulty = request.form.get('difficulty', 'normal')
-        
-        if not title:
-            flash('Title is required!', 'error')
-            return redirect(url_for('habits.create_habit'))
-        
-        habit = Habit(
-            title=title,
-            description=description,
-            difficulty=difficulty,
-            user_id=current_user.id
-        )
-        db.session.add(habit)
-        db.session.commit()
-        
-        flash('Habit created successfully!', 'success')
-        return redirect(url_for('habits.list_habits'))
+        try:
+            title = validate_title(request.form.get('title'), max_length=200)
+            description = validate_text(request.form.get('description'), max_length=5000)
+            difficulty = validate_difficulty(request.form.get('difficulty'))
+            
+            habit = Habit(
+                title=title,
+                description=description,
+                difficulty=difficulty,
+                user_id=current_user.id
+            )
+            db.session.add(habit)
+            db.session.commit()
+            
+            flash('Habit created successfully!', 'success')
+            return redirect(url_for('habits.list_habits'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('habits/form.html', habit=None, action='Create')
     
     return render_template('habits/form.html', habit=None, action='Create')
 
@@ -49,13 +50,17 @@ def edit_habit(habit_id):
     habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
-        habit.title = request.form.get('title')
-        habit.description = request.form.get('description')
-        habit.difficulty = request.form.get('difficulty', 'normal')
-        
-        db.session.commit()
-        flash('Habit updated successfully!', 'success')
-        return redirect(url_for('habits.list_habits'))
+        try:
+            habit.title = validate_title(request.form.get('title'), max_length=200)
+            habit.description = validate_text(request.form.get('description'), max_length=5000)
+            habit.difficulty = validate_difficulty(request.form.get('difficulty'))
+            
+            db.session.commit()
+            flash('Habit updated successfully!', 'success')
+            return redirect(url_for('habits.list_habits'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('habits/form.html', habit=habit, action='Edit')
     
     return render_template('habits/form.html', habit=habit, action='Edit')
 
@@ -109,18 +114,26 @@ def cycle_difficulty(habit_id):
 @login_required
 def reorder_habits():
     """Persist new habit order from drag-and-drop"""
-    data = request.get_json(silent=True) or {}
-    ids = data.get('order', [])
-    if not isinstance(ids, list):
-        return jsonify({'error': 'invalid payload'}), 400
-    # Filter to user's habits only
-    user_habits = Habit.query.filter_by(user_id=current_user.id).all()
-    user_ids = {h.id for h in user_habits}
-    filtered = [hid for hid in ids if hid in user_ids]
-    for idx, hid in enumerate(filtered):
-        Habit.query.filter_by(id=hid, user_id=current_user.id).update({'position': idx})
-    db.session.commit()
-    return jsonify({'status': 'ok'})
+    try:
+        data = request.get_json(silent=True) or {}
+        ids = data.get('order', [])
+        
+        if not isinstance(ids, list):
+            return jsonify({'error': 'Invalid payload', 'message': 'Order must be a list'}), 400
+        
+        # Filter to user's habits only
+        user_habits = Habit.query.filter_by(user_id=current_user.id).all()
+        user_ids = {h.id for h in user_habits}
+        filtered = [hid for hid in ids if hid in user_ids]
+        
+        for idx, hid in enumerate(filtered):
+            Habit.query.filter_by(id=hid, user_id=current_user.id).update({'position': idx})
+        
+        db.session.commit()
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to reorder', 'message': str(e)}), 500
 
 
 @habits_bp.route('/<int:habit_id>/focus', methods=['POST'])

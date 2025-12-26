@@ -5,6 +5,7 @@ Manage multiple shopping lists with text-based items
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from database import db, ShoppingList
+from validation import validate_title, validate_text, ValidationError
 
 bp = Blueprint('shopping', __name__, url_prefix='/shopping')
 
@@ -20,19 +21,19 @@ def list():
 def create():
     """Create a new shopping list"""
     if request.method == 'POST':
-        title = request.form.get('title')
-        items = request.form.get('items')
-        
-        if not title:
-            flash('Title is required!', 'error')
-            return redirect(url_for('shopping.create'))
-        
-        shopping_list = ShoppingList(title=title, items=items, user_id=current_user.id)
-        db.session.add(shopping_list)
-        db.session.commit()
-        
-        flash('Shopping list created!', 'success')
-        return redirect(url_for('shopping.list'))
+        try:
+            title = validate_title(request.form.get('title'), max_length=200)
+            items = validate_text(request.form.get('items'), max_length=10000)
+            
+            shopping_list = ShoppingList(title=title, items=items, user_id=current_user.id)
+            db.session.add(shopping_list)
+            db.session.commit()
+            
+            flash('Shopping list created!', 'success')
+            return redirect(url_for('shopping.list'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('shopping/form.html', shopping_list=None)
     
     return render_template('shopping/form.html', shopping_list=None)
 
@@ -43,16 +44,16 @@ def edit(id):
     shopping_list = ShoppingList.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
-        shopping_list.title = request.form.get('title')
-        shopping_list.items = request.form.get('items')
-        
-        if not shopping_list.title:
-            flash('Title is required!', 'error')
-            return redirect(url_for('shopping.edit', id=id))
-        
-        db.session.commit()
-        flash('Shopping list updated!', 'success')
-        return redirect(url_for('shopping.list'))
+        try:
+            shopping_list.title = validate_title(request.form.get('title'), max_length=200)
+            shopping_list.items = validate_text(request.form.get('items'), max_length=10000)
+            
+            db.session.commit()
+            flash('Shopping list updated!', 'success')
+            return redirect(url_for('shopping.list'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('shopping/form.html', shopping_list=shopping_list)
     
     return render_template('shopping/form.html', shopping_list=shopping_list)
 

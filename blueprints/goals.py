@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from database import db, Goal, Milestone
 from sqlalchemy.orm import selectinload
+from validation import validate_title, validate_text, ValidationError
 
 bp = Blueprint('goals', __name__, url_prefix='/goals')
 
@@ -26,19 +27,19 @@ def list():
 def create():
     """Create a new goal"""
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        
-        if not title:
-            flash('Title is required!', 'error')
-            return redirect(url_for('goals.create'))
-        
-        goal = Goal(title=title, description=description, user_id=current_user.id)
-        db.session.add(goal)
-        db.session.commit()
-        
-        flash('Goal created successfully!', 'success')
-        return redirect(url_for('goals.edit', id=goal.id))
+        try:
+            title = validate_title(request.form.get('title'), max_length=200)
+            description = validate_text(request.form.get('description'), max_length=5000)
+            
+            goal = Goal(title=title, description=description, user_id=current_user.id)
+            db.session.add(goal)
+            db.session.commit()
+            
+            flash('Goal created successfully!', 'success')
+            return redirect(url_for('goals.edit', id=goal.id))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('goals/form.html', goal=None)
     
     return render_template('goals/form.html', goal=None)
 
@@ -53,16 +54,16 @@ def edit(id):
     )
     
     if request.method == 'POST':
-        goal.title = request.form.get('title')
-        goal.description = request.form.get('description')
-        
-        if not goal.title:
-            flash('Title is required!', 'error')
-            return redirect(url_for('goals.edit', id=id))
-        
-        db.session.commit()
-        flash('Goal updated successfully!', 'success')
-        return redirect(url_for('goals.list'))
+        try:
+            goal.title = validate_title(request.form.get('title'), max_length=200)
+            goal.description = validate_text(request.form.get('description'), max_length=5000)
+            
+            db.session.commit()
+            flash('Goal updated successfully!', 'success')
+            return redirect(url_for('goals.list'))
+        except ValidationError as e:
+            flash(str(e), 'error')
+            return render_template('goals/form.html', goal=goal)
     
     return render_template('goals/form.html', goal=goal)
 
@@ -81,24 +82,25 @@ def delete(id):
 def add_milestone(id):
     """Add a milestone to a goal"""
     goal = Goal.query.filter_by(id=id, user_id=current_user.id).first_or_404()
-    title = request.form.get('milestone_title')
     
-    if not title:
-        flash('Milestone title is required!', 'error')
-        return redirect(url_for('goals.edit', id=id))
+    try:
+        title = validate_title(request.form.get('milestone_title'), field_name="Milestone title", max_length=200)
+        
+        # Get the highest order number and add 1
+        max_order = db.session.query(db.func.max(Milestone.order)).filter_by(goal_id=id).scalar() or -1
+        
+        milestone = Milestone(
+            goal_id=id,
+            title=title,
+            order=max_order + 1
+        )
+        db.session.add(milestone)
+        db.session.commit()
+        
+        flash('Milestone added successfully!', 'success')
+    except ValidationError as e:
+        flash(str(e), 'error')
     
-    # Get the highest order number and add 1
-    max_order = db.session.query(db.func.max(Milestone.order)).filter_by(goal_id=id).scalar() or -1
-    
-    milestone = Milestone(
-        goal_id=id,
-        title=title,
-        order=max_order + 1
-    )
-    db.session.add(milestone)
-    db.session.commit()
-    
-    flash('Milestone added successfully!', 'success')
     return redirect(url_for('goals.edit', id=id))
 
 @bp.route('/<int:goal_id>/milestone/<int:milestone_id>/toggle', methods=['POST'])
