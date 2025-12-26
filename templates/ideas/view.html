@@ -199,6 +199,8 @@
         const formData = new FormData();
         formData.append('notes', notes);
         
+        formData.append('csrf_token', window.csrfToken || '');
+
         const response = await fetch(`/ideas/${ideaId}/save_notes`, {
             method: 'POST',
             body: formData
@@ -298,7 +300,8 @@
             const response = await fetch(`/ideas/${ideaId}/save_mindmap`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.csrfToken || ''
                 },
                 body: JSON.stringify(data)
             });
@@ -322,6 +325,8 @@
         const formData = new FormData();
         formData.append('file', file);
         
+        formData.append('csrf_token', window.csrfToken || '');
+
         const response = await fetch(`/ideas/${ideaId}/upload_file`, {
             method: 'POST',
             body: formData
@@ -345,7 +350,10 @@
             if (!confirm('Delete this file?')) return;
             
             const response = await fetch(`/ideas/${ideaId}/delete_file/${fileId}`, {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': window.csrfToken || ''
+                }
             });
             
             if (response.ok) {

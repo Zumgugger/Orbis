@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from markupsafe import Markup
 from markdown import markdown as md_to_html
+from flask_wtf import CSRFProtect
 import os
 
 # Load environment variables
@@ -20,9 +21,16 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbis.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['WTF_CSRF_TIME_LIMIT'] = None  # Avoid unexpected expiry during long sessions
 
     # Markdown filter for rendering section bodies
     app.jinja_env.filters['markdown'] = lambda text: Markup(md_to_html(text or '', extensions=['extra']))
+    # CSRF protection
+    csrf = CSRFProtect()
+    csrf.init_app(app)
+    # Expose csrf_token to templates
+    from flask_wtf.csrf import generate_csrf
+    app.jinja_env.globals['csrf_token'] = generate_csrf
     
     # Initialize database
     init_db(app)
