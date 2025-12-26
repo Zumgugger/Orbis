@@ -45,9 +45,19 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default='user')  # 'admin' or 'user'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, default=datetime.utcnow)
+    oauth_token = db.Column(db.Text, nullable=True)  # Store OAuth access token for API calls
     
     def __repr__(self):
         return f'<User {self.id}: {self.email}>'
+    
+    def get_oauth_token(self):
+        """Retrieve stored OAuth access token"""
+        return self.oauth_token
+    
+    def set_oauth_token(self, token):
+        """Store OAuth access token"""
+        self.oauth_token = token
+        db.session.commit()
     
     def is_admin(self):
         """Check if user is admin"""

@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from database import db, Todo
 from datetime import datetime, date, timedelta
+import requests
 
 todos_bp = Blueprint('todos', __name__)
 
@@ -186,4 +187,74 @@ def set_due_tomorrow(todo_id):
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
     todo.due_date = date.today() + timedelta(days=1)
     db.session.commit()
+    return redirect(url_for('todos.list_todos'))
+
+@todos_bp.route('/<int:todo_id>/schedule', methods=['POST'])
+@login_required
+def schedule_todo(todo_id):
+    """Schedule a todo as a Google Calendar event"""
+    todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+    
+    event_date_str = request.form.get('event_date')
+    event_time_str = request.form.get('event_time')
+    
+    if not event_date_str:
+        flash('Date is required to schedule.', 'error')
+        return redirect(url_for('todos.list_todos'))
+    
+    try:
+        event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Invalid date format.', 'error')
+        return redirect(url_for('todos.list_todos'))
+    
+    # Build event start/end time
+    if event_time_str:
+        try:
+            start_time = datetime.strptime(event_time_str, '%H:%M').time()
+            start_dt = datetime.combine(event_date, start_time)
+            # Default 1 hour duration
+            end_dt = start_dt.replace(hour=(start_dt.hour + 1) % 24)
+        except ValueError:
+            flash('Invalid time format.', 'error')
+            return redirect(url_for('todos.list_todos'))
+    else:
+        # All-day event
+        start_dt = datetime.combine(event_date, datetime.min.time())
+        end_dt = datetime.combine(event_date + timedelta(days=1), datetime.min.time())
+    
+    # Call Google Calendar API
+    try:
+        token = current_user.get_oauth_token()
+        if not token:
+            flash('You must authenticate with Google first.', 'error')
+            return redirect(url_for('auth.login'))
+        
+        event = {
+            'summary': todo.title,
+            'description': todo.description or '',
+            'start': {
+                'dateTime': start_dt.isoformat(),
+                'timeZone': 'UTC'
+            },
+            'end': {
+                'dateTime': end_dt.isoformat(),
+                'timeZone': 'UTC'
+            }
+        }
+        
+        headers = {'Authorization': f'Bearer {token}'}
+        response = requests.post(
+            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+            json=event,
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            flash('Todo scheduled in Google Calendar!', 'success')
+        else:
+            flash(f'Failed to schedule: {response.text}', 'error')
+    except Exception as e:
+        flash(f'Error scheduling event: {str(e)}', 'error')
+    
     return redirect(url_for('todos.list_todos'))

@@ -37,7 +37,7 @@ def init_oauth(app):
         client_id=client_id,
         client_secret=client_secret,
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-        client_kwargs={'scope': 'openid email profile'}
+        client_kwargs={'scope': 'openid email profile https://www.googleapis.com/auth/calendar'}
     )
 
 @bp.route('/login')
@@ -55,6 +55,7 @@ def callback():
     try:
         token = oauth.google.authorize_access_token()
         user_info = token.get('userinfo')
+        access_token = token.get('access_token')
         
         if not user_info:
             flash('Failed to get user info from Google', 'error')
@@ -73,7 +74,8 @@ def callback():
                 name=user_info.get('name'),
                 profile_pic=user_info.get('picture'),
                 role='user',  # Default role
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
+                oauth_token=access_token
             )
             db.session.add(user)
             db.session.commit()
@@ -84,6 +86,7 @@ def callback():
             user.last_login = datetime.utcnow()
             user.name = user_info.get('name', user.name)
             user.profile_pic = user_info.get('picture', user.profile_pic)
+            user.oauth_token = access_token
             db.session.commit()
             flash(f'Welcome back, {user.name}!', 'success')
         

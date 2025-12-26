@@ -49,6 +49,9 @@
                             <a href="{{ url_for('todos.edit_todo', todo_id=todo.id) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-pencil"></i> Edit
                             </a>
+                            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal{{ todo.id }}" title="Schedule to Google Calendar">
+                                <i class="bi bi-calendar-plus"></i> Schedule
+                            </button>
                             <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to today">
                                     <i class="bi bi-calendar-check"></i> Today
@@ -126,4 +129,38 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Schedule Modals -->
+{% for todo in pending %}
+<div class="modal fade" id="scheduleModal{{ todo.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule to Google Calendar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('todos.schedule_todo', todo_id=todo.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="event_date{{ todo.id }}" class="form-label">Date *</label>
+                        <input type="date" class="form-control" id="event_date{{ todo.id }}" name="event_date" 
+                               value="{{ todo.due_date.isoformat() if todo.due_date else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="event_time{{ todo.id }}" class="form-label">Time (optional)</label>
+                        <input type="time" class="form-control" id="event_time{{ todo.id }}" name="event_time">
+                        <small class="text-muted">Leave blank for all-day event</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-calendar-plus"></i> Add to Calendar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}
