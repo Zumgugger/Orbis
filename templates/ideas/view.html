@@ -251,7 +251,6 @@
     // Mindmap controls
     document.getElementById('addNodeBtn').addEventListener('click', () => {
         if (!mindElixir) {
-            alert('Please switch to the Mindmap tab first');
             return;
         }
         
@@ -268,14 +267,11 @@
             if (newNode) {
                 setTimeout(() => mindElixir.selectNode(newNode.id), 50);
             }
-        } else {
-            alert('Please select a node first by clicking on it');
         }
     });
     
     document.getElementById('addSiblingBtn').addEventListener('click', () => {
         if (!mindElixir) {
-            alert('Please switch to the Mindmap tab first');
             return;
         }
         
@@ -299,7 +295,6 @@
     
     document.getElementById('deleteNodeBtn').addEventListener('click', () => {
         if (!mindElixir) {
-            alert('Please switch to the Mindmap tab first');
             return;
         }
         
