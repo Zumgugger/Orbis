@@ -80,14 +80,8 @@ def create_app():
                 dt = dt.replace(tzinfo=tz)
             return dt.isoformat()
 
-        def _to_iso_end(d):
-            dt = datetime.combine(d, time.min)
-            if tz:
-                dt = dt.replace(tzinfo=tz)
-            return dt.isoformat()
-
         time_min = _to_iso(start_date)
-        time_max = _to_iso_end(end_date)
+        time_max = _to_iso(end_date)
 
         resp = oauth.google.get(
             'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -112,23 +106,25 @@ def create_app():
             raw_start = start.get('dateTime') or start.get('date')
             raw_end = end.get('dateTime') or end.get('date')
 
-            def fmt(val, all_day=False):
+            def fmt_dt(val):
                 if not val:
-                    return ''
-                if all_day:
-                    return val
+                    return None
                 try:
                     dt = datetime.fromisoformat(val.replace('Z', '+00:00'))
                     if tz:
                         dt = dt.astimezone(tz)
-                    return dt.strftime('%Y-%m-%d %H:%M')
+                    return dt
                 except Exception:
-                    return val
+                    return None
 
+            start_dt = fmt_dt(raw_start) if not is_all_day else None
+            end_dt = fmt_dt(raw_end) if not is_all_day else None
             events.append({
                 'title': item.get('summary') or '(No title)',
-                'start': fmt(raw_start, is_all_day),
-                'end': fmt(raw_end, is_all_day),
+                'start_raw': raw_start,
+                'end_raw': raw_end,
+                'start_dt': start_dt,
+                'end_dt': end_dt,
                 'all_day': is_all_day,
                 'html_link': item.get('htmlLink')
             })
@@ -207,14 +203,24 @@ def create_app():
         everything_done = len(pending_todos) == 0 and len(dailies_not_done) == 0 and len(focused_not_done) == 0
         
         calendar_today = fetch_calendar_events(current_user, today, today + timedelta(days=1))
+        for ev in calendar_today:
+            if ev.get('all_day'):
+                ev['time_label'] = 'Today · All-day'
+            elif ev.get('start_dt'):
+                ev['time_label'] = f"Today · {ev['start_dt'].strftime('%H:%M')}"
+            else:
+                ev['time_label'] = 'Today'
+
+        combined_todos = [{'kind': 'calendar', 'event': ev} for ev in calendar_today]
+        combined_todos += [{'kind': 'todo', 'todo': t} for t in todos_today]
 
         return render_template('index.html', 
                      todos=todos_today, 
                      dailies=dailies_today,
                  focused_habits=focused_habits,
                  target_date=target_date,
-                 everything_done=everything_done,
-                 calendar_today=calendar_today)
+                     everything_done=everything_done,
+                     combined_todos=combined_todos)
 
     @app.route('/tomorrow')
     @login_required
@@ -247,6 +253,16 @@ def create_app():
         focused_habits = Habit.query.filter_by(user_id=current_user.id, focused=True).order_by(Habit.position.asc(), Habit.id.asc()).all()
 
         calendar_tomorrow = fetch_calendar_events(current_user, target_date, target_date + timedelta(days=1))
+        for ev in calendar_tomorrow:
+            if ev.get('all_day'):
+                ev['time_label'] = 'Tomorrow · All-day'
+            elif ev.get('start_dt'):
+                ev['time_label'] = f"Tomorrow · {ev['start_dt'].strftime('%H:%M')}"
+            else:
+                ev['time_label'] = 'Tomorrow'
+
+        combined_todos = [{'kind': 'calendar', 'event': ev} for ev in calendar_tomorrow]
+        combined_todos += [{'kind': 'todo', 'todo': t} for t in todos_tomorrow]
 
         return render_template(
             'tomorrow.html',
@@ -255,7 +271,7 @@ def create_app():
             carryover_ids=carryover_ids,
             focused_habits=focused_habits,
             target_date=target_date,
-            calendar_tomorrow=calendar_tomorrow
+            combined_todos=combined_todos
         )
     
     return app

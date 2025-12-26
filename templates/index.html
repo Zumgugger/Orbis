@@ -6,7 +6,10 @@
 <h1 class="mb-4"><i class="bi bi-calendar-check"></i> Today's List</h1>
 
 <div class="mb-3 text-end">
-    <a href="{{ url_for('tomorrow') }}" class="btn btn-outline-secondary">
+    <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Google Calendar">
+        <i class="bi bi-calendar3"></i>
+    </a>
+    <a href="{{ url_for('tomorrow') }}" class="btn btn-outline-secondary ms-2">
         <i class="bi bi-sunrise"></i> View Tomorrow
     </a>
     <a href="{{ url_for('todos.create_todo_today') }}" class="btn btn-outline-primary ms-2" title="Add todo for today">
@@ -97,8 +100,29 @@
             </div>
             {% endfor %}
             
-            <!-- Todos after -->
-            {% for todo in todos %}
+            <!-- Calendar events then Todos -->
+            {% for item in combined_todos %}
+            {% if item.kind == 'calendar' %}
+            {% set ev = item.event %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <input type="checkbox" class="form-check-input calendar-check" style="width: 1.5em; height: 1.5em; cursor: pointer;">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-semibold calendar-title">{{ ev.title }}</span>
+                            <span class="badge bg-info text-dark">Calendar</span>
+                        </div>
+                        <small class="text-muted">{{ ev.time_label }}</small>
+                    </div>
+                    {% if ev.html_link %}
+                    <a class="btn btn-sm btn-outline-secondary" href="{{ ev.html_link }}" target="_blank" rel="noopener noreferrer">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            {% set todo = item.todo %}
             <div class="list-group-item {% if todo.status == 'completed' %}bg-light{% endif %}">
                 <div class="d-flex align-items-center gap-3">
                     <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/" method="POST" class="d-inline">
@@ -111,6 +135,7 @@
                     </span>
                 </div>
             </div>
+            {% endif %}
             {% endfor %}
         </div>
     </div>

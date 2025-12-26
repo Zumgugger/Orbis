@@ -59,6 +59,10 @@ def login():
     redirect_uri = os.getenv('GOOGLE_REDIRECT_URI')
     if not redirect_uri:
         redirect_uri = url_for('auth.callback', _external=True, _scheme=request.scheme)
+    # Preserve next page if provided (so we can redirect after login)
+    next_arg = request.args.get('next')
+    if next_arg:
+        session['next'] = next_arg
     # Request offline access to obtain refresh_token
     return oauth.google.authorize_redirect(redirect_uri, prompt='consent', access_type='offline')
 
@@ -91,8 +95,6 @@ def callback():
                 oauth_token=json.dumps(token)
             )
             db.session.add(user)
-            db.session.commit()
-            flash(f'Welcome {user.name}! Your account has been created.', 'success')
         else:
             # Update existing user with OAuth info
             user.google_id = user_info['sub']
@@ -100,11 +102,14 @@ def callback():
             user.name = user_info.get('name', user.name)
             user.profile_pic = user_info.get('picture', user.profile_pic)
             user.oauth_token = json.dumps(token)
-            db.session.commit()
-            flash(f'Welcome back, {user.name}!', 'success')
+        db.session.commit()
         
         # Log user in
         login_user(user)
+        # Clear any queued flash messages from redirects (e.g., login_required prompts)
+        session.pop('_flashes', None)
+        # Show a single success message
+        flash(f'Welcome back, {user.name}!', 'success')
         
         # Redirect to next page or home
         next_page = session.get('next')

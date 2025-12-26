@@ -6,9 +6,14 @@
 <h1 class="mb-2"><i class="bi bi-sunrise"></i> Tomorrow's List</h1>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <p class="text-muted mb-0">Preview for {{ target_date.strftime('%A, %B %d, %Y') }}. Unfinished items from today roll over automatically.</p>
-    <a href="{{ url_for('todos.create_todo_tomorrow') }}" class="btn btn-outline-primary" title="Add todo for tomorrow">
-        <i class="bi bi-plus"></i>
-    </a>
+    <div>
+        <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Google Calendar">
+            <i class="bi bi-calendar3"></i>
+        </a>
+        <a href="{{ url_for('todos.create_todo_tomorrow') }}" class="btn btn-outline-primary ms-2" title="Add todo for tomorrow">
+            <i class="bi bi-plus"></i>
+        </a>
+    </div>
 </div>
 
 {% if calendar_tomorrow %}
@@ -104,8 +109,29 @@
             </div>
             {% endfor %}
 
-            <!-- Todos next -->
-            {% for todo in todos %}
+            <!-- Calendar events then Todos -->
+            {% for item in combined_todos %}
+            {% if item.kind == 'calendar' %}
+            {% set ev = item.event %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-start gap-3">
+                    <input type="checkbox" class="form-check-input mt-1 calendar-check" style="cursor: pointer;">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <strong class="calendar-title">{{ ev.title }}</strong>
+                            <span class="badge bg-info text-dark">Calendar</span>
+                        </div>
+                        <small class="text-muted">{{ ev.time_label }}</small>
+                    </div>
+                    {% if ev.html_link %}
+                    <a class="btn btn-sm btn-outline-secondary" href="{{ ev.html_link }}" target="_blank" rel="noopener noreferrer">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            {% set todo = item.todo %}
             <div class="list-group-item {% if todo.status == 'completed' %}bg-light{% endif %}">
                 <div class="d-flex align-items-start gap-3">
                     <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
@@ -128,6 +154,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
             {% endfor %}
         </div>
     </div>

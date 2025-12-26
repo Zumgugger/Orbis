@@ -81,7 +81,7 @@ def create_todo_today():
         db.session.commit()
 
         flash('Todo for today created!', 'success')
-        return redirect(url_for('todos.list_todos'))
+        return redirect(url_for('index'))
 
     return render_template('todos/form.html', todo=None, action='Create', show_due_date=False, preset_due_date=preset_date.isoformat())
 
@@ -111,7 +111,7 @@ def create_todo_tomorrow():
         db.session.commit()
 
         flash('Todo for tomorrow created!', 'success')
-        return redirect(url_for('todos.list_todos'))
+        return redirect(url_for('tomorrow'))
 
     return render_template('todos/form.html', todo=None, action='Create', show_due_date=False, preset_due_date=preset_date.isoformat())
 
