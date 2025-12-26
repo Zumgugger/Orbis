@@ -223,45 +223,99 @@
     
     document.getElementById('mindmap-tab').addEventListener('shown.bs.tab', () => {
         if (!mindElixir) {
+            const container = document.getElementById('mindmap-container');
             mindElixir = new MindElixir({
-                el: '#mindmap-container',
-                direction: MindElixir.LEFT,
+                el: container,
+                direction: MindElixir.RIGHT,
                 data: mindmapData || defaultData,
                 draggable: true,
                 contextMenu: true,
-                toolBar: true,
+                toolBar: false,
                 nodeMenu: true,
-                keypress: true
+                keypress: true,
+                locale: 'en',
+                overflowHidden: false
             });
+            
             mindElixir.init();
+            
+            // Select root node by default after a short delay
+            setTimeout(() => {
+                if (mindElixir && mindElixir.nodeData) {
+                    mindElixir.selectNode(mindElixir.nodeData.id);
+                }
+            }, 100);
         }
     });
     
     // Mindmap controls
     document.getElementById('addNodeBtn').addEventListener('click', () => {
-        if (mindElixir) {
-            const node = mindElixir.getSelectedNode();
-            if (node) {
-                mindElixir.addChild(node.id);
+        if (!mindElixir) {
+            alert('Please switch to the Mindmap tab first');
+            return;
+        }
+        
+        let node = mindElixir.getSelectedNode();
+        // If no node selected, select root
+        if (!node && mindElixir.nodeData) {
+            mindElixir.selectNode(mindElixir.nodeData.id);
+            node = mindElixir.getSelectedNode();
+        }
+        
+        if (node) {
+            const newNode = mindElixir.addChild(node.id);
+            // Auto-select the new node
+            if (newNode) {
+                setTimeout(() => mindElixir.selectNode(newNode.id), 50);
             }
+        } else {
+            alert('Please select a node first by clicking on it');
         }
     });
     
     document.getElementById('addSiblingBtn').addEventListener('click', () => {
-        if (mindElixir) {
-            const node = mindElixir.getSelectedNode();
-            if (node && !node.root) {
-                mindElixir.insertSibling(node.id);
-            }
+        if (!mindElixir) {
+            alert('Please switch to the Mindmap tab first');
+            return;
+        }
+        
+        const node = mindElixir.getSelectedNode();
+        if (!node) {
+            alert('Please select a node first by clicking on it');
+            return;
+        }
+        
+        if (node.root) {
+            alert('Cannot add sibling to root node. Use "Add Node" instead.');
+            return;
+        }
+        
+        const newNode = mindElixir.insertSibling(node.id);
+        // Auto-select the new node
+        if (newNode) {
+            setTimeout(() => mindElixir.selectNode(newNode.id), 50);
         }
     });
     
     document.getElementById('deleteNodeBtn').addEventListener('click', () => {
-        if (mindElixir) {
-            const node = mindElixir.getSelectedNode();
-            if (node && !node.root) {
-                mindElixir.removeNode(node.id);
-            }
+        if (!mindElixir) {
+            alert('Please switch to the Mindmap tab first');
+            return;
+        }
+        
+        const node = mindElixir.getSelectedNode();
+        if (!node) {
+            alert('Please select a node first by clicking on it');
+            return;
+        }
+        
+        if (node.root) {
+            alert('Cannot delete root node');
+            return;
+        }
+        
+        if (confirm('Delete this node and all its children?')) {
+            mindElixir.removeNode(node.id);
         }
     });
     
