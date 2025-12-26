@@ -5,7 +5,8 @@ Main application entry point
 from flask import Flask, render_template, redirect, url_for, session
 from flask_login import LoginManager, login_required, current_user
 from database import init_db, db, Todo, Daily, User, RolloverState, MasterCategory, MasterSection, Habit
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from markupsafe import Markup
 from markdown import markdown as md_to_html
@@ -58,6 +59,81 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(masterprompts_bp, url_prefix='/masterprompts')
+
+    def fetch_calendar_events(user, start_date, end_date):
+        """Fetch primary calendar events between start_date (inclusive) and end_date (exclusive)."""
+        from blueprints.auth import oauth
+
+        token = getattr(user, 'get_oauth_token', lambda: None)()
+        if not token:
+            return []
+
+        tz_name = os.getenv('DEFAULT_TIMEZONE', 'Europe/Zurich')
+        try:
+            tz = ZoneInfo(tz_name)
+        except Exception:
+            tz = None
+
+        def _to_iso(d):
+            dt = datetime.combine(d, time.min)
+            if tz:
+                dt = dt.replace(tzinfo=tz)
+            return dt.isoformat()
+
+        def _to_iso_end(d):
+            dt = datetime.combine(d, time.min)
+            if tz:
+                dt = dt.replace(tzinfo=tz)
+            return dt.isoformat()
+
+        time_min = _to_iso(start_date)
+        time_max = _to_iso_end(end_date)
+
+        resp = oauth.google.get(
+            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+            params={
+                'timeMin': time_min,
+                'timeMax': time_max,
+                'singleEvents': True,
+                'orderBy': 'startTime'
+            },
+            token=token
+        )
+
+        if resp.status_code != 200:
+            return []
+
+        events = []
+        data = resp.json()
+        for item in data.get('items', []):
+            start = item.get('start', {})
+            end = item.get('end', {})
+            is_all_day = 'date' in start
+            raw_start = start.get('dateTime') or start.get('date')
+            raw_end = end.get('dateTime') or end.get('date')
+
+            def fmt(val, all_day=False):
+                if not val:
+                    return ''
+                if all_day:
+                    return val
+                try:
+                    dt = datetime.fromisoformat(val.replace('Z', '+00:00'))
+                    if tz:
+                        dt = dt.astimezone(tz)
+                    return dt.strftime('%Y-%m-%d %H:%M')
+                except Exception:
+                    return val
+
+            events.append({
+                'title': item.get('summary') or '(No title)',
+                'start': fmt(raw_start, is_all_day),
+                'end': fmt(raw_end, is_all_day),
+                'all_day': is_all_day,
+                'html_link': item.get('htmlLink')
+            })
+
+        return events
 
     def process_rollover_for_user(user):
         """Shift unfinished items forward once per day and break missed streaks."""
@@ -130,12 +206,15 @@ def create_app():
         pending_todos = [t for t in todos_today if t.status == 'pending']
         everything_done = len(pending_todos) == 0 and len(dailies_not_done) == 0 and len(focused_not_done) == 0
         
+        calendar_today = fetch_calendar_events(current_user, today, today + timedelta(days=1))
+
         return render_template('index.html', 
-                             todos=todos_today, 
-                             dailies=dailies_today,
-                     focused_habits=focused_habits,
-                     target_date=target_date,
-                     everything_done=everything_done)
+                     todos=todos_today, 
+                     dailies=dailies_today,
+                 focused_habits=focused_habits,
+                 target_date=target_date,
+                 everything_done=everything_done,
+                 calendar_today=calendar_today)
 
     @app.route('/tomorrow')
     @login_required
@@ -167,13 +246,16 @@ def create_app():
 
         focused_habits = Habit.query.filter_by(user_id=current_user.id, focused=True).order_by(Habit.position.asc(), Habit.id.asc()).all()
 
+        calendar_tomorrow = fetch_calendar_events(current_user, target_date, target_date + timedelta(days=1))
+
         return render_template(
             'tomorrow.html',
             todos=todos_tomorrow,
             dailies=dailies_tomorrow,
             carryover_ids=carryover_ids,
             focused_habits=focused_habits,
-            target_date=target_date
+            target_date=target_date,
+            calendar_tomorrow=calendar_tomorrow
         )
     
     return app

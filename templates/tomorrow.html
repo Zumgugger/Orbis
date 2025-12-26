@@ -11,6 +11,33 @@
     </a>
 </div>
 
+{% if calendar_tomorrow %}
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-calendar-event"></i> Calendar Events (Tomorrow)</div>
+    <div class="list-group list-group-flush">
+        {% for ev in calendar_tomorrow %}
+        <div class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+                <strong>{{ ev.title }}</strong><br>
+                <small class="text-muted">
+                    {% if ev.all_day %}
+                        All-day
+                    {% else %}
+                        {{ ev.start }} – {{ ev.end }}
+                    {% endif %}
+                </small>
+            </div>
+            {% if ev.html_link %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ ev.html_link }}" target="_blank" rel="noopener noreferrer">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% if dailies or todos or focused_habits %}
     {% if focused_habits %}
     <div class="card mb-3">
