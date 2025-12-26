@@ -3,7 +3,7 @@
 {% block title %}{{ idea.title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-elixir@latest/dist/MindElixir.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-elixir@1.1.0/dist/mind-elixir.css">
 <style>
     #mindmap-container {
         height: 600px;
@@ -178,7 +178,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/mind-elixir@latest/dist/MindElixir.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-elixir@1.1.0/dist/mind-elixir.js"></script>
 <script>
     const ideaId = {{ idea.id }};
     let mindElixir;
