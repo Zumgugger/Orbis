@@ -32,12 +32,24 @@ def init_oauth(app):
             app.logger.warning('Failed to load Google client secrets file; falling back to env vars')
 
     oauth.init_app(app)
+
+    def save_token(token, refresh_token=None, access_token=None):
+        # Persist refreshed tokens
+        try:
+            if current_user and current_user.is_authenticated:
+                current_user.oauth_token = json.dumps(token)
+                db.session.commit()
+        except Exception:
+            # Avoid breaking flow if commit fails
+            app.logger.warning('Failed to persist refreshed OAuth token')
+
     oauth.register(
         name='google',
         client_id=client_id,
         client_secret=client_secret,
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-        client_kwargs={'scope': 'openid email profile https://www.googleapis.com/auth/calendar'}
+        client_kwargs={'scope': 'openid email profile https://www.googleapis.com/auth/calendar'},
+        update_token=save_token
     )
 
 @bp.route('/login')
@@ -47,7 +59,8 @@ def login():
     redirect_uri = os.getenv('GOOGLE_REDIRECT_URI')
     if not redirect_uri:
         redirect_uri = url_for('auth.callback', _external=True, _scheme=request.scheme)
-    return oauth.google.authorize_redirect(redirect_uri)
+    # Request offline access to obtain refresh_token
+    return oauth.google.authorize_redirect(redirect_uri, prompt='consent', access_type='offline')
 
 @bp.route('/callback')
 def callback():
@@ -75,7 +88,7 @@ def callback():
                 profile_pic=user_info.get('picture'),
                 role='user',  # Default role
                 created_at=datetime.utcnow(),
-                oauth_token=access_token
+                oauth_token=json.dumps(token)
             )
             db.session.add(user)
             db.session.commit()
@@ -86,7 +99,7 @@ def callback():
             user.last_login = datetime.utcnow()
             user.name = user_info.get('name', user.name)
             user.profile_pic = user_info.get('picture', user.profile_pic)
-            user.oauth_token = access_token
+            user.oauth_token = json.dumps(token)
             db.session.commit()
             flash(f'Welcome back, {user.name}!', 'success')
         

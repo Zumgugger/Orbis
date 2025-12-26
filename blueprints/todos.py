@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from database import db, Todo
 from datetime import datetime, date, timedelta
 import requests
+import os
 
 todos_bp = Blueprint('todos', __name__)
 
@@ -214,14 +215,14 @@ def schedule_todo(todo_id):
             start_time = datetime.strptime(event_time_str, '%H:%M').time()
             start_dt = datetime.combine(event_date, start_time)
             # Default 1 hour duration
-            end_dt = start_dt.replace(hour=(start_dt.hour + 1) % 24)
+            end_dt = start_dt + timedelta(hours=1)
         except ValueError:
             flash('Invalid time format.', 'error')
             return redirect(url_for('todos.list_todos'))
     else:
         # All-day event
-        start_dt = datetime.combine(event_date, datetime.min.time())
-        end_dt = datetime.combine(event_date + timedelta(days=1), datetime.min.time())
+        start_dt = None
+        end_dt = None
     
     # Call Google Calendar API
     try:
@@ -229,31 +230,35 @@ def schedule_todo(todo_id):
         if not token:
             flash('You must authenticate with Google first.', 'error')
             return redirect(url_for('auth.login'))
-        
+
+        tz = os.getenv('DEFAULT_TIMEZONE', 'Europe/Zurich')
         event = {
             'summary': todo.title,
-            'description': todo.description or '',
-            'start': {
-                'dateTime': start_dt.isoformat(),
-                'timeZone': 'UTC'
-            },
-            'end': {
-                'dateTime': end_dt.isoformat(),
-                'timeZone': 'UTC'
-            }
+            'description': todo.description or ''
         }
-        
-        headers = {'Authorization': f'Bearer {token}'}
-        response = requests.post(
+        if start_dt and end_dt:
+            event['start'] = {'dateTime': start_dt.isoformat(), 'timeZone': tz}
+            event['end'] = {'dateTime': end_dt.isoformat(), 'timeZone': tz}
+        else:
+            event['start'] = {'date': event_date.isoformat()}
+            event['end'] = {'date': (event_date + timedelta(days=1)).isoformat()}
+
+        # Use Authlib client to handle token/refresh
+        from blueprints.auth import oauth
+        response = oauth.google.post(
             'https://www.googleapis.com/calendar/v3/calendars/primary/events',
             json=event,
-            headers=headers
+            token=token
         )
         
-        if response.status_code == 200:
+        if response.status_code in (200, 201):
             flash('Todo scheduled in Google Calendar!', 'success')
         else:
-            flash(f'Failed to schedule: {response.text}', 'error')
+            try:
+                err = response.json()
+            except Exception:
+                err = response.text
+            flash(f'Failed to schedule: {err}', 'error')
     except Exception as e:
         flash(f'Error scheduling event: {str(e)}', 'error')
     

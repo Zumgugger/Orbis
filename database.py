@@ -14,6 +14,7 @@ def init_db(app):
     with app.app_context():
         db.create_all()
         _ensure_habit_columns()
+        _ensure_user_columns()
 
 
 def _ensure_habit_columns():
@@ -33,6 +34,19 @@ def _ensure_habit_columns():
     if ddl:
         db.session.commit()
 
+def _ensure_user_columns():
+    """Add missing user columns for OAuth token (SQLite-safe)."""
+    from sqlalchemy import inspect, text
+    insp = inspect(db.engine)
+    columns = {col['name'] for col in insp.get_columns('users')}
+    ddl = []
+    if 'oauth_token' not in columns:
+        ddl.append('ALTER TABLE users ADD COLUMN oauth_token TEXT')
+    for stmt in ddl:
+        db.session.execute(text(stmt))
+    if ddl:
+        db.session.commit()
+
 class User(UserMixin, db.Model):
     """User model for authentication"""
     __tablename__ = 'users'
@@ -45,18 +59,26 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default='user')  # 'admin' or 'user'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, default=datetime.utcnow)
-    oauth_token = db.Column(db.Text, nullable=True)  # Store OAuth access token for API calls
+    oauth_token = db.Column(db.Text, nullable=True)  # Store OAuth token JSON (access+refresh)
     
     def __repr__(self):
         return f'<User {self.id}: {self.email}>'
     
     def get_oauth_token(self):
-        """Retrieve stored OAuth access token"""
-        return self.oauth_token
+        """Retrieve stored OAuth token as dict"""
+        if not self.oauth_token:
+            return None
+        try:
+            return json.loads(self.oauth_token)
+        except Exception:
+            return None
     
     def set_oauth_token(self, token):
-        """Store OAuth access token"""
-        self.oauth_token = token
+        """Store OAuth token (dict or string)"""
+        try:
+            self.oauth_token = json.dumps(token) if isinstance(token, dict) else token
+        except Exception:
+            self.oauth_token = token
         db.session.commit()
     
     def is_admin(self):
