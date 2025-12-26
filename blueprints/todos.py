@@ -198,6 +198,8 @@ def schedule_todo(todo_id):
     
     event_date_str = request.form.get('event_date')
     event_time_str = request.form.get('event_time')
+    duration_hours_str = request.form.get('duration_hours') or '1'
+    duration_minutes_str = request.form.get('duration_minutes') or '0'
     
     if not event_date_str:
         flash('Date is required to schedule.', 'error')
@@ -214,8 +216,18 @@ def schedule_todo(todo_id):
         try:
             start_time = datetime.strptime(event_time_str, '%H:%M').time()
             start_dt = datetime.combine(event_date, start_time)
-            # Default 1 hour duration
-            end_dt = start_dt + timedelta(hours=1)
+            # Duration from form (defaults to 1 hour)
+            try:
+                dh = max(0, int(duration_hours_str))
+            except Exception:
+                dh = 1
+            try:
+                dm = max(0, int(duration_minutes_str))
+            except Exception:
+                dm = 0
+            if dh == 0 and dm == 0:
+                dh = 1
+            end_dt = start_dt + timedelta(hours=dh, minutes=dm)
         except ValueError:
             flash('Invalid time format.', 'error')
             return redirect(url_for('todos.list_todos'))

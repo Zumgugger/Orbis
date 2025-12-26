@@ -151,6 +151,16 @@
                         <input type="time" class="form-control" id="event_time{{ todo.id }}" name="event_time">
                         <small class="text-muted">Leave blank for all-day event</small>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Duration</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="duration_hours" min="0" max="12" value="1" aria-label="Hours">
+                            <span class="input-group-text">hours</span>
+                            <input type="number" class="form-control" name="duration_minutes" min="0" max="55" step="5" value="0" aria-label="Minutes">
+                            <span class="input-group-text">minutes</span>
+                        </div>
+                        <small class="text-muted">Defaults to 1 hour if left at 0:00.</small>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
