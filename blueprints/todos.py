@@ -7,6 +7,7 @@ from database import db, Todo
 from datetime import datetime, date, timedelta
 import requests
 import os
+from time_utils import today_local, tomorrow_local, now_local, get_local_tz
 
 todos_bp = Blueprint('todos', __name__)
 
@@ -60,7 +61,7 @@ def create_todo():
 @login_required
 def create_todo_today():
     """Create a new todo due today without showing date picker"""
-    preset_date = date.today()
+    preset_date = today_local()
     if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description')
@@ -90,7 +91,7 @@ def create_todo_today():
 @login_required
 def create_todo_tomorrow():
     """Create a new todo due tomorrow without showing date picker"""
-    preset_date = date.today() + timedelta(days=1)
+    preset_date = tomorrow_local()
     if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description')
@@ -212,13 +213,13 @@ def schedule_todo(todo_id):
         return redirect(url_for('todos.list_todos'))
     
     # Warn if scheduling in the past
-    if event_date < date.today():
+    if event_date < today_local():
         flash('Warning: You are scheduling an event in the past.', 'warning')
-    elif event_date == date.today() and event_time_str:
+    elif event_date == today_local() and event_time_str:
         try:
             event_time_obj = datetime.strptime(event_time_str, '%H:%M').time()
-            now = datetime.now()
-            if datetime.combine(event_date, event_time_obj) < now:
+            now = now_local()
+            if datetime.combine(event_date, event_time_obj, tzinfo=now.tzinfo) < now:
                 flash('Warning: You are scheduling an event in the past.', 'warning')
         except ValueError:
             pass
@@ -227,7 +228,8 @@ def schedule_todo(todo_id):
     if event_time_str:
         try:
             start_time = datetime.strptime(event_time_str, '%H:%M').time()
-            start_dt = datetime.combine(event_date, start_time)
+            tzinfo = get_local_tz()
+            start_dt = datetime.combine(event_date, start_time, tzinfo=tzinfo)
             # Duration from form (defaults to 1 hour)
             try:
                 dh = max(0, int(duration_hours_str))
@@ -250,7 +252,8 @@ def schedule_todo(todo_id):
     
     # Call Google Calendar API
     try:
-        token = current_user.get_oauth_token()
+        from blueprints.auth import get_google_token_for_user
+        token = get_google_token_for_user(current_user)
         if not token:
             flash('You must authenticate with Google first.', 'error')
             return redirect(url_for('auth.login'))

@@ -6,12 +6,12 @@ from flask import Flask, render_template, redirect, url_for, session
 from flask_login import LoginManager, login_required, current_user
 from database import init_db, db, Todo, Daily, User, RolloverState, MasterCategory, MasterSection, Habit
 from datetime import datetime, date, timedelta, time
-from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from markupsafe import Markup
 from markdown import markdown as md_to_html
 from flask_wtf import CSRFProtect
 import os
+from time_utils import get_local_tz, today_local, tomorrow_local, iso_start_of_day
 
 # Load environment variables
 load_dotenv()
@@ -78,20 +78,10 @@ def create_app():
         if not token:
             return []
 
-        tz_name = os.getenv('DEFAULT_TIMEZONE', 'Europe/Zurich')
-        try:
-            tz = ZoneInfo(tz_name)
-        except Exception:
-            tz = None
+        tz = get_local_tz()
 
-        def _to_iso(d):
-            dt = datetime.combine(d, time.min)
-            if tz:
-                dt = dt.replace(tzinfo=tz)
-            return dt.isoformat()
-
-        time_min = _to_iso(start_date)
-        time_max = _to_iso(end_date)
+        time_min = iso_start_of_day(start_date)
+        time_max = iso_start_of_day(end_date)
 
         try:
             resp = oauth.google.get(
@@ -191,7 +181,7 @@ def create_app():
     def index():
         process_rollover_for_user(current_user)
         # Get todos due today for current user (all, including completed)
-        today = date.today()
+        today = today_local()
         target_date = today
         todos_today = Todo.query.filter(
             Todo.user_id == current_user.id,
@@ -242,7 +232,7 @@ def create_app():
     def tomorrow():
         process_rollover_for_user(current_user)
 
-        today = date.today()
+        today = today_local()
         target_date = today + timedelta(days=1)
 
         todos_tomorrow = Todo.query.filter(
