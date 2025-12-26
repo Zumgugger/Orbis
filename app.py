@@ -61,7 +61,6 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(masterprompts_bp, url_prefix='/masterprompts')
     app.register_blueprint(ideas_bp)
-    app.register_blueprint(masterprompts_bp, url_prefix='/masterprompts')
 
     def fetch_calendar_events(user, start_date, end_date):
         """Fetch primary calendar events between start_date (inclusive) and end_date (exclusive)."""
