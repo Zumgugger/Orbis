@@ -153,13 +153,16 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Duration</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" name="duration_hours" min="0" max="12" value="1" aria-label="Hours">
+                        <div class="input-group mb-2">
+                            <input type="number" class="form-control" id="duration_hours{{ todo.id }}" name="duration_hours" min="0" max="12" value="0" aria-label="Hours">
                             <span class="input-group-text">hours</span>
-                            <input type="number" class="form-control" name="duration_minutes" min="0" max="55" step="5" value="0" aria-label="Minutes">
+                            <input type="number" class="form-control" id="duration_minutes{{ todo.id }}" name="duration_minutes" min="0" max="55" step="5" value="45" aria-label="Minutes">
                             <span class="input-group-text">minutes</span>
                         </div>
-                        <small class="text-muted">Defaults to 1 hour if left at 0:00.</small>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuration{{ todo.id }}(0, 30)">30 min</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuration{{ todo.id }}(2, 0)">2 hours</button>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -173,4 +176,13 @@
     </div>
 </div>
 {% endfor %}
+
+<script>
+{% for todo in pending %}
+function setDuration{{ todo.id }}(hours, minutes) {
+    document.getElementById('duration_hours{{ todo.id }}').value = hours;
+    document.getElementById('duration_minutes{{ todo.id }}').value = minutes;
+}
+{% endfor %}
+</script>
 {% endblock %}

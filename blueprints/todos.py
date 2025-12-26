@@ -211,6 +211,18 @@ def schedule_todo(todo_id):
         flash('Invalid date format.', 'error')
         return redirect(url_for('todos.list_todos'))
     
+    # Warn if scheduling in the past
+    if event_date < date.today():
+        flash('Warning: You are scheduling an event in the past.', 'warning')
+    elif event_date == date.today() and event_time_str:
+        try:
+            event_time_obj = datetime.strptime(event_time_str, '%H:%M').time()
+            now = datetime.now()
+            if datetime.combine(event_date, event_time_obj) < now:
+                flash('Warning: You are scheduling an event in the past.', 'warning')
+        except ValueError:
+            pass
+    
     # Build event start/end time
     if event_time_str:
         try:
@@ -226,7 +238,7 @@ def schedule_todo(todo_id):
             except Exception:
                 dm = 0
             if dh == 0 and dm == 0:
-                dh = 1
+                dm = 45
             end_dt = start_dt + timedelta(hours=dh, minutes=dm)
         except ValueError:
             flash('Invalid time format.', 'error')
