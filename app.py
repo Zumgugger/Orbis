@@ -50,6 +50,7 @@ def create_app():
     from blueprints.auth import bp as auth_bp
     from blueprints.admin import bp as admin_bp
     from blueprints.masterprompts import bp as masterprompts_bp
+    from blueprints.ideas import ideas_bp
     
     app.register_blueprint(todos_bp, url_prefix='/todos')
     app.register_blueprint(dailies_bp, url_prefix='/dailies')
@@ -58,6 +59,8 @@ def create_app():
     app.register_blueprint(shopping_bp, url_prefix='/shopping')
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(masterprompts_bp, url_prefix='/masterprompts')
+    app.register_blueprint(ideas_bp)
     app.register_blueprint(masterprompts_bp, url_prefix='/masterprompts')
 
     def fetch_calendar_events(user, start_date, end_date):

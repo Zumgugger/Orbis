@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Ideas{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-lightbulb"></i> Ideas</h1>
+
+<div class="mb-3">
+    <a href="{{ url_for('ideas.create_idea') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Idea
+    </a>
+</div>
+
+{% if ideas %}
+    <div class="row">
+        {% for idea in ideas %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ idea.title }}</h5>
+                    {% if idea.description %}
+                        <p class="card-text text-muted">{{ idea.description[:100] }}{% if idea.description|length > 100 %}...{% endif %}</p>
+                    {% endif %}
+                    <div class="d-flex gap-2 mt-3">
+                        <span class="badge bg-secondary" title="Has notes">
+                            <i class="bi bi-journal-text"></i> {% if idea.notes %}✓{% else %}–{% endif %}
+                        </span>
+                        <span class="badge bg-info" title="Has mindmap">
+                            <i class="bi bi-diagram-3"></i> {% if idea.mindmap_data %}✓{% else %}–{% endif %}
+                        </span>
+                        <span class="badge bg-success" title="Attachments">
+                            <i class="bi bi-paperclip"></i> {{ idea.files|length }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Updated {{ idea.updated_at.strftime('%Y-%m-%d') }}</small>
+                        <div>
+                            <a href="{{ url_for('ideas.view_idea', idea_id=idea.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No ideas yet. Create your first idea!
+    </div>
+{% endif %}
+
+{% endblock %}

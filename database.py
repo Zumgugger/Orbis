@@ -575,3 +575,51 @@ class MasterSection(db.Model):
 
     def __repr__(self):
         return f'<MasterSection {self.id}: {self.title}>'
+
+class Idea(db.Model):
+    """Idea model for storing ideas with notes, mindmaps, and files"""
+    __tablename__ = 'ideas'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)  # Markdown notes
+    mindmap_data = db.Column(db.Text, nullable=True)  # JSON mindmap data
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    files = db.relationship('IdeaFile', backref='idea', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Idea {self.id}: {self.title}>'
+    
+    def get_mindmap_data(self):
+        """Get mindmap data as dict"""
+        if not self.mindmap_data:
+            return None
+        try:
+            return json.loads(self.mindmap_data)
+        except:
+            return None
+    
+    def set_mindmap_data(self, data):
+        """Set mindmap data from dict"""
+        try:
+            self.mindmap_data = json.dumps(data) if isinstance(data, dict) else data
+        except:
+            self.mindmap_data = data
+
+class IdeaFile(db.Model):
+    """File attachments for ideas"""
+    __tablename__ = 'idea_files'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    idea_id = db.Column(db.Integer, db.ForeignKey('ideas.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    filepath = db.Column(db.String(500), nullable=False)
+    filesize = db.Column(db.Integer, nullable=True)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<IdeaFile {self.id}: {self.filename}>'
