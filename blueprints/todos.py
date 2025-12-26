@@ -244,9 +244,12 @@ def schedule_todo(todo_id):
             return redirect(url_for('auth.login'))
 
         tz = os.getenv('DEFAULT_TIMEZONE', 'Europe/Zurich')
+        title = (str(todo.title).strip() if todo.title else '').strip()
+        if not title:
+            title = f'Todo #{todo.id}'
         event = {
-            'summary': todo.title,
-            'description': todo.description or ''
+            'summary': title,
+            'description': (todo.description or '')
         }
         if start_dt and end_dt:
             event['start'] = {'dateTime': start_dt.isoformat(), 'timeZone': tz}
@@ -257,6 +260,13 @@ def schedule_todo(todo_id):
 
         # Use Authlib client to handle token/refresh
         from blueprints.auth import oauth
+        # Debug: log outgoing event structure
+        try:
+            from flask import current_app
+            current_app.logger.info(f'Creating calendar event: {event}')
+        except Exception:
+            pass
+
         response = oauth.google.post(
             'https://www.googleapis.com/calendar/v3/calendars/primary/events',
             json=event,
