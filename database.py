@@ -233,6 +233,66 @@ class Daily(db.Model):
                     self.streak_count = 1
             
             self.last_completed_date = today
+
+    def toggle_completion_on(self, target_date):
+        """Toggle completion for a specific date (used for early scratch on Tomorrow)."""
+        if not isinstance(target_date, date):
+            return
+
+        if self.is_completed_on(target_date):
+            # Uncomplete for target date
+            self.streak_count = max(0, self.streak_count - 1)
+            self.total_completions = max(0, self.total_completions - 1)
+            if self.streak_count > 0:
+                self.last_completed_date = target_date - timedelta(days=1)
+            else:
+                self.last_completed_date = None
+            return
+
+        # Complete for target date
+        self.total_completions += 1
+
+        if self.frequency == 'daily':
+            # Streak logic analogous to toggle_completion but using target_date
+            if self.last_completed_date:
+                days_since = (target_date - self.last_completed_date).days
+                if days_since == self.frequency_interval:
+                    self.streak_count += 1
+                else:
+                    self.streak_count = 1
+            else:
+                self.streak_count = 1
+        elif self.frequency == 'weekly':
+            if self.last_completed_date:
+                days_since = (target_date - self.last_completed_date).days
+                week_interval = 7 * self.frequency_interval
+                if days_since >= week_interval and days_since < (week_interval + 7):
+                    self.streak_count += 1
+                else:
+                    self.streak_count = 1
+            else:
+                self.streak_count = 1
+        elif self.frequency == 'monthly':
+            if self.last_completed_date:
+                days_since = (target_date - self.last_completed_date).days
+                month_interval = 30 * self.frequency_interval
+                if days_since >= month_interval and days_since < (month_interval + 30):
+                    self.streak_count += 1
+                else:
+                    self.streak_count = 1
+            else:
+                self.streak_count = 1
+        elif self.frequency == 'custom':
+            if self.last_completed_date:
+                days_since = (target_date - self.last_completed_date).days
+                if days_since == 1:
+                    self.streak_count += 1
+                else:
+                    self.streak_count = 1
+            else:
+                self.streak_count = 1
+
+        self.last_completed_date = target_date
     
     def to_dict(self):
         """Convert to dictionary"""

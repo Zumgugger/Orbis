@@ -4,6 +4,7 @@ Dailies Blueprint - handles recurring daily tasks
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from database import db, Daily
+from datetime import datetime
 import json
 
 dailies_bp = Blueprint('dailies', __name__)
@@ -122,5 +123,32 @@ def delete_daily(daily_id):
     db.session.delete(daily)
     db.session.commit()
     flash('Daily deleted successfully!', 'success')
+    return redirect(url_for('dailies.list_dailies'))
+
+@dailies_bp.route('/<int:daily_id>/toggle_for_date', methods=['POST'])
+@login_required
+def toggle_for_date(daily_id):
+    """Toggle completion for a specific date (used on Tomorrow). Disabled for daily frequency."""
+    daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
+    target_date_str = request.form.get('target_date')
+    next_page = request.args.get('next') or request.form.get('next')
+    if not target_date_str:
+        flash('No target date provided.', 'error')
+        return redirect(next_page or url_for('dailies.list_dailies'))
+    try:
+        target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Invalid target date.', 'error')
+        return redirect(next_page or url_for('dailies.list_dailies'))
+
+    if daily.frequency == 'daily':
+        flash('Daily repetition cannot be scratched early.', 'warning')
+        return redirect(next_page or url_for('dailies.list_dailies'))
+
+    daily.toggle_completion_on(target_date)
+    db.session.commit()
+
+    if next_page:
+        return redirect(next_page)
     return redirect(url_for('dailies.list_dailies'))
 

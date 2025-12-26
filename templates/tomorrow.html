@@ -20,12 +20,6 @@
         <div class="list-group list-group-flush">
             {% for habit in focused_habits %}
             <div class="list-group-item d-flex align-items-center gap-3 {% if habit.last_increment_date == target_date %}bg-light{% endif %}">
-                <form action="{{ url_for('habits.increment_habit', habit_id=habit.id) }}?next=/tomorrow" method="POST" class="d-inline">
-                    <input type="hidden" name="target_date" value="{{ target_date }}">
-                    <button class="btn btn-success btn-sm" type="submit" title="First +1 scratches for {{ target_date.strftime('%Y-%m-%d') }}">
-                        <i class="bi bi-plus-circle-fill"></i>
-                    </button>
-                </form>
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center gap-2">
                         <span class="fw-semibold {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</span>
@@ -46,12 +40,15 @@
         <div class="list-group list-group-flush">
             <!-- Dailies first -->
             {% for daily in dailies %}
-            <div class="list-group-item">
+            <div class="list-group-item {% if daily.is_completed_on(target_date) %}bg-light{% endif %}">
                 <div class="d-flex align-items-start gap-3">
-                    <input type="checkbox" class="form-check-input mt-1" disabled>
+                    <form action="{{ url_for('dailies.toggle_for_date', daily_id=daily.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <input type="hidden" name="target_date" value="{{ target_date }}">
+                        <input type="checkbox" class="form-check-input mt-1" {% if daily.is_completed_on(target_date) %}checked{% endif %} {% if daily.frequency == 'daily' %}disabled{% else %}onchange="this.form.submit()"{% endif %}>
+                    </form>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                            <strong>{{ daily.title }}</strong>
+                            <strong class="{% if daily.is_completed_on(target_date) %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</strong>
                             {% if daily.id in carryover_ids %}
                                 <span class="badge bg-warning text-dark"><i class="bi bi-arrow-return-right"></i> Carry over</span>
                             {% else %}
@@ -82,12 +79,14 @@
 
             <!-- Todos next -->
             {% for todo in todos %}
-            <div class="list-group-item">
+            <div class="list-group-item {% if todo.status == 'completed' %}bg-light{% endif %}">
                 <div class="d-flex align-items-start gap-3">
-                    <input type="checkbox" class="form-check-input mt-1" disabled>
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <input type="checkbox" class="form-check-input mt-1" {% if todo.status == 'completed' %}checked{% endif %} onchange="this.form.submit()">
+                    </form>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                            <strong>{{ todo.title }}</strong>
+                            <strong class="{% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</strong>
                             <span class="badge bg-{{ 'danger' if todo.priority == 'high' else 'warning' if todo.priority == 'medium' else 'success' }}">
                                 {{ todo.priority|title }}
                             </span>
