@@ -2,11 +2,12 @@
 Authentication Blueprint
 Handles Google OAuth login/logout
 """
-from flask import Blueprint, redirect, url_for, session, flash, request
+from flask import Blueprint, redirect, url_for, session, flash, request, current_app
 from authlib.integrations.flask_client import OAuth
 from flask_login import login_user, logout_user, login_required, current_user
 from database import db, User
 from datetime import datetime
+import time
 import os
 import json
 
@@ -34,7 +35,7 @@ def init_oauth(app):
     oauth.init_app(app)
 
     def save_token(token, refresh_token=None, access_token=None):
-        # Persist refreshed tokens
+        """Persist refreshed tokens when Authlib refreshes in-session."""
         try:
             if current_user and current_user.is_authenticated:
                 current_user.oauth_token = json.dumps(token)
@@ -51,6 +52,39 @@ def init_oauth(app):
         client_kwargs={'scope': 'openid email profile https://www.googleapis.com/auth/calendar'},
         update_token=save_token
     )
+
+
+def get_google_token_for_user(user, logger=None):
+    """Return a valid Google token for the user; attempt refresh if expired.
+
+    Returns None if no usable token is available.
+    """
+    if not user:
+        return None
+
+    token = getattr(user, 'get_oauth_token', lambda: None)()
+    if not token:
+        return None
+
+    try:
+        expires_at = token.get('expires_at')
+        refresh_token = token.get('refresh_token')
+        now = time.time()
+
+        # If token is expired or expiring within 60s, try to refresh
+        if expires_at and expires_at - now <= 60 and refresh_token:
+            token_endpoint = oauth.google._client.server_metadata.get('token_endpoint')
+            new_token = oauth.google.refresh_token(token_endpoint, refresh_token=refresh_token)
+            # Persist refreshed token
+            user.set_oauth_token(new_token)
+            token = new_token
+
+    except Exception as exc:
+        log = logger or current_app.logger
+        log.warning(f'Failed to refresh Google token for user {getattr(user, "id", "?")}: {exc}')
+        return None
+
+    return token
 
 @bp.route('/login')
 def login():

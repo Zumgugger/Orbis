@@ -64,9 +64,9 @@ def create_app():
 
     def fetch_calendar_events(user, start_date, end_date):
         """Fetch primary calendar events between start_date (inclusive) and end_date (exclusive)."""
-        from blueprints.auth import oauth
+        from blueprints.auth import oauth, get_google_token_for_user
 
-        token = getattr(user, 'get_oauth_token', lambda: None)()
+        token = get_google_token_for_user(user, logger=app.logger)
         if not token:
             return []
 
@@ -85,18 +85,23 @@ def create_app():
         time_min = _to_iso(start_date)
         time_max = _to_iso(end_date)
 
-        resp = oauth.google.get(
-            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-            params={
-                'timeMin': time_min,
-                'timeMax': time_max,
-                'singleEvents': True,
-                'orderBy': 'startTime'
-            },
-            token=token
-        )
+        try:
+            resp = oauth.google.get(
+                'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                params={
+                    'timeMin': time_min,
+                    'timeMax': time_max,
+                    'singleEvents': True,
+                    'orderBy': 'startTime'
+                },
+                token=token
+            )
+        except Exception as exc:
+            app.logger.warning(f'Calendar fetch failed: {exc}')
+            return []
 
         if resp.status_code != 200:
+            app.logger.warning(f'Calendar fetch returned {resp.status_code}: {resp.text}')
             return []
 
         events = []
