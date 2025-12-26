@@ -3,7 +3,6 @@
 {% block title %}{{ idea.title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-elixir@1.1.0/dist/mind-elixir.css">
 <style>
     #mindmap-container {
         height: 600px;
@@ -178,7 +177,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/mind-elixir@1.1.0/dist/mind-elixir.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-elixir@0.18.1/dist/MindElixir.js"></script>
 <script>
     const ideaId = {{ idea.id }};
     let mindElixir;
@@ -223,9 +222,8 @@
     
     document.getElementById('mindmap-tab').addEventListener('shown.bs.tab', () => {
         if (!mindElixir) {
-            const container = document.getElementById('mindmap-container');
             mindElixir = new MindElixir({
-                el: container,
+                el: '#mindmap-container',
                 direction: MindElixir.RIGHT,
                 data: mindmapData || defaultData,
                 draggable: true,
@@ -254,19 +252,11 @@
             return;
         }
         
-        let node = mindElixir.getSelectedNode();
-        // If no node selected, select root
-        if (!node && mindElixir.nodeData) {
-            mindElixir.selectNode(mindElixir.nodeData.id);
-            node = mindElixir.getSelectedNode();
-        }
-        
-        if (node) {
-            const newNode = mindElixir.addChild(node.id);
-            // Auto-select the new node
-            if (newNode) {
-                setTimeout(() => mindElixir.selectNode(newNode.id), 50);
-            }
+        // Add child to currently selected node (or root if none selected)
+        try {
+            mindElixir.addChild();
+        } catch (e) {
+            console.error('Error adding child:', e);
         }
     });
     
@@ -275,21 +265,12 @@
             return;
         }
         
-        const node = mindElixir.getSelectedNode();
-        if (!node) {
-            alert('Please select a node first by clicking on it');
-            return;
-        }
-        
-        if (node.root) {
-            alert('Cannot add sibling to root node. Use "Add Node" instead.');
-            return;
-        }
-        
-        const newNode = mindElixir.insertSibling(node.id);
-        // Auto-select the new node
-        if (newNode) {
-            setTimeout(() => mindElixir.selectNode(newNode.id), 50);
+        // Add sibling to currently selected node
+        try {
+            mindElixir.insertSibling();
+        } catch (e) {
+            console.error('Error adding sibling:', e);
+            alert('Please select a node first (not the root)');
         }
     });
     
@@ -298,19 +279,14 @@
             return;
         }
         
-        const node = mindElixir.getSelectedNode();
-        if (!node) {
-            alert('Please select a node first by clicking on it');
-            return;
-        }
-        
-        if (node.root) {
-            alert('Cannot delete root node');
-            return;
-        }
-        
+        // Remove currently selected node
         if (confirm('Delete this node and all its children?')) {
-            mindElixir.removeNode(node.id);
+            try {
+                mindElixir.removeNode();
+            } catch (e) {
+                console.error('Error removing node:', e);
+                alert('Cannot delete root node or no node selected');
+            }
         }
     });
     
