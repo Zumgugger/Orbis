@@ -57,12 +57,26 @@ def cleanup_database(app):
     yield
     # Clean up after test runs
     with app.app_context():
-        # Delete test data by title patterns
-        db.session.query(Todo).filter(Todo.title.like('%Test%')).delete(synchronize_session=False)
-        db.session.query(Idea).filter(Idea.title.like('%Test%')).delete(synchronize_session=False)
+        # Get all test user IDs
+        test_users = db.session.query(User.id).filter(
+            (User.email.like('%test%')) | (User.email.like('%other%'))
+        ).all()
+        test_user_ids = [user.id for user in test_users]
+        
+        if test_user_ids:
+            # Delete all data belonging to test users (catches title changes)
+            db.session.query(Todo).filter(Todo.user_id.in_(test_user_ids)).delete(synchronize_session=False)
+            db.session.query(Idea).filter(Idea.user_id.in_(test_user_ids)).delete(synchronize_session=False)
+            db.session.query(Daily).filter(Daily.user_id.in_(test_user_ids)).delete(synchronize_session=False)
+            db.session.query(Habit).filter(Habit.user_id.in_(test_user_ids)).delete(synchronize_session=False)
+            db.session.query(Goal).filter(Goal.user_id.in_(test_user_ids)).delete(synchronize_session=False)
+            db.session.query(ShoppingList).filter(ShoppingList.user_id.in_(test_user_ids)).delete(synchronize_session=False)
+            
         # Clean up test users
-        db.session.query(User).filter(User.email.like('%test%')).delete(synchronize_session=False)
-        db.session.query(User).filter(User.email.like('%other%')).delete(synchronize_session=False)
+        db.session.query(User).filter(
+            (User.email.like('%test%')) | (User.email.like('%other%'))
+        ).delete(synchronize_session=False)
+        
         db.session.commit()
 
 
