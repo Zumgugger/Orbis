@@ -19,6 +19,9 @@ instance/
 .webassets-cache
 *.db
 
+# Uploads
+uploads/
+
 # IDEs
 .vscode/
 .idea/

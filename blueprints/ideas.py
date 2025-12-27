@@ -8,16 +8,16 @@ from sqlalchemy.orm import load_only, selectinload
 from datetime import datetime
 import os
 import json
-from werkzeug.utils import secure_filename
 from validation import validate_title, validate_text, ValidationError
+from file_security import (
+    save_uploaded_file,
+    delete_uploaded_file,
+    get_file_path,
+    FileSecurityError,
+    UPLOAD_BASE_DIR
+)
 
 ideas_bp = Blueprint('ideas', __name__, url_prefix='/ideas')
-
-UPLOAD_FOLDER = 'instance/idea_files'
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'md'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @ideas_bp.route('/')
 @login_required
@@ -149,7 +149,7 @@ def save_mindmap(idea_id):
 @ideas_bp.route('/<int:idea_id>/upload_file', methods=['POST'])
 @login_required
 def upload_file(idea_id):
-    """Upload a file attachment"""
+    """Upload a file attachment with security validation"""
     try:
         idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
         
@@ -157,48 +157,36 @@ def upload_file(idea_id):
             return jsonify({'success': False, 'error': 'No file provided'}), 400
         
         file = request.files['file']
-        if file.filename == '':
+        if not file or file.filename == '':
             return jsonify({'success': False, 'error': 'No file selected'}), 400
         
-        if not file or not allowed_file(file.filename):
-            return jsonify({'success': False, 'error': 'Invalid file type'}), 400
+        # Use secure file upload with validation
+        try:
+            file_metadata = save_uploaded_file(file, file.filename)
+        except FileSecurityError as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
         
-        # Create upload folder if it doesn't exist
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        
-        filename = secure_filename(file.filename)
-        if not filename:
-            return jsonify({'success': False, 'error': 'Invalid filename'}), 400
-        
-        # Add timestamp to avoid conflicts
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{timestamp}_{filename}"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        
-        file.save(filepath)
-        filesize = os.path.getsize(filepath)
-        
-        # Check file size limit (10MB)
-        if filesize > 10 * 1024 * 1024:
-            os.remove(filepath)
-            return jsonify({'success': False, 'error': 'File too large (max 10MB)'}), 400
-        
+        # Save to database
         idea_file = IdeaFile(
             idea_id=idea.id,
-            filename=file.filename,
-            filepath=filepath,
-            filesize=filesize
+            filename=file_metadata['filename'],
+            filepath=file_metadata['filepath'],
+            filesize=file_metadata['filesize']
         )
         db.session.add(idea_file)
         idea.updated_at = datetime.utcnow()
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'File uploaded successfully', 'file': {
-            'id': idea_file.id,
-            'filename': idea_file.filename,
-            'filesize': idea_file.filesize,
-            'uploaded_at': idea_file.uploaded_at.isoformat()
-        }})
+        return jsonify({
+            'success': True,
+            'message': 'File uploaded successfully',
+            'file': {
+                'id': idea_file.id,
+                'filename': idea_file.filename,
+                'filesize': idea_file.filesize,
+                'uploaded_at': idea_file.uploaded_at.isoformat()
+            }
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': 'Failed to upload file'}), 500
@@ -206,16 +194,19 @@ def upload_file(idea_id):
 @ideas_bp.route('/<int:idea_id>/delete_file/<int:file_id>', methods=['POST'])
 @login_required
 def delete_file(idea_id, file_id):
-    """Delete a file attachment"""
+    """Delete a file attachment with path validation"""
     try:
         idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
         idea_file = IdeaFile.query.filter_by(id=file_id, idea_id=idea.id).first_or_404()
         
-        # Delete physical file
+        # Securely delete physical file
         try:
-            if os.path.exists(idea_file.filepath):
-                os.remove(idea_file.filepath)
-        except:
+            delete_uploaded_file(idea_file.filepath)
+        except FileSecurityError as e:
+            # Log security violation but continue with DB deletion
+            pass
+        except Exception:
+            # Ignore file deletion errors (file may not exist)
             pass
         
         db.session.delete(idea_file)
@@ -230,12 +221,17 @@ def delete_file(idea_id, file_id):
 @ideas_bp.route('/<int:idea_id>/download_file/<int:file_id>')
 @login_required
 def download_file(idea_id, file_id):
-    """Download a file attachment"""
+    """Download a file attachment with path validation"""
     idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
     idea_file = IdeaFile.query.filter_by(id=file_id, idea_id=idea.id).first_or_404()
     
-    if os.path.exists(idea_file.filepath):
-        return send_file(idea_file.filepath, as_attachment=True, download_name=idea_file.filename)
-    
-    flash('File not found', 'error')
-    return redirect(url_for('ideas.view_idea', idea_id=idea.id))
+    try:
+        # Get validated file path
+        validated_path = get_file_path(idea_file.filepath)
+        return send_file(validated_path, as_attachment=True, download_name=idea_file.filename)
+    except FileSecurityError as e:
+        flash(f'Security error: {str(e)}', 'error')
+        return redirect(url_for('ideas.view_idea', idea_id=idea.id))
+    except Exception:
+        flash('File not found', 'error')
+        return redirect(url_for('ideas.view_idea', idea_id=idea.id))
