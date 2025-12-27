@@ -15,6 +15,12 @@
         </a>
     </div>
 </div>
+<div class="progress mb-3" style="height: 20px;">
+    <div class="progress-bar bg-success" role="progressbar" style="width: {{ tomorrow_progress_percent }}%;" aria-valuenow="{{ tomorrow_progress_percent }}" aria-valuemin="0" aria-valuemax="100">
+        {{ tomorrow_progress_percent }}%
+    </div>
+</div>
+<small class="text-muted d-block mb-3">{{ tomorrow_completed }}/{{ tomorrow_total }} completed</small>
 
 {% if calendar_tomorrow %}
 <div class="card mb-3">

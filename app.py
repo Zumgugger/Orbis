@@ -255,6 +255,15 @@ def create_app():
         pending_todos = [t for t in todos_today if t.status == 'pending']
         everything_done = len(pending_todos) == 0 and len(dailies_not_done) == 0 and len(focused_not_done) == 0
         
+        # Progress for Today
+        total_today = len(dailies_today) + len(todos_today) + len(focused_habits)
+        completed_today = (
+            len([d for d in dailies_today if d.is_completed_today()]) +
+            len([t for t in todos_today if t.status == 'completed']) +
+            len([h for h in focused_habits if h.last_increment_date == today])
+        )
+        today_progress_percent = int(round((completed_today / total_today) * 100)) if total_today > 0 else 0
+        
         # Fetch calendar events and combine with todos
         calendar_today = fetch_calendar_events(current_user, today, today + timedelta(days=1))
         combined_todos = combine_todos_and_calendar(todos_today, calendar_today, 'Today')
@@ -262,10 +271,13 @@ def create_app():
         return render_template('index.html', 
                      todos=todos_today, 
                      dailies=dailies_today,
-                 focused_habits=focused_habits,
-                 target_date=target_date,
+                     focused_habits=focused_habits,
+                     target_date=target_date,
                      everything_done=everything_done,
-                     combined_todos=combined_todos)
+                     combined_todos=combined_todos,
+                     today_completed=completed_today,
+                     today_total=total_today,
+                     today_progress_percent=today_progress_percent)
 
     @app.route('/tomorrow')
     @login_required
@@ -295,6 +307,14 @@ def create_app():
         calendar_tomorrow = fetch_calendar_events(current_user, target_date, target_date + timedelta(days=1))
         combined_todos = combine_todos_and_calendar(todos_tomorrow, calendar_tomorrow, 'Tomorrow')
 
+        # Progress for Tomorrow
+        total_tomorrow = len(dailies_tomorrow) + len(todos_tomorrow)
+        completed_tomorrow = (
+            len([d for d in dailies_tomorrow if d.is_completed_on(target_date)]) +
+            len([t for t in todos_tomorrow if t.status == 'completed'])
+        )
+        tomorrow_progress_percent = int(round((completed_tomorrow / total_tomorrow) * 100)) if total_tomorrow > 0 else 0
+
         return render_template(
             'tomorrow.html',
             todos=todos_tomorrow,
@@ -302,7 +322,10 @@ def create_app():
             carryover_ids=carryover_ids,
             focused_habits=focused_habits,
             target_date=target_date,
-            combined_todos=combined_todos
+            combined_todos=combined_todos,
+            tomorrow_completed=completed_tomorrow,
+            tomorrow_total=total_tomorrow,
+            tomorrow_progress_percent=tomorrow_progress_percent
         )
     
     return app

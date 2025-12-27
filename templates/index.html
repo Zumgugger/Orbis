@@ -16,6 +16,12 @@
         <i class="bi bi-plus"></i>
     </a>
 </div>
+<div class="progress mb-3" style="height: 20px;">
+    <div class="progress-bar bg-success" role="progressbar" style="width: {{ today_progress_percent }}%;" aria-valuenow="{{ today_progress_percent }}" aria-valuemin="0" aria-valuemax="100">
+        {{ today_progress_percent }}%
+    </div>
+</div>
+<small class="text-muted d-block mb-3">{{ today_completed }}/{{ today_total }} completed</small>
 
 {% if calendar_today %}
 <div class="card mb-4">
