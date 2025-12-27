@@ -622,21 +622,7 @@ class IdeaFile(db.Model):
     file_path = db.Column(db.String(500), nullable=True)
     file_size = db.Column(db.Integer, nullable=True)
     mime_type = db.Column(db.String(100), nullable=True)
-    # Backward-compatible legacy fields
-    filename = db.Column(db.String(255), nullable=True)
-    filepath = db.Column(db.String(500), nullable=True)
-    filesize = db.Column(db.Integer, nullable=True)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Legacy field backfill to satisfy existing DB constraints; prefer normalized fields elsewhere
-        if getattr(self, 'filename', None) is None:
-            self.filename = self.original_filename or self.stored_filename
-        if getattr(self, 'filepath', None) is None and getattr(self, 'file_path', None):
-            self.filepath = self.file_path
-        if getattr(self, 'filesize', None) is None and getattr(self, 'file_size', None) is not None:
-            self.filesize = self.file_size
 
     def __repr__(self):
         name = self.original_filename or self.filename or 'unnamed'

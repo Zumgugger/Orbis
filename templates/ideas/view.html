@@ -156,8 +156,9 @@
                 <div class="file-item" data-file-id="{{ file.id }}">
                     <div>
                         <i class="bi bi-file-earmark"></i>
-                        <strong>{{ file.filename }}</strong>
-                        <small class="text-muted">({{ (file.filesize / 1024) | round(1) }} KB)</small>
+                        <strong>{{ file.original_filename or file.stored_filename }}</strong>
+                        {% set size_kb = (file.file_size or 0) / 1024 %}
+                        <small class="text-muted">({{ size_kb | round(1) }} KB)</small>
                         <br>
                         <small class="text-muted">{{ file.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</small>
                     </div>

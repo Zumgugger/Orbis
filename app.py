@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from markupsafe import Markup
 from markdown import markdown as md_to_html
 from flask_wtf import CSRFProtect
+from werkzeug.exceptions import HTTPException
 import os
 from time_utils import get_local_tz, today_local, tomorrow_local, iso_start_of_day
 from utilities import (
@@ -17,16 +18,23 @@ from utilities import (
     filter_dailies_for_date,
     generate_time_label
 )
+from config import DevConfig, ProdConfig, TestConfig
 
 # Load environment variables
 load_dotenv()
 
-def create_app():
+def create_app(config_name=None):
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbis.db'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['WTF_CSRF_TIME_LIMIT'] = None  # Avoid unexpected expiry during long sessions
+
+    config_map = {
+        'development': DevConfig,
+        'production': ProdConfig,
+        'test': TestConfig,
+        'testing': TestConfig
+    }
+    cfg_key = (config_name or os.getenv('ORBIS_CONFIG') or os.getenv('FLASK_ENV') or 'development').lower()
+    app_config = config_map.get(cfg_key, DevConfig)
+    app.config.from_object(app_config)
 
     # Markdown filter for rendering section bodies
     app.jinja_env.filters['markdown'] = lambda text: Markup(md_to_html(text or '', extensions=['extra']))
@@ -78,45 +86,68 @@ def create_app():
     app.register_blueprint(ideas_bp)
     app.register_blueprint(search_bp)
 
+    def wants_json_response():
+        """Return True when the client prefers JSON over HTML."""
+        accepts = request.accept_mimetypes
+        return (
+            request.path.startswith('/api/')
+            or request.is_json
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or accepts.best == 'application/json'
+            or accepts['application/json'] > accepts['text/html']
+        )
+
+    def error_message(exc, default_msg):
+        """Pick a human-readable message from the exception."""
+        return getattr(exc, 'description', None) or str(exc) or default_msg
+
+    def error_response(status_code, error_key, message, template):
+        payload = {
+            'status': status_code,
+            'error': error_key,
+            'message': message,
+            'path': request.path
+        }
+        if wants_json_response():
+            return jsonify(payload), status_code
+        return render_template(template), status_code
+
     # Error handlers
     @app.errorhandler(400)
     def bad_request(e):
-        """Handle 400 Bad Request errors"""
-        if request.path.startswith('/api/') or request.is_json:
-            return jsonify({'error': 'Bad request', 'message': str(e)}), 400
-        return render_template('errors/400.html'), 400
+        return error_response(400, 'bad_request', error_message(e, 'Bad request'), 'errors/400.html')
 
     @app.errorhandler(403)
     def forbidden(e):
-        """Handle 403 Forbidden errors"""
-        if request.path.startswith('/api/') or request.is_json:
-            return jsonify({'error': 'Forbidden', 'message': 'Access denied'}), 403
-        return render_template('errors/403.html'), 403
+        return error_response(403, 'forbidden', 'Access denied', 'errors/403.html')
 
     @app.errorhandler(404)
     def not_found(e):
-        """Handle 404 Not Found errors"""
-        if request.path.startswith('/api/') or request.is_json:
-            return jsonify({'error': 'Not found', 'message': 'Resource not found'}), 404
-        return render_template('errors/404.html'), 404
+        return error_response(404, 'not_found', error_message(e, 'Resource not found'), 'errors/404.html')
 
     @app.errorhandler(500)
     def internal_error(e):
-        """Handle 500 Internal Server errors"""
         db.session.rollback()  # Rollback any failed transactions
         app.logger.error(f'Server Error: {e}')
-        if request.path.startswith('/api/') or request.is_json:
-            return jsonify({'error': 'Internal server error', 'message': 'An unexpected error occurred'}), 500
-        return render_template('errors/500.html'), 500
+        return error_response(500, 'internal_server_error', 'An unexpected error occurred', 'errors/500.html')
 
     @app.errorhandler(Exception)
     def handle_exception(e):
-        """Handle uncaught exceptions"""
         db.session.rollback()
+        if isinstance(e, HTTPException):
+            template_map = {
+                400: 'errors/400.html',
+                403: 'errors/403.html',
+                404: 'errors/404.html',
+                500: 'errors/500.html'
+            }
+            template = template_map.get(getattr(e, 'code', None), 'errors/500.html')
+            message = error_message(e, 'An unexpected error occurred')
+            error_key = (getattr(e, 'name', None) or 'error').lower().replace(' ', '_')
+            return error_response(getattr(e, 'code', 500) or 500, error_key, message, template)
+
         app.logger.exception(f'Unhandled exception: {e}')
-        if request.path.startswith('/api/') or request.is_json:
-            return jsonify({'error': 'Internal server error', 'message': 'An unexpected error occurred'}), 500
-        return render_template('errors/500.html'), 500
+        return error_response(500, 'internal_server_error', 'An unexpected error occurred', 'errors/500.html')
 
     def fetch_calendar_events(user, start_date, end_date):
         """Fetch primary calendar events between start_date (inclusive) and end_date (exclusive)."""
