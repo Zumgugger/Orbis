@@ -2,7 +2,7 @@
 Global Search Blueprint
 Search across user data: todos, dailies, habits, goals, shopping lists, masterprompts, ideas
 """
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from database import db, Todo, Daily, Habit, Goal, ShoppingList, MasterCategory, MasterSection, Idea
@@ -77,7 +77,7 @@ def search():
                  .limit(20)
                  .all())
         for g in goals:
-            results['Goals'].append(_make_result('Goal', g.title, url_for('goals.view', goal_id=g.id) if hasattr(g, 'id') else url_for('goals.list'), (g.description or '')[:160]))
+            results['Goals'].append(_make_result('Goal', g.title, url_for('goals.edit', id=g.id), (g.description or '')[:160]))
 
         # Shopping lists
         lists = (ShoppingList.query
