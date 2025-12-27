@@ -95,6 +95,32 @@ alembic upgrade head
 
 Existing runtime schema patching (`_ensure_*`) has been removed; use migrations to evolve the schema.
 
+## Testing
+
+### Running Tests
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_auth.py -v
+
+# Run with coverage
+pytest tests/ --cov=. --cov-report=term-missing
+```
+
+### Test Suite
+Smoke tests cover core functionality:
+- **Authentication**: Login/logout, dev mode, session management
+- **Todos**: CRUD operations, status toggling, user isolation
+- **Calendar**: Google Calendar integration (mocked)
+- **Ideas**: Notes, mindmaps, file uploads
+
+See [tests/README.md](tests/README.md) for detailed test documentation.
+
+### Continuous Integration
+Tests run automatically via GitHub Actions on push/PR to `main` and `develop` branches.
+
 ## Security Features
 
 ### File Upload Security

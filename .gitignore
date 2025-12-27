@@ -22,6 +22,12 @@ instance/
 # Uploads
 uploads/
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
 # IDEs
 .vscode/
 .idea/

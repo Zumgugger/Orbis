@@ -6,3 +6,9 @@ python-dotenv==1.0.0
 markdown==3.5.2
 alembic==1.13.1
 Flask-WTF==1.2.1
+
+# Testing dependencies
+pytest>=7.4.0
+pytest-flask>=1.2.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0

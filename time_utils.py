@@ -1,6 +1,9 @@
 import os
 from datetime import datetime, date, timedelta, time, timezone
-from zoneinfo import ZoneInfo
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
 
 _DEFAULT_TZ_NAME = os.getenv('DEFAULT_TIMEZONE', 'Europe/Zurich')
 
