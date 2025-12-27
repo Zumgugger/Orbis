@@ -177,22 +177,26 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- MindElixir with SRI and fallback -->
+<!-- MindElixir with fallback -->
 <script src="https://cdn.jsdelivr.net/npm/mind-elixir@0.18.1/dist/MindElixir.js"
-        integrity="sha384-9FZY8Y8cGHP0vS0+LcL8mMNLpPLPPP6qLJp4dN5xvFvqHLv8YXdFE9iNJLdz8fR1"
         crossorigin="anonymous"
-        onerror="this.onerror=null;this.removeAttribute('integrity');this.src='https://unpkg.com/mind-elixir@0.18.1/dist/MindElixir.js';"></script>
+        onerror="this.onerror=null;this.src='https://unpkg.com/mind-elixir@0.18.1/dist/MindElixir.js';"></script>
 <script>
-    // Check if MindElixir loaded
-    if (typeof MindElixir === 'undefined') {
-        console.error('MindElixir failed to load from CDN');
-        document.getElementById('mindmap-tab').addEventListener('click', function(e) {
-            if (typeof MindElixir === 'undefined') {
-                e.preventDefault();
-                alert('Mindmap library failed to load. Please check your internet connection and refresh the page.');
+    // Wait for script to load before checking
+    window.addEventListener('load', function() {
+        if (typeof MindElixir === 'undefined') {
+            console.error('MindElixir failed to load from CDN');
+            const mindmapTab = document.getElementById('mindmap-tab');
+            if (mindmapTab) {
+                mindmapTab.addEventListener('click', function(e) {
+                    if (typeof MindElixir === 'undefined') {
+                        e.preventDefault();
+                        alert('Mindmap library failed to load. Please check your internet connection and refresh the page.');
+                    }
+                });
             }
-        });
-    }
+        }
+    });
 </script>
 <script>
     const ideaId = {{ idea.id }};
