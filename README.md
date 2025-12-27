@@ -95,6 +95,39 @@ alembic upgrade head
 
 Existing runtime schema patching (`_ensure_*`) has been removed; use migrations to evolve the schema.
 
+## Security Features
+
+### File Upload Security
+Comprehensive protection for idea file attachments:
+
+- **10MB size limit** enforced before saving
+- **Strict extension allowlist**: pdf, txt, md, odt, doc, docx, xls, xlsx, png, jpg, jpeg, gif, mp3, zip
+- **MIME type validation** after upload (prevents renamed malware)
+- **Random UUID subdirectories** (e.g., `ab/cd/uuid_filename.pdf`)
+- **Path traversal protection** on all file operations
+- **Secure filename sanitization** with werkzeug
+
+See [FILE_UPLOAD_SECURITY.md](FILE_UPLOAD_SECURITY.md) for details.
+
+Test security features:
+```bash
+python test_file_security.py
+```
+
+### Input Validation
+Server-side validation for all form inputs via `validation.py`:
+- Title/text length limits
+- Date/time format validation
+- Email validation
+- Choice validation (priority, difficulty, frequency)
+- Integer bounds checking
+
+### Error Handling
+- Custom 400/403/404/500 error pages
+- JSON error responses for API endpoints
+- Database rollback on errors
+- Security error logging
+
 ## Future Deployment (Planned)
 
 ### PostgreSQL Migration
