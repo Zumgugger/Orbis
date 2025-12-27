@@ -4,7 +4,7 @@ Provides common helpers for time labels, combined lists, redirects, etc.
 """
 from datetime import timedelta
 
-from flask import current_app, jsonify, request, url_for
+from flask import current_app, jsonify, render_template, request, url_for
 
 
 def get_next_url(default_endpoint="index", **kwargs):
@@ -363,6 +363,36 @@ def group_by_status(items, status_attr="status"):
             groups[status] = []
         groups[status].append(item)
     return groups
+
+
+# Error/response helpers
+def error_message(exc, default_msg):
+    """Pick a human-readable message from the exception."""
+    return getattr(exc, "description", None) or str(exc) or default_msg
+
+
+def wants_json_response():
+    """Return True when the client prefers JSON over HTML."""
+    accepts = request.accept_mimetypes
+    return (
+        request.path.startswith("/api/")
+        or request.is_json
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or accepts.best == "application/json"
+        or accepts["application/json"] > accepts["text/html"]
+    )
+
+
+def error_response(status_code, error_key, message, template):
+    payload = {
+        "status": status_code,
+        "error": error_key,
+        "message": message,
+        "path": request.path,
+    }
+    if wants_json_response():
+        return jsonify(payload), status_code
+    return render_template(template), status_code
 
 
 # Structured logging helpers and JSON error builder

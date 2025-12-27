@@ -5,18 +5,24 @@ Main application entry point
 import os
 from datetime import date, datetime, timedelta
 
+import bleach
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
-from flask_login import LoginManager, current_user, login_required
-from flask_wtf import CSRFProtect
+from flask import Flask, render_template
+from flask_login import current_user, login_required
 from markdown import markdown as md_to_html
 from markupsafe import Markup
 from werkzeug.exceptions import HTTPException
 
 from config import DevConfig, ProdConfig, TestConfig
-from database import Daily, Habit, RolloverState, Todo, User, db, init_db
+from database import Daily, Habit, RolloverState, Todo, User, init_db
+from extensions import csrf, db, login_manager
 from time_utils import get_local_tz, iso_start_of_day, today_local
-from utilities import combine_todos_and_calendar, filter_dailies_for_date
+from utilities import (
+    combine_todos_and_calendar,
+    error_message,
+    error_response,
+    filter_dailies_for_date,
+)
 
 # Load environment variables
 load_dotenv()
@@ -40,12 +46,21 @@ def create_app(config_name=None):
     app_config = config_map.get(cfg_key, DevConfig)
     app.config.from_object(app_config)
 
-    # Markdown filter for rendering section bodies
-    app.jinja_env.filters["markdown"] = lambda text: Markup(
-        md_to_html(text or "", extensions=["extra"])
+    # Markdown filter for rendering section bodies (sanitized)
+    allowed_tags = bleach.sanitizer.ALLOWED_TAGS.union(
+        {"p", "pre", "code", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "hr"}
     )
+    allowed_attrs = {"a": ["href", "title", "rel"], "img": ["src", "alt", "title"]}
+
+    def render_markdown(text):
+        raw_html = md_to_html(text or "", extensions=["extra"])
+        safe_html = bleach.clean(
+            raw_html, tags=allowed_tags, attributes=allowed_attrs, strip=True
+        )
+        return Markup(safe_html)
+
+    app.jinja_env.filters["markdown"] = render_markdown
     # CSRF protection
-    csrf = CSRFProtect()
     csrf.init_app(app)
     # Expose csrf_token to templates
     from flask_wtf.csrf import generate_csrf
@@ -56,7 +71,6 @@ def create_app(config_name=None):
     init_db(app)
 
     # Initialize Flask-Login
-    login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Please log in to access this page."
@@ -93,32 +107,6 @@ def create_app(config_name=None):
     app.register_blueprint(masterprompts_bp)
     app.register_blueprint(ideas_bp)
     app.register_blueprint(search_bp)
-
-    def wants_json_response():
-        """Return True when the client prefers JSON over HTML."""
-        accepts = request.accept_mimetypes
-        return (
-            request.path.startswith("/api/")
-            or request.is_json
-            or request.headers.get("X-Requested-With") == "XMLHttpRequest"
-            or accepts.best == "application/json"
-            or accepts["application/json"] > accepts["text/html"]
-        )
-
-    def error_message(exc, default_msg):
-        """Pick a human-readable message from the exception."""
-        return getattr(exc, "description", None) or str(exc) or default_msg
-
-    def error_response(status_code, error_key, message, template):
-        payload = {
-            "status": status_code,
-            "error": error_key,
-            "message": message,
-            "path": request.path,
-        }
-        if wants_json_response():
-            return jsonify(payload), status_code
-        return render_template(template), status_code
 
     # Error handlers
     @app.errorhandler(400)

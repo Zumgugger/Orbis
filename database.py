@@ -5,9 +5,8 @@ import json
 from datetime import date, datetime, timedelta
 
 from flask_login import UserMixin
-from flask_sqlalchemy import SQLAlchemy
 
-db = SQLAlchemy()
+from extensions import db
 
 
 def init_db(app):
