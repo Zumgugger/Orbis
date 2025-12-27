@@ -51,7 +51,7 @@
         </div>
         <div class="list-group list-group-flush">
             {% for habit in focused_habits %}
-            <div class="list-group-item d-flex align-items-center gap-3 {% if habit.last_increment_date == target_date %}bg-light{% endif %}">
+            <div class="list-group-item d-flex align-items-center gap-3">
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center gap-2">
                         <span class="fw-semibold {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</span>
@@ -72,7 +72,7 @@
         <div class="list-group list-group-flush">
             <!-- Dailies first -->
             {% for daily in dailies %}
-            <div class="list-group-item {% if daily.is_completed_on(target_date) %}bg-light{% endif %}">
+            <div class="list-group-item">
                 <div class="d-flex align-items-start gap-3">
                     <form action="{{ url_for('dailies.toggle_for_date', daily_id=daily.id) }}?next=/tomorrow" method="POST" class="d-inline">
                         <input type="hidden" name="target_date" value="{{ target_date }}">
@@ -132,7 +132,7 @@
             </div>
             {% else %}
             {% set todo = item.todo %}
-            <div class="list-group-item {% if todo.status == 'completed' %}bg-light{% endif %}">
+            <div class="list-group-item">
                 <div class="d-flex align-items-start gap-3">
                     <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
                         <input type="checkbox" class="form-check-input mt-1" {% if todo.status == 'completed' %}checked{% endif %} onchange="this.form.submit()">
