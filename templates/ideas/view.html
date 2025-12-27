@@ -132,6 +132,11 @@
                         <i class="bi bi-trash"></i> Delete
                     </button>
                 </div>
+                <div class="btn-group me-2" role="group">
+                    <button type="button" class="btn btn-sm btn-success" id="addTodoFromNodeBtn" title="Create todo from selected branch" disabled>
+                        <i class="bi bi-check-square"></i> Add Todo from Branch
+                    </button>
+                </div>
                 <button type="button" class="btn btn-sm btn-primary" id="saveMindmapBtn">
                     <i class="bi bi-save"></i> Save Mindmap
                 </button>
@@ -454,6 +459,62 @@
             }
         }
     });
+
+    // Create todo from selected mindmap node
+    (function() {
+        const addTodoBtn = document.getElementById('addTodoFromNodeBtn');
+        let selectedNodeTitle = '';
+
+        function updateButtonState() {
+            addTodoBtn.disabled = !(selectedNodeTitle && selectedNodeTitle.length > 0 && selectedNodeTitle.length <= 200);
+        }
+
+        // Hook into MindElixir events once initialized
+        document.getElementById('mindmap-tab').addEventListener('shown.bs.tab', () => {
+            if (!mindElixir) return;
+            try {
+                // Event bus: listen for selection changes
+                if (mindElixir.bus && typeof mindElixir.bus.on === 'function') {
+                    mindElixir.bus.on('selectNode', node => {
+                        selectedNodeTitle = (node && node.topic ? String(node.topic).trim() : '');
+                        updateButtonState();
+                    });
+                    mindElixir.bus.on('unselectNode', () => {
+                        selectedNodeTitle = '';
+                        updateButtonState();
+                    });
+                }
+            } catch (e) {
+                console.warn('MindElixir selection hooks unavailable:', e);
+            }
+        });
+
+        addTodoBtn.addEventListener('click', async () => {
+            if (!selectedNodeTitle) return;
+            try {
+                const resp = await fetch('/todos/quick_create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': window.csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        title: selectedNodeTitle,
+                        description: 'From idea mindmap: ' + '{{ idea.title }}'
+                    })
+                });
+                const result = await resp.json();
+                if (result && result.success) {
+                    showSaveIndicator('Todo created from mindmap');
+                } else {
+                    alert('Error: ' + ((result && result.error) || 'Failed to create todo'));
+                }
+            } catch (err) {
+                console.error('Failed to create todo from node:', err);
+                alert('Failed to create todo');
+            }
+        });
+    })();
     
     // File upload
     document.getElementById('uploadFileBtn').addEventListener('click', async () => {
