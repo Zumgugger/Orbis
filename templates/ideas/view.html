@@ -53,6 +53,32 @@
         border-radius: 4px;
         margin-bottom: 8px;
     }
+    /* Custom context menu for mindmap */
+    #mindmapContextMenu {
+        position: absolute;
+        z-index: 2000;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        display: none;
+        min-width: 220px;
+        overflow: hidden;
+    }
+    #mindmapContextMenu .menu-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    #mindmapContextMenu .menu-item:hover {
+        background: #f7f7f7;
+    }
+    #mindmapContextMenu .menu-item.disabled {
+        color: #999;
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
@@ -142,6 +168,12 @@
                 </button>
             </div>
             <div id="mindmap-container"></div>
+            <div id="mindmapContextMenu" role="menu" aria-hidden="true">
+                <div class="menu-item" id="ctxAddTodo">
+                    <i class="bi bi-check-square"></i>
+                    <span>Add selected branch as Todo</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -464,6 +496,7 @@
     (function() {
         const addTodoBtn = document.getElementById('addTodoFromNodeBtn');
         let selectedNodeTitle = '';
+        let selectedNodeId = null;
 
         function updateButtonState() {
             addTodoBtn.disabled = !(selectedNodeTitle && selectedNodeTitle.length > 0 && selectedNodeTitle.length <= 200);
@@ -477,10 +510,12 @@
                 if (mindElixir.bus && typeof mindElixir.bus.on === 'function') {
                     mindElixir.bus.on('selectNode', node => {
                         selectedNodeTitle = (node && node.topic ? String(node.topic).trim() : '');
+                        selectedNodeId = (node && node.id) ? node.id : null;
                         updateButtonState();
                     });
                     mindElixir.bus.on('unselectNode', () => {
                         selectedNodeTitle = '';
+                        selectedNodeId = null;
                         updateButtonState();
                     });
                 }
@@ -489,8 +524,29 @@
             }
         });
 
-        addTodoBtn.addEventListener('click', async () => {
+        function splitTitleDescription(text, maxLen = 200) {
+            const raw = String(text || '').trim();
+            if (raw.length <= maxLen) {
+                return { title: raw, description: 'From idea mindmap: ' + '{{ idea.title }}' };
+            }
+            // Find first sentence end (., !, ?, or newline) within maxLen*2 range
+            const limit = Math.min(raw.length, maxLen * 2);
+            const snippet = raw.slice(0, limit);
+            const match = snippet.match(/([\s\S]*?[\.!?])(\s|$)/);
+            let firstSentence = match ? match[1].trim() : raw.slice(0, maxLen).trim();
+            let remainder = raw.slice(firstSentence.length).trim();
+            // Ensure title max length
+            if (firstSentence.length > maxLen) {
+                remainder = (firstSentence.slice(maxLen).trim() + (remainder ? (' ' + remainder) : '')).trim();
+                firstSentence = firstSentence.slice(0, maxLen).trim();
+            }
+            const description = remainder ? remainder : ('From idea mindmap: ' + '{{ idea.title }}');
+            return { title: firstSentence, description };
+        }
+
+        async function createTodoFromSelected() {
             if (!selectedNodeTitle) return;
+            const payload = splitTitleDescription(selectedNodeTitle);
             try {
                 const resp = await fetch('/todos/quick_create', {
                     method: 'POST',
@@ -498,10 +554,7 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': window.csrfToken || ''
                     },
-                    body: JSON.stringify({
-                        title: selectedNodeTitle,
-                        description: 'From idea mindmap: ' + '{{ idea.title }}'
-                    })
+                    body: JSON.stringify(payload)
                 });
                 const result = await resp.json();
                 if (result && result.success) {
@@ -513,6 +566,31 @@
                 console.error('Failed to create todo from node:', err);
                 alert('Failed to create todo');
             }
+        }
+
+        addTodoBtn.addEventListener('click', createTodoFromSelected);
+
+        // Custom right-click context menu
+        const ctxMenu = document.getElementById('mindmapContextMenu');
+        const ctxAddTodo = document.getElementById('ctxAddTodo');
+        function hideCtxMenu() { ctxMenu.style.display = 'none'; }
+        function showCtxMenu(x, y) {
+            ctxMenu.style.left = x + 'px';
+            ctxMenu.style.top = y + 'px';
+            ctxMenu.style.display = 'block';
+        }
+        document.addEventListener('click', hideCtxMenu);
+        document.getElementById('mindmap-container').addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            // Only show if a node is selected
+            const canAdd = !!selectedNodeTitle;
+            ctxAddTodo.classList.toggle('disabled', !canAdd);
+            showCtxMenu(e.pageX, e.pageY);
+        });
+        ctxAddTodo.addEventListener('click', (e) => {
+            if (ctxAddTodo.classList.contains('disabled')) return;
+            hideCtxMenu();
+            createTodoFromSelected();
         });
     })();
     
