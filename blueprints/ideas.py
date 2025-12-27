@@ -130,6 +130,12 @@ def save_notes(idea_id):
         db.session.rollback()
         return jsonify({'success': False, 'error': 'Failed to save notes'}), 500
 
+# Backward-compatibility alias: older UI may call /save_notes
+@ideas_bp.route('/<int:idea_id>/save_notes', methods=['POST'])
+@login_required
+def save_notes_alias(idea_id):
+    return save_notes(idea_id)
+
 @ideas_bp.route('/<int:idea_id>/mindmap', methods=['POST'])
 @login_required
 def save_mindmap(idea_id):

@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime, date, timedelta
 import json
-from sqlalchemy import inspect, text
+
 
 db = SQLAlchemy()
 
@@ -14,27 +14,6 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
-
-        # Runtime schema patching for missing columns on existing databases
-        insp = inspect(db.engine)
-
-        def ensure_column(table_name, column_name, ddl_sql):
-            if not insp.has_table(table_name):
-                return
-            existing = {col['name'] for col in insp.get_columns(table_name)}
-            if column_name not in existing:
-                db.session.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {ddl_sql}"))
-                db.session.commit()
-
-        # Ideas: add category column if missing
-        ensure_column('ideas', 'category', 'category TEXT')
-
-        # Idea files: add new metadata columns if missing
-        ensure_column('idea_files', 'original_filename', 'original_filename TEXT')
-        ensure_column('idea_files', 'stored_filename', 'stored_filename TEXT')
-        ensure_column('idea_files', 'file_path', 'file_path TEXT')
-        ensure_column('idea_files', 'file_size', 'file_size INTEGER')
-        ensure_column('idea_files', 'mime_type', 'mime_type TEXT')
 
 class User(UserMixin, db.Model):
     """User model for authentication"""

@@ -322,7 +322,7 @@
         
         formData.append('csrf_token', window.csrfToken || '');
 
-        const response = await fetch(`/ideas/${ideaId}/save_notes`, {
+        const response = await fetch(`/ideas/${ideaId}/notes`, {
             method: 'POST',
             body: formData
         });
