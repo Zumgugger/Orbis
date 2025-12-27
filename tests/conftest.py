@@ -51,12 +51,27 @@ def runner(app):
     return app.test_cli_runner()
 
 
+@pytest.fixture(autouse=True)
+def cleanup_database(app):
+    """Clean up test data after each test"""
+    yield
+    # Clean up after test runs
+    with app.app_context():
+        # Delete test data by title patterns
+        db.session.query(Todo).filter(Todo.title.like('%Test%')).delete(synchronize_session=False)
+        db.session.query(Idea).filter(Idea.title.like('%Test%')).delete(synchronize_session=False)
+        # Clean up test users
+        db.session.query(User).filter(User.email.like('%test%')).delete(synchronize_session=False)
+        db.session.query(User).filter(User.email.like('%other%')).delete(synchronize_session=False)
+        db.session.commit()
+
+
 @pytest.fixture
 def test_user(app):
     """Create a test user in the database"""
     with app.app_context():
-        # Clear any existing users first
-        db.session.query(User).delete()
+        # Clear any existing test users first
+        db.session.query(User).filter(User.email == 'test@example.com').delete()
         db.session.commit()
         
         user = User(
