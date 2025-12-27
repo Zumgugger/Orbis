@@ -233,7 +233,7 @@
                     // Ctrl/Cmd + S: Save action (prevent default browser save)
                     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                         e.preventDefault();
-                        const saveBtn = document.querySelector('[id*=\"save\" i]:not([disabled]), [id*=\"Save\" i]:not([disabled])');
+                        const saveBtn = document.querySelector('[id*="save" i]:not([disabled]), [id*="Save" i]:not([disabled])');
                         if (saveBtn && saveBtn.offsetParent !== null) {
                             saveBtn.click();
                         }
@@ -243,7 +243,8 @@
                     // Alt + N: New item (click first "New" or "Create" button)
                     if (e.altKey && e.key === 'n') {
                         e.preventDefault();
-                        const newBtn = document.querySelector('a[href*=\"create\"]:not([disabled]), button:not([disabled])');\n                        if (newBtn && newBtn.offsetParent !== null && (newBtn.textContent.includes('New') || newBtn.textContent.includes('Create'))) {
+                        const newBtn = document.querySelector('a[href*="create"]:not([disabled]), button:not([disabled])');
+                        if (newBtn && newBtn.offsetParent !== null && (newBtn.textContent.includes('New') || newBtn.textContent.includes('Create'))) {
                             newBtn.click();
                         }
                         return;
