@@ -20,15 +20,15 @@
                     <a class="stretched-link text-reset text-decoration-none {% if cat.id == selected_id %}text-white{% endif %}"
                        href="{{ url_for('masterprompts.index', category_id=cat.id) }}">{{ cat.name }}</a>
                 </div>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Category actions">
+                <div class="d-flex gap-2" aria-label="Category actions">
                     <form method="POST" action="{{ url_for('masterprompts.move_category', cat_id=cat.id, direction='up') }}">
-                        <button class="btn btn-outline-light" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
                     </form>
                     <form method="POST" action="{{ url_for('masterprompts.move_category', cat_id=cat.id, direction='down') }}">
-                        <button class="btn btn-outline-light" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
                     </form>
                     <form method="POST" action="{{ url_for('masterprompts.delete_category', cat_id=cat.id) }}" onsubmit="return confirm('Delete category and its sections?');">
-                        <button class="btn btn-outline-light" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
                     </form>
                 </div>
             </div>
@@ -82,15 +82,15 @@
                             <h6 class="mb-1">{{ sec.title }}</h6>
                             <div class="text-muted small mb-2">Created {{ sec.created_at.strftime('%Y-%m-%d') }}</div>
                         </div>
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Section actions">
+                        <div class="d-flex gap-2" aria-label="Section actions">
                             <form method="POST" action="{{ url_for('masterprompts.move_section', sec_id=sec.id, direction='up') }}">
-                                <button class="btn btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                                <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
                             </form>
                             <form method="POST" action="{{ url_for('masterprompts.move_section', sec_id=sec.id, direction='down') }}">
-                                <button class="btn btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                                <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
                             </form>
                             <form method="POST" action="{{ url_for('masterprompts.delete_section', sec_id=sec.id) }}" onsubmit="return confirm('Delete this section?');">
-                                <button class="btn btn-outline-danger" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
                             </form>
                         </div>
                     </div>
@@ -150,15 +150,15 @@
                         <strong>{{ sec.title }}</strong>
                         <div class="text-muted small">From {{ sec.category.name if sec.category else 'Unknown' }}</div>
                     </div>
-                    <div class="btn-group btn-group-sm" role="group">
+                    <div class="d-flex gap-2">
                         <form method="POST" action="{{ url_for('masterprompts.builder_move', sec_id=sec.id, direction='up') }}">
-                            <button class="btn btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                            <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
                         </form>
                         <form method="POST" action="{{ url_for('masterprompts.builder_move', sec_id=sec.id, direction='down') }}">
-                            <button class="btn btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                            <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
                         </form>
                         <form method="POST" action="{{ url_for('masterprompts.builder_remove', sec_id=sec.id) }}">
-                            <button class="btn btn-outline-danger" type="submit" title="Remove"><i class="bi bi-x-lg"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" type="submit" title="Remove"><i class="bi bi-x-lg"></i></button>
                         </form>
                     </div>
                 </div>

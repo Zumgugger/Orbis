@@ -29,7 +29,7 @@
 
                         <div class="col-auto">
                             <form action="{{ url_for('habits.toggle_focus', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-outline-warning" title="Toggle focus (shows on Today/Tomorrow)">
+                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Toggle focus (shows on Today/Tomorrow)">
                                     <i class="bi bi-star{% if habit.focused %}-fill{% endif %}"></i>
                                 </button>
                             </form>
@@ -37,12 +37,31 @@
 
                         <div class="col-auto">
                             <form action="{{ url_for('habits.cycle_difficulty', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-outline-secondary btn-lg"
+                                <button type="submit" class="btn btn-sm btn-outline-secondary"
                                         data-bs-toggle="tooltip" data-bs-placement="top"
                                         title="Difficulty: cycle Easy → Normal → Hard">
                                     <i class="bi bi-{{ habit.get_difficulty_icon() }}"></i>
                                 </button>
                             </form>
+                        </div>
+                        
+                        <div class="col-auto">
+                            <div class="d-flex gap-2">
+                                <form action="{{ url_for('habits.increment_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-success"
+                                            data-bs-toggle="tooltip" data-bs-placement="top"
+                                            title="+1 increases count for a successful habit">
+                                        <i class="bi bi-plus-circle"></i> +1
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('habits.decrement_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="tooltip" data-bs-placement="top"
+                                            title="-1 decreases count for a negative habit">
+                                        <i class="bi bi-dash-circle"></i> -1
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                         
                         <div class="col">
@@ -82,24 +101,7 @@
                             </div>
                         </div>
                         
-                        <div class="col-auto">
-                            <div class="btn-group" role="group">
-                                <form action="{{ url_for('habits.increment_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                    <button type="submit" class="btn btn-outline-success btn-lg"
-                                            data-bs-toggle="tooltip" data-bs-placement="top"
-                                            title="+1 increases count for a successful habit">
-                                        <i class="bi bi-plus-circle-fill"></i> +1
-                                    </button>
-                                </form>
-                                <form action="{{ url_for('habits.decrement_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                    <button type="submit" class="btn btn-outline-danger btn-lg"
-                                            data-bs-toggle="tooltip" data-bs-placement="top"
-                                            title="-1 decreases count for a negative habit">
-                                        <i class="bi bi-dash-circle-fill"></i> -1
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
+                        
                         
                         <div class="col-auto">
                             <a href="{{ url_for('habits.edit_habit', habit_id=habit.id) }}" class="btn btn-sm btn-outline-primary">
