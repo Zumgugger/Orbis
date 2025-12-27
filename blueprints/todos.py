@@ -27,7 +27,7 @@ def quick_create():
             title=title,
             description=data.get('description', ''),
             priority='medium',
-            due_date=today_local(),
+            due_date=None,
             user_id=current_user.id
         )
         db.session.add(todo)
