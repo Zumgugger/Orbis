@@ -15,6 +15,39 @@ from validation import (
 
 todos_bp = Blueprint('todos', __name__, url_prefix='/todos')
 
+@todos_bp.route('/quick_create', methods=['POST'])
+@login_required
+def quick_create():
+    """Quick create todo from selected text (AJAX endpoint)"""
+    try:
+        data = request.get_json() or {}
+        title = validate_title(data.get('title'), max_length=200)
+        
+        todo = Todo(
+            title=title,
+            description=data.get('description', ''),
+            priority='medium',
+            due_date=today_local(),
+            user_id=current_user.id
+        )
+        db.session.add(todo)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Todo created',
+            'todo': {
+                'id': todo.id,
+                'title': todo.title,
+                'url': url_for('todos.edit_todo', todo_id=todo.id)
+            }
+        })
+    except ValidationError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Failed to create todo'}), 500
+
 @todos_bp.route('/')
 @login_required
 def list_todos():

@@ -22,6 +22,28 @@
         min-height: 400px;
         font-family: monospace;
     }
+    #selectionTodoBtn {
+        position: absolute;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.2s;
+        background: rgba(13, 110, 253, 0.9);
+        border: none;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    #selectionTodoBtn:hover {
+        opacity: 1 !important;
+        background: rgba(13, 110, 253, 1);
+        transform: scale(1.1);
+    }
     .file-item {
         display: flex;
         justify-content: space-between;
@@ -81,11 +103,14 @@
 <div class="tab-content" id="ideaTabContent">
     <!-- Notes Tab -->
     <div class="tab-pane fade show active" id="notes" role="tabpanel">
-        <div class="mb-3">
+        <div class="mb-3" style="position: relative;">
             <label for="notes-editor" class="form-label">Markdown Notes</label>
             <textarea class="form-control" id="notes-editor" rows="20">{{ idea.notes or '' }}</textarea>
             <button type="button" class="btn btn-primary mt-2" id="saveNotesBtn">
                 <i class="bi bi-save"></i> Save Notes
+            </button>
+            <button type="button" id="selectionTodoBtn" title="Create todo from selection">
+                <i class="bi bi-check-square"></i>
             </button>
         </div>
     </div>
@@ -201,6 +226,82 @@
 <script>
     const ideaId = {{ idea.id }};
     let mindElixir;
+    
+    // Selection todo feature
+    (function() {
+        const notesEditor = document.getElementById('notes-editor');
+        const todoBtn = document.getElementById('selectionTodoBtn');
+        let selectedText = '';
+        
+        function positionButton() {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+            
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const editorRect = notesEditor.getBoundingClientRect();
+            
+            // Position button to the right of selection
+            todoBtn.style.left = (rect.right - editorRect.left + 8) + 'px';
+            todoBtn.style.top = (rect.top - editorRect.top) + 'px';
+        }
+        
+        notesEditor.addEventListener('mouseup', function(e) {
+            setTimeout(() => {
+                const selection = window.getSelection();
+                selectedText = selection.toString().trim();
+                
+                if (selectedText.length > 0 && selectedText.length <= 200) {
+                    positionButton();
+                    todoBtn.style.opacity = '0.8';
+                } else {
+                    todoBtn.style.opacity = '0';
+                }
+            }, 10);
+        });
+        
+        // Hide button when clicking elsewhere
+        document.addEventListener('mousedown', function(e) {
+            if (e.target !== todoBtn && e.target !== notesEditor) {
+                todoBtn.style.opacity = '0';
+            }
+        });
+        
+        // Create todo from selection
+        todoBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (!selectedText) return;
+            
+            try {
+                const response = await fetch('/todos/quick_create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': window.csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        title: selectedText,
+                        description: 'From idea: ' + '{{ idea.title }}'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSaveIndicator('Todo created!');
+                    todoBtn.style.opacity = '0';
+                    window.getSelection().removeAllRanges();
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to create todo'));
+                }
+            } catch (error) {
+                console.error('Error creating todo:', error);
+                alert('Failed to create todo');
+            }
+        });
+    })();
     
     // Save indicator
     function showSaveIndicator(message = 'Saved') {
