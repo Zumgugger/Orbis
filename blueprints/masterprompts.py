@@ -8,7 +8,7 @@ from sqlalchemy import func
 from database import db, MasterCategory, MasterSection
 from validation import validate_title, validate_text, ValidationError
 
-bp = Blueprint('masterprompts', __name__)
+masterprompts_bp = Blueprint('masterprompts', __name__, url_prefix='/masterprompts')
 
 
 # ---------- Helpers ----------
@@ -46,7 +46,7 @@ def _reseq_sections(category_id, user_id):
 
 # ---------- Routes ----------
 
-@bp.route('/')
+@masterprompts_bp.route('/')
 @login_required
 def index():
     categories = MasterCategory.query.filter_by(user_id=current_user.id).order_by(MasterCategory.position, MasterCategory.id).all()
@@ -82,7 +82,7 @@ def index():
 
 # ----- Category CRUD -----
 
-@bp.route('/category/create', methods=['POST'])
+@masterprompts_bp.route('/category/create', methods=['POST'])
 @login_required
 def create_category():
     try:
@@ -99,7 +99,7 @@ def create_category():
         return redirect(url_for('masterprompts.index'))
 
 
-@bp.route('/category/<int:cat_id>/edit', methods=['POST'])
+@masterprompts_bp.route('/category/<int:cat_id>/edit', methods=['POST'])
 @login_required
 def edit_category(cat_id):
     cat = MasterCategory.query.filter_by(id=cat_id, user_id=current_user.id).first_or_404()
@@ -113,7 +113,7 @@ def edit_category(cat_id):
         return redirect(url_for('masterprompts.index', category_id=cat.id))
 
 
-@bp.route('/category/<int:cat_id>/delete', methods=['POST'])
+@masterprompts_bp.route('/category/<int:cat_id>/delete', methods=['POST'])
 @login_required
 def delete_category(cat_id):
     cat = MasterCategory.query.filter_by(id=cat_id, user_id=current_user.id).first_or_404()
@@ -129,7 +129,7 @@ def delete_category(cat_id):
     return redirect(url_for('masterprompts.index'))
 
 
-@bp.route('/category/<int:cat_id>/move/<direction>', methods=['POST'])
+@masterprompts_bp.route('/category/<int:cat_id>/move/<direction>', methods=['POST'])
 @login_required
 def move_category(cat_id, direction):
     cat = MasterCategory.query.filter_by(id=cat_id, user_id=current_user.id).first_or_404()
@@ -146,7 +146,7 @@ def move_category(cat_id, direction):
 
 # ----- Section CRUD -----
 
-@bp.route('/category/<int:cat_id>/section/create', methods=['POST'])
+@masterprompts_bp.route('/category/<int:cat_id>/section/create', methods=['POST'])
 @login_required
 def create_section(cat_id):
     cat = MasterCategory.query.filter_by(id=cat_id, user_id=current_user.id).first_or_404()
@@ -165,7 +165,7 @@ def create_section(cat_id):
         return redirect(url_for('masterprompts.index', category_id=cat.id))
 
 
-@bp.route('/section/<int:sec_id>/edit', methods=['POST'])
+@masterprompts_bp.route('/section/<int:sec_id>/edit', methods=['POST'])
 @login_required
 def edit_section(sec_id):
     sec = MasterSection.query.filter_by(id=sec_id, user_id=current_user.id).first_or_404()
@@ -181,7 +181,7 @@ def edit_section(sec_id):
         return redirect(url_for('masterprompts.index', category_id=sec.category_id))
 
 
-@bp.route('/section/<int:sec_id>/delete', methods=['POST'])
+@masterprompts_bp.route('/section/<int:sec_id>/delete', methods=['POST'])
 @login_required
 def delete_section(sec_id):
     sec = MasterSection.query.filter_by(id=sec_id, user_id=current_user.id).first_or_404()
@@ -196,7 +196,7 @@ def delete_section(sec_id):
     return redirect(url_for('masterprompts.index', category_id=cat_id))
 
 
-@bp.route('/section/<int:sec_id>/move/<direction>', methods=['POST'])
+@masterprompts_bp.route('/section/<int:sec_id>/move/<direction>', methods=['POST'])
 @login_required
 def move_section(sec_id, direction):
     sec = MasterSection.query.filter_by(id=sec_id, user_id=current_user.id).first_or_404()
@@ -213,7 +213,7 @@ def move_section(sec_id, direction):
 
 # ----- Builder actions -----
 
-@bp.route('/builder/add/<int:sec_id>', methods=['POST'])
+@masterprompts_bp.route('/builder/add/<int:sec_id>', methods=['POST'])
 @login_required
 def builder_add(sec_id):
     sec = MasterSection.query.filter_by(id=sec_id, user_id=current_user.id).first_or_404()
@@ -224,7 +224,7 @@ def builder_add(sec_id):
     return redirect(url_for('masterprompts.index', category_id=sec.category_id))
 
 
-@bp.route('/builder/remove/<int:sec_id>', methods=['POST'])
+@masterprompts_bp.route('/builder/remove/<int:sec_id>', methods=['POST'])
 @login_required
 def builder_remove(sec_id):
     ids = [sid for sid in _builder_list() if sid != sec_id]
@@ -232,7 +232,7 @@ def builder_remove(sec_id):
     return redirect(url_for('masterprompts.index'))
 
 
-@bp.route('/builder/move/<int:sec_id>/<direction>', methods=['POST'])
+@masterprompts_bp.route('/builder/move/<int:sec_id>/<direction>', methods=['POST'])
 @login_required
 def builder_move(sec_id, direction):
     ids = _builder_list()
@@ -247,7 +247,7 @@ def builder_move(sec_id, direction):
     return redirect(url_for('masterprompts.index'))
 
 
-@bp.route('/builder/clear', methods=['POST'])
+@masterprompts_bp.route('/builder/clear', methods=['POST'])
 @login_required
 def builder_clear():
     _save_builder([])

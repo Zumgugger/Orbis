@@ -8,7 +8,7 @@ from datetime import datetime
 import json
 from validation import validate_title, validate_text, validate_frequency, validate_integer, validate_weekdays, ValidationError
 
-dailies_bp = Blueprint('dailies', __name__)
+dailies_bp = Blueprint('dailies', __name__, url_prefix='/dailies')
 
 WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 

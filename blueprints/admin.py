@@ -9,7 +9,7 @@ from functools import wraps
 from datetime import datetime
 from validation import validate_title, validate_email, ValidationError
 
-bp = Blueprint('admin', __name__, url_prefix='/admin')
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 def admin_required(f):
     """Decorator to require admin role"""
@@ -24,14 +24,14 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@bp.route('/users')
+@admin_bp.route('/users')
 @admin_required
 def users():
     """List all users"""
     all_users = User.query.order_by(User.created_at.desc()).all()
     return render_template('admin/users.html', users=all_users)
 
-@bp.route('/users/<int:user_id>/toggle_role', methods=['POST'])
+@admin_bp.route('/users/<int:user_id>/toggle_role', methods=['POST'])
 @admin_required
 def toggle_role(user_id):
     """Toggle user role between admin and user"""
@@ -53,7 +53,7 @@ def toggle_role(user_id):
     db.session.commit()
     return redirect(url_for('admin.users'))
 
-@bp.route('/users/create', methods=['GET', 'POST'])
+@admin_bp.route('/users/create', methods=['GET', 'POST'])
 @admin_required
 def create_user():
     """Create a new user"""
@@ -92,7 +92,7 @@ def create_user():
     
     return render_template('admin/create_user.html')
 
-@bp.route('/users/<int:user_id>/delete', methods=['POST'])
+@admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @admin_required
 def delete_user(user_id):
     """Delete a user"""

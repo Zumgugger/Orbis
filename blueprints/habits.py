@@ -7,7 +7,7 @@ from datetime import datetime
 from database import db, Habit
 from validation import validate_title, validate_text, validate_difficulty, ValidationError
 
-habits_bp = Blueprint('habits', __name__)
+habits_bp = Blueprint('habits', __name__, url_prefix='/habits')
 
 @habits_bp.route('/')
 @login_required

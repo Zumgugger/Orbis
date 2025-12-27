@@ -11,7 +11,7 @@ import time
 import os
 import json
 
-bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 # Initialize OAuth
 oauth = OAuth()
@@ -86,7 +86,7 @@ def get_google_token_for_user(user, logger=None):
 
     return token
 
-@bp.route('/login')
+@auth_bp.route('/login')
 def login():
     """Redirect to Google OAuth login"""
     # Prefer explicit override, otherwise derive from current request host to keep session state aligned.
@@ -100,7 +100,7 @@ def login():
     # Request offline access to obtain refresh_token
     return oauth.google.authorize_redirect(redirect_uri, prompt='consent', access_type='offline')
 
-@bp.route('/callback')
+@auth_bp.route('/callback')
 def callback():
     """Handle Google OAuth callback"""
     try:
@@ -157,7 +157,7 @@ def callback():
         flash(f'Authentication error: {str(e)}', 'error')
         return redirect(url_for('index'))
 
-@bp.route('/logout')
+@auth_bp.route('/logout')
 @login_required
 def logout():
     """Logout user"""
@@ -166,7 +166,7 @@ def logout():
     return redirect(url_for('index'))
 
 # Development Mode Routes
-@bp.route('/dev/login', methods=['GET', 'POST'])
+@auth_bp.route('/dev/login', methods=['GET', 'POST'])
 def dev_login():
     """Development mode: Simple login form"""
     if os.getenv('DEVELOPMENT_MODE', 'False').lower() != 'true':
@@ -230,7 +230,7 @@ def dev_login():
     </html>
     """
 
-@bp.route('/dev/create', methods=['GET', 'POST'])
+@auth_bp.route('/dev/create', methods=['GET', 'POST'])
 def dev_create_user():
     """Development mode: Create a test user"""
     if os.getenv('DEVELOPMENT_MODE', 'False').lower() != 'true':

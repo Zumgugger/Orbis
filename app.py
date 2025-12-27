@@ -12,6 +12,11 @@ from markdown import markdown as md_to_html
 from flask_wtf import CSRFProtect
 import os
 from time_utils import get_local_tz, today_local, tomorrow_local, iso_start_of_day
+from utilities import (
+    combine_todos_and_calendar,
+    filter_dailies_for_date,
+    generate_time_label
+)
 
 # Load environment variables
 load_dotenv()
@@ -53,21 +58,22 @@ def create_app():
     from blueprints.todos import todos_bp
     from blueprints.dailies import dailies_bp
     from blueprints.habits import habits_bp
-    from blueprints.goals import bp as goals_bp
-    from blueprints.shopping import bp as shopping_bp
-    from blueprints.auth import bp as auth_bp
-    from blueprints.admin import bp as admin_bp
-    from blueprints.masterprompts import bp as masterprompts_bp
+    from blueprints.goals import goals_bp
+    from blueprints.shopping import shopping_bp
+    from blueprints.auth import auth_bp
+    from blueprints.admin import admin_bp
+    from blueprints.masterprompts import masterprompts_bp
     from blueprints.ideas import ideas_bp
     
-    app.register_blueprint(todos_bp, url_prefix='/todos')
-    app.register_blueprint(dailies_bp, url_prefix='/dailies')
-    app.register_blueprint(habits_bp, url_prefix='/habits')
-    app.register_blueprint(goals_bp, url_prefix='/goals')
-    app.register_blueprint(shopping_bp, url_prefix='/shopping')
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(admin_bp, url_prefix='/admin')
-    app.register_blueprint(masterprompts_bp, url_prefix='/masterprompts')
+    # All blueprints now define url_prefix in their Blueprint() constructor
+    app.register_blueprint(todos_bp)
+    app.register_blueprint(dailies_bp)
+    app.register_blueprint(habits_bp)
+    app.register_blueprint(goals_bp)
+    app.register_blueprint(shopping_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(masterprompts_bp)
     app.register_blueprint(ideas_bp)
 
     # Error handlers
@@ -247,17 +253,9 @@ def create_app():
         pending_todos = [t for t in todos_today if t.status == 'pending']
         everything_done = len(pending_todos) == 0 and len(dailies_not_done) == 0 and len(focused_not_done) == 0
         
+        # Fetch calendar events and combine with todos
         calendar_today = fetch_calendar_events(current_user, today, today + timedelta(days=1))
-        for ev in calendar_today:
-            if ev.get('all_day'):
-                ev['time_label'] = 'Today · All-day'
-            elif ev.get('start_dt'):
-                ev['time_label'] = f"Today · {ev['start_dt'].strftime('%H:%M')}"
-            else:
-                ev['time_label'] = 'Today'
-
-        combined_todos = [{'kind': 'calendar', 'event': ev} for ev in calendar_today]
-        combined_todos += [{'kind': 'todo', 'todo': t} for t in todos_today]
+        combined_todos = combine_todos_and_calendar(todos_today, calendar_today, 'Today')
 
         return render_template('index.html', 
                      todos=todos_today, 
@@ -280,34 +278,20 @@ def create_app():
             Todo.due_date == target_date
         ).all()
 
+        # Use utility function to filter dailies with carryover
         all_dailies = Daily.query.filter_by(user_id=current_user.id).all()
-        carryover_ids = set()
-        due_ids = set()
-
-        for daily in all_dailies:
-            if daily.should_complete_on(today) and not daily.is_completed_on(today):
-                carryover_ids.add(daily.id)
-            if daily.should_complete_on(target_date):
-                due_ids.add(daily.id)
-
-        dailies_tomorrow = [
-            daily for daily in all_dailies
-            if daily.id in carryover_ids or daily.id in due_ids
-        ]
+        dailies_tomorrow, carryover_ids = filter_dailies_for_date(
+            all_dailies,
+            target_date,
+            include_carryover=True,
+            carryover_date=today
+        )
 
         focused_habits = Habit.query.filter_by(user_id=current_user.id, focused=True).order_by(Habit.position.asc(), Habit.id.asc()).all()
 
+        # Fetch calendar events and combine with todos
         calendar_tomorrow = fetch_calendar_events(current_user, target_date, target_date + timedelta(days=1))
-        for ev in calendar_tomorrow:
-            if ev.get('all_day'):
-                ev['time_label'] = 'Tomorrow · All-day'
-            elif ev.get('start_dt'):
-                ev['time_label'] = f"Tomorrow · {ev['start_dt'].strftime('%H:%M')}"
-            else:
-                ev['time_label'] = 'Tomorrow'
-
-        combined_todos = [{'kind': 'calendar', 'event': ev} for ev in calendar_tomorrow]
-        combined_todos += [{'kind': 'todo', 'todo': t} for t in todos_tomorrow]
+        combined_todos = combine_todos_and_calendar(todos_tomorrow, calendar_tomorrow, 'Tomorrow')
 
         return render_template(
             'tomorrow.html',

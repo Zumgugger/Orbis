@@ -13,7 +13,7 @@ from validation import (
     validate_priority, validate_duration, ValidationError
 )
 
-todos_bp = Blueprint('todos', __name__)
+todos_bp = Blueprint('todos', __name__, url_prefix='/todos')
 
 @todos_bp.route('/')
 @login_required

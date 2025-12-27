@@ -8,9 +8,9 @@ from database import db, Goal, Milestone
 from sqlalchemy.orm import selectinload
 from validation import validate_title, validate_text, ValidationError
 
-bp = Blueprint('goals', __name__, url_prefix='/goals')
+goals_bp = Blueprint('goals', __name__, url_prefix='/goals')
 
-@bp.route('/')
+@goals_bp.route('/')
 @login_required
 def list():
     """List all goals"""
@@ -22,7 +22,7 @@ def list():
     )
     return render_template('goals/list.html', goals=goals)
 
-@bp.route('/create', methods=['GET', 'POST'])
+@goals_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
     """Create a new goal"""
@@ -43,7 +43,7 @@ def create():
     
     return render_template('goals/form.html', goal=None)
 
-@bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@goals_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit(id):
     """Edit a goal"""
@@ -67,7 +67,7 @@ def edit(id):
     
     return render_template('goals/form.html', goal=goal)
 
-@bp.route('/<int:id>/delete', methods=['POST'])
+@goals_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
 def delete(id):
     """Delete a goal"""
@@ -77,7 +77,7 @@ def delete(id):
     flash('Goal deleted successfully!', 'success')
     return redirect(url_for('goals.list'))
 
-@bp.route('/<int:id>/add_milestone', methods=['POST'])
+@goals_bp.route('/<int:id>/add_milestone', methods=['POST'])
 @login_required
 def add_milestone(id):
     """Add a milestone to a goal"""
@@ -103,7 +103,7 @@ def add_milestone(id):
     
     return redirect(url_for('goals.edit', id=id))
 
-@bp.route('/<int:goal_id>/milestone/<int:milestone_id>/toggle', methods=['POST'])
+@goals_bp.route('/<int:goal_id>/milestone/<int:milestone_id>/toggle', methods=['POST'])
 @login_required
 def toggle_milestone(goal_id, milestone_id):
     """Toggle milestone completion status"""
@@ -123,7 +123,7 @@ def toggle_milestone(goal_id, milestone_id):
 
     return redirect(url_for('goals.list'))
 
-@bp.route('/<int:goal_id>/milestone/<int:milestone_id>/delete', methods=['POST'])
+@goals_bp.route('/<int:goal_id>/milestone/<int:milestone_id>/delete', methods=['POST'])
 @login_required
 def delete_milestone(goal_id, milestone_id):
     """Delete a milestone"""
