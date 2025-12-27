@@ -137,7 +137,12 @@
                         </a>
                     </li>
                 </ul>
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item me-2 d-none d-md-block" style="max-width: 300px;">
+                        <form class="d-flex" method="GET" action="{{ url_for('search.search') }}" role="search">
+                            <input class="form-control form-control-sm" id="globalSearchInput" type="search" name="q" placeholder="Search…" aria-label="Search">
+                        </form>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#" id="themeToggle" title="Toggle dark mode">
                             <i class="bi bi-moon-fill" id="themeIcon"></i>
@@ -250,6 +255,17 @@
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.forEach(function (tooltipTriggerEl) {
                 new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
+            // Focus search with Ctrl/Cmd + K
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    const input = document.getElementById('globalSearchInput');
+                    if (input) {
+                        input.focus();
+                    }
+                }
             });
         })();
     </script>

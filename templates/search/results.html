@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Search{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h1 class="mb-0"><i class="bi bi-search"></i> Search</h1>
+  <form class="d-flex" method="GET" action="{{ url_for('search.search') }}" role="search" style="max-width: 380px;">
+    <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Search everything…" value="{{ q }}" aria-label="Search">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">Go</button>
+  </form>
+</div>
+
+{% if not q %}
+  <div class="alert alert-info"><i class="bi bi-info-circle"></i> Type above to search across all your data.</div>
+{% else %}
+  <div class="row g-3">
+    {% for section, items in results.items() %}
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>{{ section }}</strong>
+            <span class="badge bg-secondary">{{ items|length }}</span>
+          </div>
+          <div class="list-group list-group-flush">
+            {% if items %}
+              {% for r in items %}
+                <a class="list-group-item list-group-item-action" href="{{ r.url }}">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                      <strong class="d-block">{{ r.title }}</strong>
+                      {% if r.snippet %}
+                        <small class="text-muted">{{ r.snippet }}</small>
+                      {% endif %}
+                    </div>
+                    <span class="badge bg-info text-dark">{{ r.kind }}</span>
+                  </div>
+                </a>
+              {% endfor %}
+            {% else %}
+              <div class="list-group-item text-muted">No matches</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

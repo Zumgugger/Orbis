@@ -64,6 +64,7 @@ def create_app():
     from blueprints.admin import admin_bp
     from blueprints.masterprompts import masterprompts_bp
     from blueprints.ideas import ideas_bp
+    from blueprints.search import search_bp
     
     # All blueprints now define url_prefix in their Blueprint() constructor
     app.register_blueprint(todos_bp)
@@ -75,6 +76,7 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(masterprompts_bp)
     app.register_blueprint(ideas_bp)
+    app.register_blueprint(search_bp)
 
     # Error handlers
     @app.errorhandler(400)
