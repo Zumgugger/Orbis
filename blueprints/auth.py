@@ -2,35 +2,40 @@
 Authentication Blueprint
 Handles Google OAuth login/logout
 """
-from flask import Blueprint, redirect, url_for, session, flash, request, current_app
-from authlib.integrations.flask_client import OAuth
-from flask_login import login_user, logout_user, login_required, current_user
-from database import db, User
-from datetime import datetime
-import time
-import os
 import json
+import os
+import time
+from datetime import datetime
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+from authlib.integrations.flask_client import OAuth
+from flask import Blueprint, current_app, flash, redirect, request, session, url_for
+from flask_login import current_user, login_required, login_user, logout_user
+
+from database import User, db
+
+auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 # Initialize OAuth
 oauth = OAuth()
 
+
 def init_oauth(app):
     """Initialize OAuth with app"""
-    client_id = os.getenv('GOOGLE_CLIENT_ID')
-    client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
 
-    secrets_path = os.getenv('GOOGLE_CLIENT_SECRETS_FILE')
+    secrets_path = os.getenv("GOOGLE_CLIENT_SECRETS_FILE")
     if secrets_path and os.path.exists(secrets_path):
         try:
-            with open(secrets_path, 'r', encoding='utf-8') as fh:
+            with open(secrets_path, "r", encoding="utf-8") as fh:
                 data = json.load(fh)
-            config = data.get('web') or data.get('installed') or {}
-            client_id = config.get('client_id', client_id)
-            client_secret = config.get('client_secret', client_secret)
+            config = data.get("web") or data.get("installed") or {}
+            client_id = config.get("client_id", client_id)
+            client_secret = config.get("client_secret", client_secret)
         except Exception:
-            app.logger.warning('Failed to load Google client secrets file; falling back to env vars')
+            app.logger.warning(
+                "Failed to load Google client secrets file; falling back to env vars"
+            )
 
     oauth.init_app(app)
 
@@ -42,15 +47,17 @@ def init_oauth(app):
                 db.session.commit()
         except Exception:
             # Avoid breaking flow if commit fails
-            app.logger.warning('Failed to persist refreshed OAuth token')
+            app.logger.warning("Failed to persist refreshed OAuth token")
 
     oauth.register(
-        name='google',
+        name="google",
         client_id=client_id,
         client_secret=client_secret,
-        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-        client_kwargs={'scope': 'openid email profile https://www.googleapis.com/auth/calendar'},
-        update_token=save_token
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={
+            "scope": "openid email profile https://www.googleapis.com/auth/calendar"
+        },
+        update_token=save_token,
     )
 
 
@@ -62,129 +69,139 @@ def get_google_token_for_user(user, logger=None):
     if not user:
         return None
 
-    token = getattr(user, 'get_oauth_token', lambda: None)()
+    token = getattr(user, "get_oauth_token", lambda: None)()
     if not token:
         return None
 
     try:
-        expires_at = token.get('expires_at')
-        refresh_token = token.get('refresh_token')
+        expires_at = token.get("expires_at")
+        refresh_token = token.get("refresh_token")
         now = time.time()
 
         # If token is expired or expiring within 60s, try to refresh
         if expires_at and expires_at - now <= 60 and refresh_token:
-            token_endpoint = oauth.google._client.server_metadata.get('token_endpoint')
-            new_token = oauth.google.refresh_token(token_endpoint, refresh_token=refresh_token)
+            token_endpoint = oauth.google._client.server_metadata.get("token_endpoint")
+            new_token = oauth.google.refresh_token(
+                token_endpoint, refresh_token=refresh_token
+            )
             # Persist refreshed token
             user.set_oauth_token(new_token)
             token = new_token
 
     except Exception as exc:
         log = logger or current_app.logger
-        log.warning(f'Failed to refresh Google token for user {getattr(user, "id", "?")}: {exc}')
+        log.warning(
+            f'Failed to refresh Google token for user {getattr(user, "id", "?")}: {exc}'
+        )
         return None
 
     return token
 
-@auth_bp.route('/login')
+
+@auth_bp.route("/login")
 def login():
     """Redirect to Google OAuth login"""
     # Prefer explicit override, otherwise derive from current request host to keep session state aligned.
-    redirect_uri = os.getenv('GOOGLE_REDIRECT_URI')
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
     if not redirect_uri:
-        redirect_uri = url_for('auth.callback', _external=True, _scheme=request.scheme)
+        redirect_uri = url_for("auth.callback", _external=True, _scheme=request.scheme)
     # Preserve next page if provided (so we can redirect after login)
-    next_arg = request.args.get('next')
+    next_arg = request.args.get("next")
     if next_arg:
-        session['next'] = next_arg
+        session["next"] = next_arg
     # Request offline access to obtain refresh_token
-    return oauth.google.authorize_redirect(redirect_uri, prompt='consent', access_type='offline')
+    return oauth.google.authorize_redirect(
+        redirect_uri, prompt="consent", access_type="offline"
+    )
 
-@auth_bp.route('/callback')
+
+@auth_bp.route("/callback")
 def callback():
     """Handle Google OAuth callback"""
     try:
         token = oauth.google.authorize_access_token()
-        user_info = token.get('userinfo')
-        access_token = token.get('access_token')
-        
+        user_info = token.get("userinfo")
+        access_token = token.get("access_token")
+
         if not user_info:
-            flash('Failed to get user info from Google', 'error')
-            return redirect(url_for('index'))
-        
+            flash("Failed to get user info from Google", "error")
+            return redirect(url_for("index"))
+
         # Check if user exists by google_id OR email
-        user = User.query.filter_by(google_id=user_info['sub']).first()
+        user = User.query.filter_by(google_id=user_info["sub"]).first()
         if not user:
-            user = User.query.filter_by(email=user_info['email']).first()
-        
+            user = User.query.filter_by(email=user_info["email"]).first()
+
         if not user:
             # Create new user
             user = User(
-                google_id=user_info['sub'],
-                email=user_info['email'],
-                name=user_info.get('name'),
-                profile_pic=user_info.get('picture'),
-                role='user',  # Default role
+                google_id=user_info["sub"],
+                email=user_info["email"],
+                name=user_info.get("name"),
+                profile_pic=user_info.get("picture"),
+                role="user",  # Default role
                 created_at=datetime.utcnow(),
-                oauth_token=json.dumps(token)
+                oauth_token=json.dumps(token),
             )
             db.session.add(user)
         else:
             # Update existing user with OAuth info
-            user.google_id = user_info['sub']
+            user.google_id = user_info["sub"]
             user.last_login = datetime.utcnow()
-            user.name = user_info.get('name', user.name)
-            user.profile_pic = user_info.get('picture', user.profile_pic)
+            user.name = user_info.get("name", user.name)
+            user.profile_pic = user_info.get("picture", user.profile_pic)
             user.oauth_token = json.dumps(token)
         db.session.commit()
-        
+
         # Log user in
         login_user(user)
         # Clear any queued flash messages from redirects (e.g., login_required prompts)
-        session.pop('_flashes', None)
+        session.pop("_flashes", None)
         # Show a single success message
-        flash(f'Welcome back, {user.name}!', 'success')
-        
-        # Redirect to next page or home
-        next_page = session.get('next')
-        if next_page:
-            session.pop('next')
-            return redirect(next_page)
-        
-        return redirect(url_for('index'))
-        
-    except Exception as e:
-        flash(f'Authentication error: {str(e)}', 'error')
-        return redirect(url_for('index'))
+        flash(f"Welcome back, {user.name}!", "success")
 
-@auth_bp.route('/logout')
+        # Redirect to next page or home
+        next_page = session.get("next")
+        if next_page:
+            session.pop("next")
+            return redirect(next_page)
+
+        return redirect(url_for("index"))
+
+    except Exception as e:
+        flash(f"Authentication error: {str(e)}", "error")
+        return redirect(url_for("index"))
+
+
+@auth_bp.route("/logout")
 @login_required
 def logout():
     """Logout user"""
     logout_user()
-    flash('You have been logged out.', 'success')
-    return redirect(url_for('index'))
+    flash("You have been logged out.", "success")
+    return redirect(url_for("index"))
+
 
 # Development Mode Routes
-@auth_bp.route('/dev/login', methods=['GET', 'POST'])
+@auth_bp.route("/dev/login", methods=["GET", "POST"])
 def dev_login():
     """Development mode: Simple login form"""
-    if os.getenv('DEVELOPMENT_MODE', 'False').lower() != 'true':
-        flash('Development mode is not enabled.', 'error')
-        return redirect(url_for('auth.login'))
-    
-    if request.method == 'POST':
-        user_id = request.form.get('user_id')
+    if os.getenv("DEVELOPMENT_MODE", "False").lower() != "true":
+        flash("Development mode is not enabled.", "error")
+        return redirect(url_for("auth.login"))
+
+    if request.method == "POST":
+        user_id = request.form.get("user_id")
         if user_id:
             user = User.query.get(int(user_id))
             if user:
                 user.last_login = datetime.utcnow()
                 db.session.commit()
                 login_user(user)
-                flash(f'Logged in as {user.name} ({user.role})', 'success')
-                return redirect(url_for('index'))
-        flash('Invalid user selection.', 'error')
-    
+                flash(f"Logged in as {user.name} ({user.role})", "success")
+                return redirect(url_for("index"))
+        flash("Invalid user selection.", "error")
+
     # Get all users for selection
     users = User.query.order_by(User.email).all()
     return f"""
@@ -230,39 +247,40 @@ def dev_login():
     </html>
     """
 
-@auth_bp.route('/dev/create', methods=['GET', 'POST'])
+
+@auth_bp.route("/dev/create", methods=["GET", "POST"])
 def dev_create_user():
     """Development mode: Create a test user"""
-    if os.getenv('DEVELOPMENT_MODE', 'False').lower() != 'true':
-        flash('Development mode is not enabled.', 'error')
-        return redirect(url_for('auth.login'))
-    
-    if request.method == 'POST':
-        email = request.form.get('email')
-        name = request.form.get('name')
-        role = request.form.get('role', 'user')
-        
+    if os.getenv("DEVELOPMENT_MODE", "False").lower() != "true":
+        flash("Development mode is not enabled.", "error")
+        return redirect(url_for("auth.login"))
+
+    if request.method == "POST":
+        email = request.form.get("email")
+        name = request.form.get("name")
+        role = request.form.get("role", "user")
+
         if not email or not name:
             return '<script>alert("Email and name required!"); history.back();</script>'
-        
+
         # Check if user exists
         existing = User.query.filter_by(email=email).first()
         if existing:
             return '<script>alert("User with this email already exists!"); history.back();</script>'
-        
+
         user = User(
-            google_id=f'dev_{email}',
+            google_id=f"dev_{email}",
             email=email,
             name=name,
             role=role,
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
         )
         db.session.add(user)
         db.session.commit()
-        
-        flash(f'Created user: {name} ({role})', 'success')
-        return redirect(url_for('auth.dev_login'))
-    
+
+        flash(f"Created user: {name} ({role})", "success")
+        return redirect(url_for("auth.dev_login"))
+
     return f"""
     <!DOCTYPE html>
     <html>

@@ -143,7 +143,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="event_date{{ todo.id }}" class="form-label">Date *</label>
-                        <input type="date" class="form-control" id="event_date{{ todo.id }}" name="event_date" 
+                        <input type="date" class="form-control" id="event_date{{ todo.id }}" name="event_date"
                                value="{{ todo.due_date.isoformat() if todo.due_date else '' }}" required>
                     </div>
                     <div class="mb-3">

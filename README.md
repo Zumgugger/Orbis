@@ -121,6 +121,45 @@ See [tests/README.md](tests/README.md) for detailed test documentation.
 ### Continuous Integration
 Tests run automatically via GitHub Actions on push/PR to `main` and `develop` branches.
 
+## Code Style & Tooling
+
+This project uses pre-commit hooks and modern Python tooling for linting, import sorting, formatting, and type checks.
+
+### Tools
+- Black: code formatter
+- Ruff: fast linter (and autofixes)
+- isort: import sorting (profile: black)
+- mypy: static type checking
+
+### Setup
+```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Install pre-commit hooks
+pre-commit install
+
+# (Optional) Run hooks on all files the first time
+pre-commit run --all-files
+```
+
+### Manual runs
+```bash
+# Lint + autofix
+ruff --fix .
+
+# Sort imports
+isort .
+
+# Format
+black .
+
+# Type check
+mypy .
+```
+
+Configuration lives in `pyproject.toml` (black/isort/ruff) and `mypy.ini`.
+
 ## Security Features
 
 ### File Upload Security

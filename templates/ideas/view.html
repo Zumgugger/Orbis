@@ -186,7 +186,7 @@
                 <i class="bi bi-upload"></i> Upload
             </button>
         </div>
-        
+
         <div id="filesList">
             {% if idea.files %}
                 {% for file in idea.files %}
@@ -264,31 +264,31 @@
 <script>
     const ideaId = {{ idea.id }};
     let mindElixir;
-    
+
     // Selection todo feature
     (function() {
         const notesEditor = document.getElementById('notes-editor');
         const todoBtn = document.getElementById('selectionTodoBtn');
         let selectedText = '';
-        
+
         function positionButton() {
             const selection = window.getSelection();
             if (!selection.rangeCount) return;
-            
+
             const range = selection.getRangeAt(0);
             const rect = range.getBoundingClientRect();
             const editorRect = notesEditor.getBoundingClientRect();
-            
+
             // Position button to the right of selection
             todoBtn.style.left = (rect.right - editorRect.left + 8) + 'px';
             todoBtn.style.top = (rect.top - editorRect.top) + 'px';
         }
-        
+
         notesEditor.addEventListener('mouseup', function(e) {
             setTimeout(() => {
                 const selection = window.getSelection();
                 selectedText = selection.toString().trim();
-                
+
                 if (selectedText.length > 0 && selectedText.length <= 200) {
                     positionButton();
                     todoBtn.style.opacity = '0.8';
@@ -297,21 +297,21 @@
                 }
             }, 10);
         });
-        
+
         // Hide button when clicking elsewhere
         document.addEventListener('mousedown', function(e) {
             if (e.target !== todoBtn && e.target !== notesEditor) {
                 todoBtn.style.opacity = '0';
             }
         });
-        
+
         // Create todo from selection
         todoBtn.addEventListener('click', async function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             if (!selectedText) return;
-            
+
             try {
                 const response = await fetch('/todos/quick_create', {
                     method: 'POST',
@@ -324,9 +324,9 @@
                         description: 'From idea: ' + '{{ idea.title }}'
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     showSaveIndicator('Todo created!');
                     todoBtn.style.opacity = '0';
@@ -340,7 +340,7 @@
             }
         });
     })();
-    
+
     // Save indicator
     function showSaveIndicator(message = 'Saved') {
         const indicator = document.getElementById('saveIndicator');
@@ -351,25 +351,25 @@
             indicator.style.display = 'none';
         }, 2000);
     }
-    
+
     // Save notes
     document.getElementById('saveNotesBtn').addEventListener('click', async () => {
         const notes = document.getElementById('notes-editor').value;
         const formData = new FormData();
         formData.append('notes', notes);
-        
+
         formData.append('csrf_token', window.csrfToken || '');
 
         const response = await fetch(`/ideas/${ideaId}/notes`, {
             method: 'POST',
             body: formData
         });
-        
+
         if (response.ok) {
             showSaveIndicator('Notes saved');
         }
     });
-    
+
     // Initialize mindmap
     const mindmapData = {{ idea.get_mindmap_data() | tojson if idea.mindmap_data else 'null' }};
     const defaultData = {
@@ -380,12 +380,12 @@
             children: []
         }
     };
-    
+
     document.getElementById('mindmap-tab').addEventListener('shown.bs.tab', () => {
         if (!mindElixir) {
             // Check if MindElixir is available
             if (typeof MindElixir === 'undefined') {
-                document.getElementById('mindmap-container').innerHTML = 
+                document.getElementById('mindmap-container').innerHTML =
                     '<div class="alert alert-danger m-4" role="alert">' +
                     '<h5><i class="bi bi-exclamation-triangle"></i> Mindmap Library Unavailable</h5>' +
                     '<p>The mindmap library failed to load. This could be due to:</p>' +
@@ -394,7 +394,7 @@
                     '</div>';
                 return;
             }
-            
+
             try {
                 mindElixir = new MindElixir({
                     el: '#mindmap-container',
@@ -408,9 +408,9 @@
                     locale: 'en',
                     overflowHidden: false
                 });
-                
+
                 mindElixir.init();
-                
+
                 // Select root node by default after a short delay
                 setTimeout(() => {
                     if (mindElixir && mindElixir.nodeData) {
@@ -419,7 +419,7 @@
                 }, 100);
             } catch (error) {
                 console.error('Failed to initialize MindElixir:', error);
-                document.getElementById('mindmap-container').innerHTML = 
+                document.getElementById('mindmap-container').innerHTML =
                     '<div class="alert alert-danger m-4" role="alert">' +
                     '<h5><i class="bi bi-exclamation-triangle"></i> Mindmap Initialization Failed</h5>' +
                     '<p>Error: ' + error.message + '</p>' +
@@ -427,13 +427,13 @@
             }
         }
     });
-    
+
     // Mindmap controls
     document.getElementById('addNodeBtn').addEventListener('click', () => {
         if (!mindElixir) {
             return;
         }
-        
+
         // Add child to currently selected node (or root if none selected)
         try {
             mindElixir.addChild();
@@ -441,12 +441,12 @@
             console.error('Error adding child:', e);
         }
     });
-    
+
     document.getElementById('addSiblingBtn').addEventListener('click', () => {
         if (!mindElixir) {
             return;
         }
-        
+
         // Add sibling to currently selected node
         try {
             mindElixir.insertSibling();
@@ -455,12 +455,12 @@
             alert('Please select a node first (not the root)');
         }
     });
-    
+
     document.getElementById('deleteNodeBtn').addEventListener('click', () => {
         if (!mindElixir) {
             return;
         }
-        
+
         // Remove currently selected node
         if (confirm('Delete this node and all its children?')) {
             try {
@@ -471,12 +471,12 @@
             }
         }
     });
-    
+
     // Save mindmap
     document.getElementById('saveMindmapBtn').addEventListener('click', async () => {
         if (mindElixir) {
             const data = mindElixir.getAllData();
-            
+
             const response = await fetch(`/ideas/${ideaId}/save_mindmap`, {
                 method: 'POST',
                 headers: {
@@ -485,7 +485,7 @@
                 },
                 body: JSON.stringify(data)
             });
-            
+
             if (response.ok) {
                 showSaveIndicator('Mindmap saved');
             }
@@ -593,29 +593,29 @@
             createTodoFromSelected();
         });
     })();
-    
+
     // File upload
     document.getElementById('uploadFileBtn').addEventListener('click', async () => {
         const fileInput = document.getElementById('fileUpload');
         const file = fileInput.files[0];
-        
+
         if (!file) {
             alert('Please select a file');
             return;
         }
-        
+
         const formData = new FormData();
         formData.append('file', file);
-        
+
         formData.append('csrf_token', window.csrfToken || '');
 
         const response = await fetch(`/ideas/${ideaId}/upload_file`, {
             method: 'POST',
             body: formData
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             showSaveIndicator('File uploaded');
             location.reload();
@@ -623,28 +623,28 @@
             alert(result.message);
         }
     });
-    
+
     // Delete file
     document.querySelectorAll('.delete-file-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const fileId = e.currentTarget.dataset.fileId;
-            
+
             if (!confirm('Delete this file?')) return;
-            
+
             const response = await fetch(`/ideas/${ideaId}/delete_file/${fileId}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': window.csrfToken || ''
                 }
             });
-            
+
             if (response.ok) {
                 showSaveIndicator('File deleted');
                 location.reload();
             }
         });
     });
-    
+
     // Idea-specific keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         // Ctrl/Cmd + 1/2/3: Switch tabs
@@ -657,7 +657,7 @@
             }
             return;
         }
-        
+
         // Ctrl/Cmd + M: Toggle to mindmap tab
         if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
             e.preventDefault();

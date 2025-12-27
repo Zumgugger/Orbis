@@ -13,17 +13,17 @@
                 <form method="POST" id="dailyForm">
                     <div class="mb-3">
                         <label for="title" class="form-label">Title *</label>
-                        <input type="text" class="form-control" id="title" name="title" 
+                        <input type="text" class="form-control" id="title" name="title"
                                value="{{ daily.title if daily else '' }}" required
                                placeholder="e.g., Morning Exercise, Read 30 minutes">
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
                         <textarea class="form-control" id="description" name="description" rows="3"
                                   placeholder="Optional details about this daily task">{{ daily.description if daily else '' }}</textarea>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="frequency" class="form-label">Frequency *</label>
@@ -35,23 +35,23 @@
                             </select>
                             <small class="form-text text-muted">Choose how often you want to complete this task</small>
                         </div>
-                        
+
                         <!-- Interval for daily/weekly/monthly -->
                         <div id="intervalSection" class="col-md-6 mb-3" style="display: {% if daily and daily.frequency in ['daily', 'weekly', 'monthly'] %}block{% elif not daily %}block{% else %}none{% endif %};">
                             <label for="frequency_interval" class="form-label">Repeat Every <span id="intervalUnit">day</span> *</label>
-                            <input type="number" class="form-control" id="frequency_interval" name="frequency_interval" 
+                            <input type="number" class="form-control" id="frequency_interval" name="frequency_interval"
                                    value="{{ daily.frequency_interval if daily else 1 }}" min="1" max="365">
                             <small class="form-text text-muted">Number of <span id="intervalUnitSmall">days</span> between completions</small>
                         </div>
                     </div>
-                    
+
                     <!-- Custom Weekdays Section -->
                     <div id="weekdaysSection" class="mb-3" style="display: {% if daily and daily.frequency == 'custom' %}block{% else %}none{% endif %};">
                         <label class="form-label">Select Weekdays *</label>
                         <div class="d-flex flex-wrap gap-2">
                             {% for weekday in weekdays %}
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="weekday_{{ loop.index }}" 
+                                <input class="form-check-input" type="checkbox" id="weekday_{{ loop.index }}"
                                        name="weekdays" value="{{ weekday }}"
                                        {% if daily and weekday in daily.get_weekdays() %}checked{% endif %}>
                                 <label class="form-check-label" for="weekday_{{ loop.index }}">
@@ -64,16 +64,16 @@
                             Please select at least one weekday
                         </small>
                     </div>
-                    
+
                     {% if daily %}
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> 
-                        <strong>Current Stats:</strong> 
-                        {{ daily.streak_count }} day streak, 
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Current Stats:</strong>
+                        {{ daily.streak_count }} day streak,
                         {{ daily.total_completions }} total completions
                     </div>
                     {% endif %}
-                    
+
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('dailies.list_dailies') }}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Cancel
@@ -96,7 +96,7 @@
         const weekdaysError = document.getElementById('weekdaysError');
         const intervalUnit = document.getElementById('intervalUnit');
         const intervalUnitSmall = document.getElementById('intervalUnitSmall');
-        
+
         if (frequency === 'daily') {
             intervalSection.style.display = 'block';
             intervalUnit.textContent = 'day';
@@ -117,7 +117,7 @@
             weekdaysSection.style.display = 'block';
         }
     }
-    
+
     document.getElementById('dailyForm').addEventListener('submit', function(e) {
         const frequency = document.getElementById('frequency').value;
         if (frequency === 'custom') {
@@ -130,4 +130,3 @@
     });
 </script>
 {% endblock %}
-

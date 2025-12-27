@@ -34,25 +34,25 @@
                             </form>
                         </div>
                     </div>
-                    
+
                     {% if goal.description %}
                     <p class="card-text text-muted small">{{ goal.description }}</p>
                     {% endif %}
-                    
+
                     <!-- Progress bar -->
                     {% if goal.get_total_milestones_count() > 0 %}
                     <div class="progress mb-2" style="height: 20px;">
-                        <div class="progress-bar {% if goal.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}" 
-                             role="progressbar" 
+                        <div class="progress-bar {% if goal.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}"
+                             role="progressbar"
                              style="width: {{ goal.get_progress_percentage() }}%;"
-                             aria-valuenow="{{ goal.get_progress_percentage() }}" 
-                             aria-valuemin="0" 
+                             aria-valuenow="{{ goal.get_progress_percentage() }}"
+                             aria-valuemin="0"
                              aria-valuemax="100">
                             {{ goal.get_completed_milestones_count() }}/{{ goal.get_total_milestones_count() }}
                         </div>
                     </div>
                     {% endif %}
-                    
+
                     <!-- Milestones as stars -->
                     {% if goal.milestones %}
                     <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
@@ -67,7 +67,7 @@
                         </span>
                         {% endfor %}
                     </div>
-                    
+
                     <!-- Milestone checkboxes -->
                     <div class="mt-2">
                         {% for milestone in goal.milestones|sort(attribute='order') %}

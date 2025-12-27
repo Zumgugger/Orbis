@@ -13,15 +13,15 @@
                 <form method="POST">
                     <div class="mb-3">
                         <label for="title" class="form-label">Title *</label>
-                        <input type="text" class="form-control" id="title" name="title" 
+                        <input type="text" class="form-control" id="title" name="title"
                                value="{{ todo.title if todo else '' }}" required>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
                         <textarea class="form-control" id="description" name="description" rows="3">{{ todo.description if todo else '' }}</textarea>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="priority" class="form-label">Importance</label>
@@ -31,12 +31,12 @@
                                 <option value="high" {% if todo and todo.priority == 'high' %}selected{% endif %}>High</option>
                             </select>
                         </div>
-                        
+
                         {% if show_due_date %}
                         <div class="col-md-6 mb-3">
                             <label for="due_date" class="form-label">Due Date</label>
                             <div class="input-group">
-                                <input type="date" class="form-control" id="due_date" name="due_date" 
+                                <input type="date" class="form-control" id="due_date" name="due_date"
                                        value="{{ todo.due_date if todo and todo.due_date else preset_due_date }}">
                                 <button class="btn btn-outline-secondary" id="btnDueToday" type="button" title="Set to today">
                                     <i class="bi bi-calendar-check"></i>
@@ -50,7 +50,7 @@
                         <input type="hidden" id="due_date" name="due_date" value="{{ preset_due_date }}">
                         {% endif %}
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('todos.list_todos') }}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Cancel
@@ -85,7 +85,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="event_date" class="form-label">Date *</label>
-                        <input type="date" class="form-control" id="event_date" name="event_date" 
+                        <input type="date" class="form-control" id="event_date" name="event_date"
                                value="{{ todo.due_date.isoformat() if todo.due_date else '' }}" required>
                     </div>
                     <div class="mb-3">

@@ -1,0 +1,29 @@
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["blueprints", "tests", "utilities", "database", "time_utils", "validation"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+extend-exclude = [
+  ".venv",
+  "venv",
+  "__pycache__",
+  "instance",
+  "migrations",
+]
+
+[tool.ruff.lint]
+# Enable base rules + import sorting
+select = ["E", "F", "I"]
+# Respect Black formatting; let line-length be handled by Black
+ignore = ["E501", "F841", "E722"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

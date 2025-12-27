@@ -97,7 +97,7 @@
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
                     <form action="{{ url_for('dailies.toggle_daily', daily_id=daily.id) }}?next=/" method="POST" class="d-inline">
-                        <input type="checkbox" class="form-check-input" style="width: 1.5em; height: 1.5em; cursor: pointer;" 
+                        <input type="checkbox" class="form-check-input" style="width: 1.5em; height: 1.5em; cursor: pointer;"
                                {% if daily.is_completed_today() %}checked{% endif %} onchange="this.form.submit()">
                     </form>
                     <span class="flex-grow-1 {% if daily.is_completed_today() %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</span>
@@ -105,7 +105,7 @@
                 </div>
             </div>
             {% endfor %}
-            
+
             <!-- Calendar events then Todos -->
             {% for item in combined_todos %}
             {% if item.kind == 'calendar' %}
@@ -132,7 +132,7 @@
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
                     <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/" method="POST" class="d-inline">
-                        <input type="checkbox" class="form-check-input" style="width: 1.5em; height: 1.5em; cursor: pointer;" 
+                        <input type="checkbox" class="form-check-input" style="width: 1.5em; height: 1.5em; cursor: pointer;"
                                {% if todo.status == 'completed' %}checked{% endif %} onchange="this.form.submit()">
                     </form>
                     <span class="flex-grow-1 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</span>

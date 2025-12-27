@@ -1,18 +1,19 @@
 import os
-from datetime import datetime, date, timedelta, time, timezone
+from datetime import date, datetime, time, timedelta
+
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
     from backports.zoneinfo import ZoneInfo
 
-_DEFAULT_TZ_NAME = os.getenv('DEFAULT_TIMEZONE', 'Europe/Zurich')
+_DEFAULT_TZ_NAME = os.getenv("DEFAULT_TIMEZONE", "Europe/Zurich")
 
 
 def get_local_tz() -> ZoneInfo:
     try:
         return ZoneInfo(_DEFAULT_TZ_NAME)
     except Exception:
-        return ZoneInfo('UTC')
+        return ZoneInfo("UTC")
 
 
 def now_local() -> datetime:

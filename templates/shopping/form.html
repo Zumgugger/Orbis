@@ -36,7 +36,7 @@
 {% block content %}
 <div class="mb-4">
     <h1>
-        <i class="bi bi-cart3"></i> 
+        <i class="bi bi-cart3"></i>
         {% if shopping_list %}Edit Shopping List{% else %}New Shopping List{% endif %}
     </h1>
 </div>
@@ -48,24 +48,24 @@
                 <form method="POST">
                     <div class="mb-3 text-selectable-wrapper">
                         <label for="title" class="form-label">Title *</label>
-                        <input type="text" class="form-control" id="title" name="title" 
-                               value="{% if shopping_list %}{{ shopping_list.title }}{% endif %}" 
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{% if shopping_list %}{{ shopping_list.title }}{% endif %}"
                                required autofocus>
                         <button type="button" class="selection-todo-btn" data-source="shopping-title" title="Create todo from selection">
                             <i class="bi bi-check-square"></i>
                         </button>
                     </div>
-                    
+
                     <div class="mb-3 text-selectable-wrapper">
                         <label for="items" class="form-label">Items</label>
-                        <textarea class="form-control" id="items" name="items" rows="15" 
+                        <textarea class="form-control" id="items" name="items" rows="15"
                                  >{% if shopping_list %}{{ shopping_list.items }}{% endif %}</textarea>
                         <div class="form-text">Enter each item on a new line</div>
                         <button type="button" class="selection-todo-btn" data-source="shopping-items" title="Create todo from selection">
                             <i class="bi bi-check-square"></i>
                         </button>
                     </div>
-                    
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save"></i> Save List
@@ -78,8 +78,8 @@
             </div>
         </div>
     </div>
-    
-    
+
+
 </div>
 {% endblock %}
 
@@ -89,30 +89,30 @@
     const selectionButtons = document.querySelectorAll('.selection-todo-btn');
     let currentButton = null;
     let selectedText = '';
-    
+
     function positionButton(button, targetElement) {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
-        
+
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         const parentRect = targetElement.closest('.text-selectable-wrapper').getBoundingClientRect();
-        
+
         button.style.left = (rect.right - parentRect.left + 8) + 'px';
         button.style.top = (rect.top - parentRect.top) + 'px';
     }
-    
+
     function hideAllButtons() {
         selectionButtons.forEach(btn => btn.style.opacity = '0');
     }
-    
+
     // Handle text selection in input and textarea fields
     ['title', 'items'].forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (!field) return;
-        
+
         const button = field.closest('.text-selectable-wrapper').querySelector('.selection-todo-btn');
-        
+
         ['mouseup', 'keyup'].forEach(eventType => {
             field.addEventListener(eventType, function() {
                 setTimeout(() => {
@@ -125,7 +125,7 @@
                         selection = window.getSelection();
                         selectedText = selection.toString().trim();
                     }
-                    
+
                     if (selectedText.length > 0 && selectedText.length <= 200) {
                         hideAllButtons();
                         if (field.tagName === 'INPUT') {
@@ -146,25 +146,25 @@
             });
         });
     });
-    
+
     // Hide buttons when clicking elsewhere
     document.addEventListener('mousedown', function(e) {
         if (!e.target.closest('.text-selectable-wrapper') && !e.target.classList.contains('selection-todo-btn')) {
             hideAllButtons();
         }
     });
-    
+
     // Create todo from selection
     selectionButtons.forEach(button => {
         button.addEventListener('click', async function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             if (!selectedText) return;
-            
+
             const source = this.dataset.source;
             const listTitle = document.getElementById('title').value || 'Shopping list';
-            
+
             try {
                 const response = await fetch('/todos/quick_create', {
                     method: 'POST',
@@ -177,9 +177,9 @@
                         description: 'From shopping: ' + listTitle
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     // Show success notification
                     const alert = document.createElement('div');
@@ -188,7 +188,7 @@
                     alert.innerHTML = '<i class="bi bi-check-circle"></i> Todo created! <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
                     document.body.appendChild(alert);
                     setTimeout(() => alert.remove(), 3000);
-                    
+
                     hideAllButtons();
                     window.getSelection().removeAllRanges();
                 } else {
