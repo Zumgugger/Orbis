@@ -247,11 +247,11 @@
             // Check if MindElixir is available
             if (typeof MindElixir === 'undefined') {
                 document.getElementById('mindmap-container').innerHTML = 
-                    '<div class=\"alert alert-danger m-4\" role=\"alert\">' +
-                    '<h5><i class=\"bi bi-exclamation-triangle\"></i> Mindmap Library Unavailable</h5>' +
+                    '<div class="alert alert-danger m-4" role="alert">' +
+                    '<h5><i class="bi bi-exclamation-triangle"></i> Mindmap Library Unavailable</h5>' +
                     '<p>The mindmap library failed to load. This could be due to:</p>' +
                     '<ul><li>Network connectivity issues</li><li>CDN service disruption</li></ul>' +
-                    '<p class=\"mb-0\"><button class=\"btn btn-primary\" onclick=\"location.reload()\">Retry</button></p>' +
+                    '<p class="mb-0"><button class="btn btn-primary" onclick="location.reload()">Retry</button></p>' +
                     '</div>';
                 return;
             }
@@ -281,8 +281,8 @@
             } catch (error) {
                 console.error('Failed to initialize MindElixir:', error);
                 document.getElementById('mindmap-container').innerHTML = 
-                    '<div class=\"alert alert-danger m-4\" role=\"alert\">' +
-                    '<h5><i class=\"bi bi-exclamation-triangle\"></i> Mindmap Initialization Failed</h5>' +
+                    '<div class="alert alert-danger m-4" role="alert">' +
+                    '<h5><i class="bi bi-exclamation-triangle"></i> Mindmap Initialization Failed</h5>' +
                     '<p>Error: ' + error.message + '</p>' +
                     '</div>';
             }
