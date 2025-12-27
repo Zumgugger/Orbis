@@ -45,6 +45,9 @@ def create_app(config_name=None):
     ).lower()
     app_config = config_map.get(cfg_key, DevConfig)
     app.config.from_object(app_config)
+    # Logging
+    if hasattr(app_config, "configure_logging"):
+        app_config.configure_logging(app)
 
     # Markdown filter for rendering section bodies (sanitized)
     allowed_tags = bleach.sanitizer.ALLOWED_TAGS.union(
@@ -77,7 +80,7 @@ def create_app(config_name=None):
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     # Initialize OAuth
     from blueprints.auth import init_oauth

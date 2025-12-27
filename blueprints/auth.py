@@ -193,7 +193,7 @@ def dev_login():
     if request.method == "POST":
         user_id = request.form.get("user_id")
         if user_id:
-            user = User.query.get(int(user_id))
+            user = db.session.get(User, int(user_id))
             if user:
                 user.last_login = datetime.utcnow()
                 db.session.commit()

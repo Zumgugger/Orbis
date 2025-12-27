@@ -9,6 +9,8 @@ from pathlib import Path
 
 from werkzeug.utils import secure_filename
 
+from utilities import log_warning
+
 # Configuration
 UPLOAD_BASE_DIR = "uploads/idea_files"
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
@@ -257,8 +259,11 @@ def delete_uploaded_file(relative_filepath, base_dir=UPLOAD_BASE_DIR):
                     parent = parent.parent
                 else:
                     break
-        except:
-            pass  # Ignore cleanup errors
+        except Exception as exc:
+            log_warning(
+                "Failed to clean up empty upload dirs",
+                extra={"path": str(validated_path), "error": str(exc)},
+            )
 
         return True
 
