@@ -98,9 +98,9 @@ def delete_idea(idea_id):
     # Delete associated files
     for file in idea.files:
         try:
-            if os.path.exists(file.filepath):
-                os.remove(file.filepath)
-        except:
+            if file.file_path and os.path.exists(file.file_path):
+                os.remove(file.file_path)
+        except Exception:
             pass
     
     db.session.delete(idea)
@@ -187,10 +187,6 @@ def upload_file(idea_id):
             file_size=file_metadata.get('file_size') or file_metadata.get('filesize'),
             mime_type=file_metadata.get('mime_type')
         )
-        # Fill legacy fields for compatibility
-        idea_file.filename = idea_file.original_filename
-        idea_file.filepath = idea_file.file_path
-        idea_file.filesize = idea_file.file_size
         db.session.add(idea_file)
         idea.updated_at = datetime.utcnow()
         db.session.commit()
@@ -200,8 +196,8 @@ def upload_file(idea_id):
             'message': 'File uploaded successfully',
             'file': {
                 'id': idea_file.id,
-                'filename': idea_file.filename,
-                'filesize': idea_file.filesize,
+                'filename': idea_file.original_filename,
+                'filesize': idea_file.file_size,
                 'uploaded_at': idea_file.uploaded_at.isoformat()
             }
         })
@@ -219,12 +215,9 @@ def delete_file(idea_id, file_id):
         
         # Securely delete physical file
         try:
-            delete_uploaded_file(idea_file.filepath)
-        except FileSecurityError as e:
-            # Log security violation but continue with DB deletion
-            pass
+            delete_uploaded_file(idea_file.file_path or idea_file.filepath)
         except Exception:
-            # Ignore file deletion errors (file may not exist)
+            # Ignore file deletion errors (file may not exist or legacy path invalid)
             pass
         
         db.session.delete(idea_file)
@@ -246,7 +239,7 @@ def delete_file_simple(file_id):
         idea = Idea.query.filter_by(id=idea_file.idea_id, user_id=current_user.id).first_or_404()
 
         try:
-            delete_uploaded_file(idea_file.filepath)
+            delete_uploaded_file(idea_file.file_path or idea_file.filepath)
         except Exception:
             pass
 
@@ -269,7 +262,7 @@ def download_file(idea_id, file_id):
     try:
         # Get validated file path
         path = idea_file.file_path or idea_file.filepath
-        name = idea_file.original_filename or idea_file.filename
+        name = idea_file.original_filename or idea_file.stored_filename
         validated_path = get_file_path(path)
         return send_file(validated_path, as_attachment=True, download_name=name)
     except FileSecurityError as e:
