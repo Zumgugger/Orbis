@@ -3,7 +3,7 @@ Smoke tests for todo CRUD operations
 """
 import pytest
 from datetime import date, timedelta
-from database import db, Todo
+from database import db, Todo, User
 
 
 def test_todo_list_page_loads(authenticated_client):
