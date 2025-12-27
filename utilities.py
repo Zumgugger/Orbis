@@ -2,7 +2,7 @@
 Shared utility functions for blueprints
 Provides common helpers for time labels, combined lists, redirects, etc.
 """
-from flask import request, url_for
+from flask import request, url_for, current_app, jsonify
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
@@ -354,3 +354,59 @@ def group_by_status(items, status_attr='status'):
             groups[status] = []
         groups[status].append(item)
     return groups
+
+
+# Structured logging helpers and JSON error builder
+def _with_context(extra=None):
+    ctx = {
+        'path': request.path if request else None,
+        'method': request.method if request else None,
+        'remote_addr': request.remote_addr if request else None,
+    }
+    try:
+        from flask_login import current_user
+        ctx['user_id'] = getattr(current_user, 'id', None)
+    except Exception:
+        ctx['user_id'] = None
+    if extra and isinstance(extra, dict):
+        ctx.update(extra)
+    return ctx
+
+
+def log_warning(message, extra=None):
+    logger = getattr(current_app, 'logger', None)
+    if logger:
+        logger.warning({'message': message, **_with_context(extra)})
+
+
+def log_error(message, extra=None):
+    logger = getattr(current_app, 'logger', None)
+    if logger:
+        logger.error({'message': message, **_with_context(extra)})
+
+
+def log_exception(exc, message=None, extra=None):
+    logger = getattr(current_app, 'logger', None)
+    if logger:
+        logger.exception({'message': message or str(exc), 'exception': str(exc), **_with_context(extra)})
+
+
+def build_json_error(error_key, message, status=400, extra=None):
+    """
+    Build a consistent JSON error payload and log appropriately.
+
+    Note: This does not enforce usage across all endpoints to avoid breaking tests.
+    """
+    payload = {
+        'status': status,
+        'error': error_key,
+        'message': message,
+        'path': request.path
+    }
+    if extra and isinstance(extra, dict):
+        payload.update({'extra': extra})
+    if status >= 500:
+        log_exception(Exception(message), message=message, extra=extra)
+    else:
+        log_warning(message, extra=extra)
+    return jsonify(payload), status

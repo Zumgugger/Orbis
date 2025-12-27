@@ -16,6 +16,7 @@ from file_security import (
     FileSecurityError,
     UPLOAD_BASE_DIR
 )
+from utilities import log_warning, log_error, log_exception
 
 ideas_bp = Blueprint('ideas', __name__, url_prefix='/ideas')
 
@@ -125,9 +126,11 @@ def save_notes(idea_id):
         
         return jsonify({'success': True, 'message': 'Notes saved successfully'})
     except ValidationError as e:
+        log_warning('Validation error saving notes', extra={'idea_id': idea_id, 'error': str(e)})
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
+        log_exception(e, message='Failed to save notes', extra={'idea_id': idea_id})
         return jsonify({'success': False, 'error': 'Failed to save notes'}), 500
 
 # Backward-compatibility alias: older UI may call /save_notes
@@ -156,6 +159,7 @@ def save_mindmap(idea_id):
         return jsonify({'success': True, 'message': 'Mindmap saved successfully'})
     except Exception as e:
         db.session.rollback()
+        log_exception(e, message='Failed to save mindmap', extra={'idea_id': idea_id})
         return jsonify({'success': False, 'error': 'Failed to save mindmap'}), 500
 
 @ideas_bp.route('/<int:idea_id>/upload', methods=['POST'])
@@ -176,6 +180,7 @@ def upload_file(idea_id):
         try:
             file_metadata = save_uploaded_file(file, file.filename)
         except FileSecurityError as e:
+            log_warning('File security error on upload', extra={'idea_id': idea_id, 'error': str(e)})
             return jsonify({'success': False, 'error': str(e)}), 400
         
         # Save to database
@@ -203,6 +208,7 @@ def upload_file(idea_id):
         })
     except Exception as e:
         db.session.rollback()
+        log_exception(e, message='Failed to upload file', extra={'idea_id': idea_id})
         return jsonify({'success': False, 'error': 'Failed to upload file'}), 500
 
 @ideas_bp.route('/<int:idea_id>/delete_file/<int:file_id>', methods=['POST'])
@@ -216,9 +222,9 @@ def delete_file(idea_id, file_id):
         # Securely delete physical file
         try:
             delete_uploaded_file(idea_file.file_path or idea_file.filepath)
-        except Exception:
-            # Ignore file deletion errors (file may not exist or legacy path invalid)
-            pass
+        except Exception as exc:
+            # Ignore but log file deletion errors (file may not exist or legacy path invalid)
+            log_warning('Delete file physical path failed', extra={'file_id': file_id, 'idea_id': idea_id, 'error': str(exc)})
         
         db.session.delete(idea_file)
         idea.updated_at = datetime.utcnow()
@@ -227,6 +233,7 @@ def delete_file(idea_id, file_id):
         return jsonify({'success': True, 'message': 'File deleted successfully'})
     except Exception as e:
         db.session.rollback()
+        log_exception(e, message='Failed to delete file', extra={'file_id': file_id, 'idea_id': idea_id})
         return jsonify({'success': False, 'error': 'Failed to delete file'}), 500
 
 @ideas_bp.route('/files/<int:file_id>/delete', methods=['POST'])
@@ -240,16 +247,17 @@ def delete_file_simple(file_id):
 
         try:
             delete_uploaded_file(idea_file.file_path or idea_file.filepath)
-        except Exception:
-            pass
+        except Exception as exc:
+            log_warning('Delete file (simple) physical path failed', extra={'file_id': file_id, 'idea_id': idea.id, 'error': str(exc)})
 
         db.session.delete(idea_file)
         idea.updated_at = datetime.utcnow()
         db.session.commit()
 
         return jsonify({'success': True, 'message': 'File deleted successfully'})
-    except Exception:
+    except Exception as e:
         db.session.rollback()
+        log_exception(e, message='Failed to delete file (simple)', extra={'file_id': file_id})
         return jsonify({'success': False, 'error': 'Failed to delete file'}), 500
 
 @ideas_bp.route('/<int:idea_id>/download_file/<int:file_id>')
@@ -267,7 +275,9 @@ def download_file(idea_id, file_id):
         return send_file(validated_path, as_attachment=True, download_name=name)
     except FileSecurityError as e:
         flash(f'Security error: {str(e)}', 'error')
+        log_warning('File security error on download', extra={'idea_id': idea_id, 'file_id': file_id, 'error': str(e)})
         return redirect(url_for('ideas.view_idea', idea_id=idea.id))
     except Exception:
         flash('File not found', 'error')
+        log_warning('File not found on download', extra={'idea_id': idea_id, 'file_id': file_id})
         return redirect(url_for('ideas.view_idea', idea_id=idea.id))

@@ -8,6 +8,7 @@ from datetime import datetime, date, timedelta
 import requests
 import os
 from time_utils import today_local, tomorrow_local, now_local, get_local_tz
+from utilities import log_warning, log_error, log_exception
 from validation import (
     validate_title, validate_text, validate_date, validate_time,
     validate_priority, validate_duration, ValidationError
@@ -82,6 +83,7 @@ def create_todo():
             return redirect(url_for('todos.list_todos'))
         except ValidationError as e:
             flash(str(e), 'error')
+            log_warning('Validation error creating todo', extra={'error': str(e)})
             return redirect(url_for('todos.create_todo'))
 
     return render_template('todos/form.html', todo=None, action='Create', show_due_date=True, preset_due_date='')
@@ -112,6 +114,7 @@ def create_todo_today():
             return redirect(url_for('index'))
         except ValidationError as e:
             flash(str(e), 'error')
+            log_warning('Validation error creating today todo', extra={'error': str(e)})
             return redirect(url_for('todos.create_todo_today'))
 
     return render_template('todos/form.html', todo=None, action='Create', show_due_date=False, preset_due_date=preset_date.isoformat())
@@ -142,6 +145,7 @@ def create_todo_tomorrow():
             return redirect(url_for('tomorrow'))
         except ValidationError as e:
             flash(str(e), 'error')
+            log_warning('Validation error creating tomorrow todo', extra={'error': str(e)})
             return redirect(url_for('todos.create_todo_tomorrow'))
 
     return render_template('todos/form.html', todo=None, action='Create', show_due_date=False, preset_due_date=preset_date.isoformat())
@@ -167,6 +171,7 @@ def edit_todo(todo_id):
             return redirect(url_for('todos.list_todos'))
         except ValidationError as e:
             flash(str(e), 'error')
+            log_warning('Validation error editing todo', extra={'todo_id': todo_id, 'error': str(e)})
             return render_template('todos/form.html', todo=todo, action='Edit')
     
     return render_template('todos/form.html', todo=todo, action='Edit')
@@ -235,16 +240,19 @@ def schedule_todo(todo_id):
         )
     except ValidationError as e:
         flash(str(e), 'error')
+        log_warning('Validation error scheduling todo', extra={'todo_id': todo.id, 'error': str(e)})
         return redirect(url_for('todos.list_todos'))
     
     # Warn if scheduling in the past
     if event_date < today_local():
         flash('Warning: You are scheduling an event in the past.', 'warning')
+        log_warning('Scheduling event in the past', extra={'todo_id': todo.id, 'event_date': event_date.isoformat()})
     elif event_date == today_local() and event_time:
         now = now_local()
         tzinfo = get_local_tz()
         if datetime.combine(event_date, event_time, tzinfo=tzinfo) < now:
             flash('Warning: You are scheduling an event in the past.', 'warning')
+            log_warning('Scheduling event in the past (same day)', extra={'todo_id': todo.id})
     
     # Build event start/end time
     if event_time:
@@ -262,6 +270,7 @@ def schedule_todo(todo_id):
         token = get_google_token_for_user(current_user)
         if not token:
             flash('You must authenticate with Google first.', 'error')
+            log_warning('Missing Google auth token', extra={'todo_id': todo.id})
             return redirect(url_for('auth.login'))
 
         tz = os.getenv('DEFAULT_TIMEZONE', 'Europe/Zurich')
@@ -302,7 +311,9 @@ def schedule_todo(todo_id):
             except Exception:
                 err = response.text
             flash(f'Failed to schedule: {err}', 'error')
+            log_error('Failed to schedule calendar event', extra={'todo_id': todo.id, 'status_code': response.status_code, 'response': err})
     except Exception as e:
         flash(f'Error scheduling event: {str(e)}', 'error')
+        log_exception(e, message='Exception scheduling calendar event', extra={'todo_id': todo.id})
     
     return redirect(url_for('todos.list_todos'))
