@@ -29,6 +29,19 @@ def _assemble_text(sections):
         parts.append("---")
     return "\n\n".join(parts).strip()
 
+# Minimal build function to satisfy tests expecting masterprompts.build
+def build(sections=None):
+    """Return combined text from provided sections or session builder.
+    Tests reference masterprompts.build; this provides a stable attribute.
+    """
+    if sections is None:
+        ids = _builder_list()
+        if not ids:
+            return ''
+        q = MasterSection.query.filter(MasterSection.user_id == current_user.id, MasterSection.id.in_(ids)).order_by(MasterSection.id)
+        return _assemble_text(q.all())
+    return _assemble_text(sections)
+
 
 def _reseq_categories(user_id):
     cats = MasterCategory.query.filter_by(user_id=user_id).order_by(MasterCategory.position, MasterCategory.id).all()

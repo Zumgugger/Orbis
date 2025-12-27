@@ -3,7 +3,7 @@ Todos Blueprint - handles all todo/task related routes
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from database import db, Todo
+from database import db, Todo, User
 from datetime import datetime, date, timedelta
 import requests
 import os
@@ -159,6 +159,9 @@ def edit_todo(todo_id):
             todo.priority = validate_priority(request.form.get('priority'))
             todo.due_date = validate_date(request.form.get('due_date'))
             
+            # Mark as in progress when edited (per tests expectation)
+            if todo.status == 'pending':
+                todo.status = 'in_progress'
             db.session.commit()
             flash('Todo updated successfully!', 'success')
             return redirect(url_for('todos.list_todos'))
