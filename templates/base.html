@@ -23,6 +23,7 @@
         body {
             padding-top: 60px;
             background-color: #f8f9fa;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         .priority-high { border-left: 4px solid #dc3545; }
         .priority-medium { border-left: 4px solid #ffc107; }
@@ -30,6 +31,52 @@
         .completed-task {
             opacity: 0.6;
             text-decoration: line-through;
+        }
+        
+        /* Dark theme styles */
+        [data-bs-theme="dark"] body {
+            background-color: #212529;
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] .list-group-item {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.125);
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] .card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.125);
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] .table {
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] .form-control,
+        [data-bs-theme="dark"] .form-select {
+            background-color: #2b3035;
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] .form-control:focus,
+        [data-bs-theme="dark"] .form-select:focus {
+            background-color: #2b3035;
+            border-color: rgba(255, 255, 255, 0.25);
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] .text-muted {
+            color: #adb5bd !important;
+        }
+        [data-bs-theme="dark"] .alert {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.125);
+        }
+        
+        #themeToggle {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        #themeToggle:hover {
+            transform: scale(1.1);
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -88,6 +135,11 @@
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="themeToggle" title="Toggle dark mode">
+                            <i class="bi bi-moon-fill" id="themeIcon"></i>
+                        </a>
+                    </li>
                     {% if current_user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
@@ -144,6 +196,40 @@
             crossorigin="anonymous"
             onerror="this.onerror=null;this.removeAttribute('integrity');this.src='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js';"></script>
     <script>
+        // Dark mode toggle functionality
+        (function() {
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            const htmlElement = document.documentElement;
+            
+            // Load saved theme preference (default: dark)
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            htmlElement.setAttribute('data-bs-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+            
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const currentTheme = htmlElement.getAttribute('data-bs-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    
+                    htmlElement.setAttribute('data-bs-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    updateThemeIcon(newTheme);
+                });
+            }
+            
+            function updateThemeIcon(theme) {
+                if (themeIcon) {
+                    if (theme === 'dark') {
+                        themeIcon.className = 'bi bi-sun-fill';
+                    } else {
+                        themeIcon.className = 'bi bi-moon-fill';
+                    }
+                }
+            }
+        })();
+        
         // Check if Bootstrap loaded successfully
         (function() {
             if (typeof bootstrap === 'undefined') {

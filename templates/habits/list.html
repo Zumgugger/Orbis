@@ -85,14 +85,14 @@
                         <div class="col-auto">
                             <div class="btn-group" role="group">
                                 <form action="{{ url_for('habits.increment_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                    <button type="submit" class="btn btn-success btn-lg"
+                                    <button type="submit" class="btn btn-outline-success btn-lg"
                                             data-bs-toggle="tooltip" data-bs-placement="top"
                                             title="+1 increases count for a successful habit">
                                         <i class="bi bi-plus-circle-fill"></i> +1
                                     </button>
                                 </form>
                                 <form action="{{ url_for('habits.decrement_habit', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                    <button type="submit" class="btn btn-danger btn-lg"
+                                    <button type="submit" class="btn btn-outline-danger btn-lg"
                                             data-bs-toggle="tooltip" data-bs-placement="top"
                                             title="-1 decreases count for a negative habit">
                                         <i class="bi bi-dash-circle-fill"></i> -1
