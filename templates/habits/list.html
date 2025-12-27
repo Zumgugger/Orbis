@@ -26,6 +26,10 @@
                         <div class="col-auto text-muted drag-handle" title="Drag to reorder">
                             <i class="bi bi-grip-vertical fs-4"></i>
                         </div>
+                        <div class="col-auto reorder-controls" title="Tap to reorder">
+                            <button type="button" class="btn btn-outline-secondary btn-sm move-up" aria-label="Move up"><i class="bi bi-caret-up"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm move-down" aria-label="Move down"><i class="bi bi-caret-down"></i></button>
+                        </div>
 
                         <div class="col-auto">
                             <form action="{{ url_for('habits.toggle_focus', habit_id=habit.id) }}" method="POST" style="display: inline;">
@@ -183,6 +187,33 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order })
         }).catch(() => {});
+    }
+
+    // Touch-friendly reorder buttons
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    if (isTouch) {
+        list.querySelectorAll('.habit-item').forEach(item => {
+            const up = item.querySelector('.move-up');
+            const down = item.querySelector('.move-down');
+            if (up) {
+                up.addEventListener('click', () => {
+                    const prev = item.previousElementSibling;
+                    if (prev) {
+                        list.insertBefore(item, prev);
+                        persistOrder();
+                    }
+                });
+            }
+            if (down) {
+                down.addEventListener('click', () => {
+                    const next = item.nextElementSibling;
+                    if (next) {
+                        list.insertBefore(next, item);
+                        persistOrder();
+                    }
+                });
+            }
+        });
     }
 });
 </script>

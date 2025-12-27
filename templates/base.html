@@ -112,6 +112,21 @@
                         </a>
                     </li>
                     <li class="nav-item">
+
+                        /* Mobile-friendly touch targets and wrapping */
+                        @media (max-width: 576px), (pointer: coarse) {
+                            .btn { min-height: 44px; padding: 10px 14px; }
+                            .form-check-input { width: 2em; height: 2em; }
+                            .btn-group { flex-wrap: wrap; gap: 0.5rem; }
+                            .list-group-item { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+                        }
+
+                        /* Habits: hide drag handle on touch, show reorder buttons */
+                        @media (pointer: coarse) {
+                            .drag-handle { display: none !important; }
+                            .reorder-controls { display: inline-flex !important; }
+                        }
+                        .reorder-controls { display: none; gap: 0.25rem; }
                         <a class="nav-link" href="{{ url_for('habits.list_habits') }}">
                             <i class="bi bi-arrow-repeat"></i> Habits
                         </a>
