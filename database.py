@@ -14,6 +14,37 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
+        apply_migrations()
+
+
+def apply_migrations():
+    """Lightweight migrations applied at startup.
+
+    - Add `deadline` column to `goals` if missing.
+    - Add `repeat_limit` and `exercise_minutes` columns to `dailies` if missing.
+    """
+    try:
+        engine = db.get_engine()
+        inspector = db.inspect(engine)
+
+        goal_columns = [col["name"] for col in inspector.get_columns("goals")]
+        if "deadline" not in goal_columns:
+            with engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE goals ADD COLUMN deadline DATE"))
+
+        daily_columns = [col["name"] for col in inspector.get_columns("dailies")]
+        with engine.connect() as conn:
+            if "repeat_limit" not in daily_columns:
+                conn.execute(
+                    db.text("ALTER TABLE dailies ADD COLUMN repeat_limit INTEGER")
+                )
+            if "exercise_minutes" not in daily_columns:
+                conn.execute(
+                    db.text("ALTER TABLE dailies ADD COLUMN exercise_minutes INTEGER")
+                )
+    except Exception:
+        # Avoid blocking app startup if inspection fails
+        pass
 
 
 class User(UserMixin, db.Model):
@@ -124,6 +155,14 @@ class Daily(db.Model):
     last_completed_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Optional limits and metadata
+    repeat_limit = db.Column(
+        db.Integer, nullable=True
+    )  # Stop showing after N completions
+    exercise_minutes = db.Column(
+        db.Integer, nullable=True
+    )  # Suggested duration per session
+
     # Frequency fields
     frequency = db.Column(
         db.String(20), default="daily"
@@ -168,6 +207,12 @@ class Daily(db.Model):
         ]
         target_weekday = weekday_names[target_date.weekday()]
 
+        if (
+            self.repeat_limit is not None
+            and self.total_completions >= self.repeat_limit
+        ):
+            return False
+
         if self.last_completed_date and target_date < self.last_completed_date:
             return False
 
@@ -204,6 +249,13 @@ class Daily(db.Model):
     def toggle_completion(self):
         """Toggle daily completion and update streak/totals"""
         today = date.today()
+
+        if (
+            self.repeat_limit is not None
+            and self.total_completions >= self.repeat_limit
+            and not self.is_completed_today()
+        ):
+            return
 
         if self.is_completed_today():
             # Uncomplete today's daily
@@ -268,6 +320,13 @@ class Daily(db.Model):
     def toggle_completion_on(self, target_date):
         """Toggle completion for a specific date (used for early scratch on Tomorrow)."""
         if not isinstance(target_date, date):
+            return
+
+        if (
+            self.repeat_limit is not None
+            and self.total_completions >= self.repeat_limit
+            and not self.is_completed_on(target_date)
+        ):
             return
 
         if self.is_completed_on(target_date):
