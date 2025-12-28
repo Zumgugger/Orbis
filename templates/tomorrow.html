@@ -19,9 +19,6 @@
 
 <p class="text-muted mb-3">Preview for {{ target_date.strftime('%A, %B %d, %Y') }}. Unfinished items from today roll over automatically.</p>
 
-<div class="mb-3">
-    </div>
-</div>
 <div class="progress mb-3" style="height: 20px;">
     <div class="progress-bar bg-success" role="progressbar" style="width: {{ tomorrow_progress_percent }}%;" aria-valuenow="{{ tomorrow_progress_percent }}" aria-valuemin="0" aria-valuemax="100">
         {{ tomorrow_progress_percent }}%
