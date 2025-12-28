@@ -34,16 +34,24 @@
 {% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h1>
-        <i class="bi bi-cart3"></i>
-        {% if shopping_list %}Edit Shopping List{% else %}New Shopping List{% endif %}
-    </h1>
-</div>
-
-<div class="row">
+<div class="row justify-content-center mt-4">
     <div class="col-md-8">
         <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">{% if shopping_list %}Edit Shopping List{% else %}New Shopping List{% endif %}</h2>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearItemsBtn">
+                        <i class="bi bi-eraser"></i> Clear Items
+                    </button>
+                    {% if shopping_list %}
+                    <form action="{{ url_for('shopping.delete', id=shopping_list.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this shopping list?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
             <div class="card-body">
                 <form method="POST">
                     <div class="mb-3 text-selectable-wrapper">
@@ -66,20 +74,18 @@
                         </button>
                     </div>
 
-                    <div class="d-flex gap-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('shopping.list') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save"></i> Save List
                         </button>
-                        <a href="{{ url_for('shopping.list') }}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> Cancel
-                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-
-
 </div>
 {% endblock %}
 
@@ -87,6 +93,14 @@
 <script>
 (function() {
     const selectionButtons = document.querySelectorAll('.selection-todo-btn');
+    const clearBtn = document.getElementById('clearItemsBtn');
+    const itemsField = document.getElementById('items');
+
+    if (clearBtn && itemsField) {
+        clearBtn.addEventListener('click', () => {
+            itemsField.value = '';
+        });
+    }
     let currentButton = null;
     let selectedText = '';
 
