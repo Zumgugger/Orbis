@@ -2,6 +2,32 @@
 
 {% block title %}Shopping Lists{% endblock %}
 
+{% block extra_css %}
+<style>
+    .shopping-item.checked .shopping-text {
+        text-decoration: line-through;
+        color: var(--bs-secondary-color);
+        opacity: 0.7;
+    }
+    .shopping-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.shopping-check').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const item = e.target.closest('.shopping-item');
+            if (item) item.classList.toggle('checked', e.target.checked);
+        });
+    });
+});
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 mt-4">
     <h1><i class="bi bi-cart3"></i> Shopping Lists</h1>
@@ -14,30 +40,24 @@
     <div class="row">
         {% for shopping_list in lists %}
         <div class="col-md-6 mb-3">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card shopping-card">
+                <div class="card-header" style="cursor: pointer;" onclick="window.location='{{ url_for('shopping.edit', id=shopping_list.id) }}'">
                     <h5 class="mb-0">{{ shopping_list.title }}</h5>
-                    <div class="d-flex gap-2">
-                        <a href="{{ url_for('shopping.edit', id=shopping_list.id) }}" class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <form action="{{ url_for('shopping.delete', id=shopping_list.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this shopping list?');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
+                </div>
+                {% if shopping_list.items %}
+                    <div class="list-group list-group-flush">
+                        {% for line in shopping_list.items.split('\n') if line.strip() %}
+                        <label class="list-group-item d-flex align-items-center shopping-item py-2">
+                            <input class="form-check-input me-2 shopping-check" type="checkbox">
+                            <span class="flex-grow-1 shopping-text">{{ line }}</span>
+                        </label>
+                        {% endfor %}
                     </div>
-                </div>
-                <div class="card-body">
-                    {% if shopping_list.items %}
-                        <div style="white-space: pre-line;">{{ shopping_list.items }}</div>
-                    {% else %}
+                {% else %}
+                    <div class="card-body">
                         <p class="text-muted fst-italic mb-0">Empty list</p>
-                    {% endif %}
-                </div>
-                <div class="card-footer text-muted small">
-                    Updated {{ shopping_list.updated_at.strftime('%Y-%m-%d %H:%M') }}
-                </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
