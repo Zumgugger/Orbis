@@ -5,13 +5,23 @@
 {% block extra_css %}
 <style>
     .daily-form-container {
-        margin-top: 20px;
+        margin-top: 0;
+    }
+    .daily-form-container .btn-outline-danger {
+        background-color: transparent !important;
+        border: 1px solid #dc3545 !important;
+        color: #dc3545 !important;
+    }
+    .daily-form-container .btn-outline-danger:hover {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: white !important;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center daily-form-container">
+<div class="row justify-content-center daily-form-container mt-4">
     <div class="col-md-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">

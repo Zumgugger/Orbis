@@ -3,14 +3,14 @@
 {% block title %}Habits - Orbis{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
+<div class="row mb-4 mt-4">
     <div class="col">
         <h1><i class="bi bi-arrow-repeat"></i> My Habits</h1>
         <p class="text-muted mb-1">Track positive and negative habits with +/- counters</p>
         <small class="text-muted">Drag to reorder, star to focus (shows on Today/Tomorrow), click +/- to adjust.</small>
     </div>
     <div class="col text-end">
-        <a href="{{ url_for('habits.create_habit') }}" class="btn btn-primary">
+        <a href="{{ url_for('habits.create_habit') }}" class="btn btn-outline-primary">
             <i class="bi bi-plus-circle"></i> New Habit
         </a>
     </div>

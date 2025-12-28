@@ -3,12 +3,12 @@
 {% block title %}Todos - Orbis{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
+<div class="row mb-4 mt-4">
     <div class="col">
         <h1><i class="bi bi-check2-square"></i> My Todos</h1>
     </div>
     <div class="col text-end">
-        <a href="{{ url_for('todos.create_todo') }}" class="btn btn-primary">
+        <a href="{{ url_for('todos.create_todo') }}" class="btn btn-outline-primary">
             <i class="bi bi-plus-circle"></i> New Todo
         </a>
     </div>
