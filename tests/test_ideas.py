@@ -58,7 +58,7 @@ def test_save_idea_notes(authenticated_client, app, sample_idea):
     assert response.status_code == 200
 
     with app.app_context():
-        idea = Idea.query.get(sample_idea)
+        idea = db.session.get(Idea, sample_idea)
         assert idea.notes == new_notes
 
 
@@ -75,7 +75,7 @@ def test_save_idea_mindmap(authenticated_client, app, sample_idea):
     assert response.status_code == 200
 
     with app.app_context():
-        idea = Idea.query.get(sample_idea)
+        idea = db.session.get(Idea, sample_idea)
         assert idea.mindmap_data == mindmap_data
 
 
@@ -201,5 +201,5 @@ def test_delete_file(authenticated_client, app, sample_idea):
 
     # Verify file record was deleted
     with app.app_context():
-        deleted_file = IdeaFile.query.get(file_id)
+        deleted_file = db.session.get(IdeaFile, file_id)
         assert deleted_file is None

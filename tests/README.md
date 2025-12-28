@@ -81,7 +81,7 @@ Test dependencies are in `requirements.txt`:
 1. **Calendar Mocking**: Calendar API mocking needs integration with actual blueprints
 2. **Ideas Routes**: Some ideas routes return 404 - need to verify route definitions
 3. **Model Fields**: Some tests fail due to missing/renamed model fields
-4. **SQLAlchemy Warnings**: Using legacy Query.get() - should update to Session.get()
+4. **SQLAlchemy Warnings**: Legacy Query.get() replaced with Session.get()
 
 ## Future Improvements
 

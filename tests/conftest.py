@@ -128,7 +128,7 @@ def authenticated_client(client, app, test_user):
     # Use Flask-Login's test utilities to log in
     with app.test_request_context():
         with app.app_context():
-            user = User.query.get(test_user)
+            user = db.session.get(User, test_user)
             # Manually set up the session
             with client.session_transaction() as sess:
                 sess["_user_id"] = str(test_user)

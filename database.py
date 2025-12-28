@@ -325,21 +325,45 @@ class Daily(db.Model):
 
         self.last_completed_date = target_date
 
+
+class CompletionLog(db.Model):
+    """Archive of completed todos/dailies for long-term tracking"""
+
+    __tablename__ = "completion_logs"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id",
+            "item_type",
+            "item_id",
+            "completed_date",
+            name="uq_completion_per_day",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    item_type = db.Column(db.String(20), nullable=False)  # 'todo' or 'daily'
+    item_id = db.Column(db.Integer, nullable=False)
+    title_snapshot = db.Column(db.String(255), nullable=False)
+    description_snapshot = db.Column(db.Text, nullable=True)
+    completed_date = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return (
+            f"<CompletionLog {self.item_type}#{self.item_id} on {self.completed_date}>"
+        )
+
     def to_dict(self):
-        """Convert to dictionary"""
         return {
             "id": self.id,
-            "title": self.title,
-            "description": self.description,
-            "streak_count": self.streak_count,
-            "total_completions": self.total_completions,
-            "last_completed_date": self.last_completed_date.isoformat()
-            if self.last_completed_date
-            else None,
-            "created_at": self.created_at.isoformat(),
-            "is_completed_today": self.is_completed_today(),
-            "frequency": self.frequency,
-            "weekdays": self.get_weekdays(),
+            "user_id": self.user_id,
+            "item_type": self.item_type,
+            "item_id": self.item_id,
+            "title": self.title_snapshot,
+            "description": self.description_snapshot,
+            "completed_date": self.completed_date.isoformat(),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 
