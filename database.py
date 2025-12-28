@@ -515,6 +515,7 @@ class Goal(db.Model):
     status = db.Column(db.String(20), default="active")  # active, completed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
+    deadline = db.Column(db.Date, nullable=True)
 
     # Relationship to milestones
     milestones = db.relationship(
