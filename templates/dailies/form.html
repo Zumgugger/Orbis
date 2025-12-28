@@ -21,7 +21,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center daily-form-container">
+<div class="row justify-content-center daily-form-container mt-4">
     <div class="col-md-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -70,6 +70,21 @@
                         </div>
                     </div>
 
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="repeat_limit" class="form-label">Repeat limit (times)</label>
+                            <input type="number" class="form-control" id="repeat_limit" name="repeat_limit" min="1" placeholder="Leave empty for indefinite"
+                                   value="{{ daily.repeat_limit if daily and daily.repeat_limit is not none else '' }}">
+                            <small class="form-text text-muted">Stop showing this daily after it has been completed this many times.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="exercise_minutes" class="form-label">Exercise minutes</label>
+                            <input type="number" class="form-control" id="exercise_minutes" name="exercise_minutes" min="1" placeholder="Optional"
+                                   value="{{ daily.exercise_minutes if daily and daily.exercise_minutes is not none else '' }}">
+                            <small class="form-text text-muted">Suggested duration per session (minutes).</small>
+                        </div>
+                    </div>
+
                     <!-- Custom Weekdays Section -->
                     <div id="weekdaysSection" class="mb-3" style="display: {% if daily and daily.frequency == 'custom' %}block{% else %}none{% endif %};">
                         <label class="form-label">Select Weekdays *</label>
@@ -100,11 +115,11 @@
                     {% endif %}
 
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('dailies.list_dailies') }}" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left"></i> Back
+                        <a href="{{ url_for('dailies.list_dailies') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
                         </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> {{ action }} Daily
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-save"></i> Save Daily
                         </button>
                     </div>
                 </form>
