@@ -16,10 +16,13 @@
     .streak-badge {
         background: transparent !important;
         color: inherit;
-        border: var(--btn-border-width, 1px) solid currentColor;
-        border-radius: var(--btn-border-radius, 0.375rem);
+        border-width: var(--btn-border-width) !important;
+        border-style: solid !important;
+        border-color: currentColor !important;
+        border-radius: var(--btn-border-radius) !important;
         padding: 2px 8px;
         font-size: 0.85em;
+        display: inline-block;
     }
 </style>
 {% endblock %}
