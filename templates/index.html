@@ -3,19 +3,24 @@
 {% block title %}Today's List{% endblock %}
 
 {% block content %}
-<h1 class="mb-4"><i class="bi bi-calendar-check"></i> Today's List</h1>
-
-<div class="mb-3 text-end">
-    <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Google Calendar">
-        <i class="bi bi-calendar3"></i>
-    </a>
-    <a href="{{ url_for('tomorrow') }}" class="btn btn-outline-secondary ms-2">
-        <i class="bi bi-sunrise"></i> View Tomorrow
-    </a>
-    <a href="{{ url_for('todos.create_todo_today') }}" class="btn btn-outline-primary ms-2" title="Add todo for today">
-        <i class="bi bi-plus"></i>
-    </a>
+<div class="row mb-4 mt-4">
+    <div class="col">
+        <h1><i class="bi bi-calendar-check"></i> Today's List</h1>
+    </div>
+    <div class="col text-end">
+        <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Google Calendar">
+            <i class="bi bi-calendar3"></i>
+        </a>
+        <a href="{{ url_for('tomorrow') }}" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-sunrise"></i> View Tomorrow
+        </a>
+        <a href="{{ url_for('todos.create_todo_today') }}" class="btn btn-outline-primary ms-2" title="Add todo for today">
+            <i class="bi bi-plus"></i>
+        </a>
+    </div>
 </div>
+
+<div class="mb-3">
 <div class="progress mb-3" style="height: 20px;">
     <div class="progress-bar bg-success" role="progressbar" style="width: {{ today_progress_percent }}%;" aria-valuenow="{{ today_progress_percent }}" aria-valuemin="0" aria-valuemax="100">
         {{ today_progress_percent }}%
