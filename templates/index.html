@@ -2,6 +2,19 @@
 
 {% block title %}Today's List{% endblock %}
 
+<style>
+.btn.btn-outline-orange {
+    color: #fd7e14;
+    border-color: #fd7e14;
+}
+.btn.btn-outline-orange:hover,
+.btn.btn-outline-orange:focus {
+    color: #fff;
+    background-color: #fd7e14;
+    border-color: #fd7e14;
+}
+</style>
+
 {% block content %}
 <div class="row mb-4">
     <div class="col">
@@ -75,13 +88,13 @@
             <div class="list-group-item d-flex align-items-center gap-3">
                 <form action="{{ url_for('habits.increment_habit', habit_id=habit.id) }}?next=/" method="POST" class="d-inline">
                     <input type="hidden" name="target_date" value="{{ target_date }}">
-                    <button class="btn btn-success btn-sm" type="submit" title="+1 for today">
-                        <i class="bi bi-plus-circle-fill"></i>
+                    <button class="btn btn-outline-success" type="submit" title="+1 for today">
+                        <i class="bi bi-circle"></i>
                     </button>
                 </form>
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="fw-semibold {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</span>
+                        <h5 class="mb-0 {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</h5>
                         <span class="badge bg-warning text-dark">Focus</span>
                         <span class="badge bg-secondary">{{ habit.difficulty|title }}</span>
                     </div>
@@ -102,11 +115,18 @@
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
                     <form action="{{ url_for('dailies.toggle_daily', daily_id=daily.id) }}?next=/" method="POST" class="d-inline">
-                        <input type="checkbox" class="form-check-input" style="width: 1.5em; height: 1.5em; cursor: pointer;"
-                               {% if daily.is_completed_today() %}checked{% endif %} onchange="this.form.submit()">
+                        <button type="submit" class="btn {% if daily.is_completed_today() %}btn-success{% else %}btn-outline-success{% endif %}" title="{% if daily.is_completed_today() %}Completed! Click to undo{% else %}Mark as complete{% endif %}">
+                            <i class="bi bi-{% if daily.is_completed_today() %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        </button>
                     </form>
-                    <span class="flex-grow-1 {% if daily.is_completed_today() %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</span>
-                    <span class="text-muted small"><i class="bi bi-link-45deg"></i> {{ daily.streak_count }}</span>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="mb-0 {% if daily.is_completed_today() %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</h5>
+                            {% if daily.streak_count > 0 %}
+                                <span class="streak-badge text-muted"><i class="bi bi-fire"></i> {{ daily.streak_count }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -117,10 +137,12 @@
             {% set ev = item.event %}
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
-                    <input type="checkbox" class="form-check-input calendar-check" style="width: 1.5em; height: 1.5em; cursor: pointer;">
+                    <button type="button" class="btn btn-outline-secondary calendar-check" disabled>
+                        <i class="bi bi-circle"></i>
+                    </button>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                            <span class="fw-semibold calendar-title">{{ ev.title }}</span>
+                            <h5 class="mb-0 calendar-title">{{ ev.title }}</h5>
                         </div>
                         <small class="text-muted">{{ ev.time_label }}</small>
                     </div>
@@ -136,13 +158,13 @@
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
                     <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/" method="POST" class="d-inline">
-                        <input type="checkbox" class="form-check-input" style="width: 1.5em; height: 1.5em; cursor: pointer;"
-                               {% if todo.status == 'completed' %}checked{% endif %} onchange="this.form.submit()">
+                        <button type="submit" class="btn {% if todo.status == 'completed' %}btn-outline-secondary{% elif todo.priority == 'high' %}btn-outline-danger{% elif todo.priority == 'medium' %}btn-outline-orange{% else %}btn-outline-warning{% endif %}" title="{% if todo.status == 'completed' %}Reopen{% else %}Mark as complete{% endif %}">
+                            <i class="bi bi-{% if todo.status == 'completed' %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        </button>
                     </form>
-                    <span class="flex-grow-1 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</span>
-                    <span class="badge bg-{{ 'danger' if todo.priority == 'high' else 'warning' if todo.priority == 'medium' else 'success' }} ms-2">
-                        {{ todo.priority[0]|upper }}
-                    </span>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-0 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</h5>
+                    </div>
                 </div>
             </div>
             {% endif %}

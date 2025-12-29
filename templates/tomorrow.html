@@ -62,9 +62,12 @@
         <div class="list-group list-group-flush">
             {% for habit in focused_habits %}
             <div class="list-group-item d-flex align-items-center gap-3">
+                <button class="btn btn-outline-success" disabled title="Not available yet">
+                    <i class="bi bi-circle"></i>
+                </button>
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="fw-semibold {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</span>
+                        <h5 class="mb-0 {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</h5>
                         <span class="badge bg-warning text-dark">Focus</span>
                         <span class="badge bg-secondary">{{ habit.difficulty|title }}</span>
                     </div>
@@ -86,11 +89,13 @@
                 <div class="d-flex align-items-start gap-3">
                     <form action="{{ url_for('dailies.toggle_for_date', daily_id=daily.id) }}?next=/tomorrow" method="POST" class="d-inline">
                         <input type="hidden" name="target_date" value="{{ target_date }}">
-                        <input type="checkbox" class="form-check-input mt-1" {% if daily.is_completed_on(target_date) %}checked{% endif %} {% if daily.frequency == 'daily' %}disabled{% else %}onchange="this.form.submit()"{% endif %}>
+                        <button type="submit" class="btn {% if daily.is_completed_on(target_date) %}btn-success{% else %}btn-outline-success{% endif %}" {% if daily.frequency == 'daily' %}disabled{% endif %} title="{% if daily.is_completed_on(target_date) %}Completed! Click to undo{% else %}Mark as complete{% endif %}">
+                            <i class="bi bi-{% if daily.is_completed_on(target_date) %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        </button>
                     </form>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                            <strong class="{% if daily.is_completed_on(target_date) %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</strong>
+                            <h5 class="mb-0 {% if daily.is_completed_on(target_date) %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</h5>
                             {% if daily.id not in carryover_ids %}
                                 <span class="badge bg-secondary"><i class="bi bi-calendar3"></i> Scheduled</span>
                             {% endif %}
@@ -103,13 +108,13 @@
                         {% endif %}
                         <small class="text-muted">
                             {% if daily.frequency == 'custom' %}
-                                📅 {{ daily.get_weekdays()|join(', ')|title }}
+                                {{ daily.get_weekdays()|join(', ')|title }}
                             {% elif daily.frequency == 'daily' %}
-                                📅 Every {{ daily.frequency_interval }} day{% if daily.frequency_interval != 1 %}s{% endif %}
+                                Every {{ daily.frequency_interval }} day{% if daily.frequency_interval != 1 %}s{% endif %}
                             {% elif daily.frequency == 'weekly' %}
-                                📅 Every {{ daily.frequency_interval }} week{% if daily.frequency_interval != 1 %}s{% endif %}
+                                Every {{ daily.frequency_interval }} week{% if daily.frequency_interval != 1 %}s{% endif %}
                             {% elif daily.frequency == 'monthly' %}
-                                📅 Every {{ daily.frequency_interval }} month{% if daily.frequency_interval != 1 %}s{% endif %}
+                                Every {{ daily.frequency_interval }} month{% if daily.frequency_interval != 1 %}s{% endif %}
                             {% endif %}
                         </small>
                     </div>
@@ -123,10 +128,12 @@
             {% set ev = item.event %}
             <div class="list-group-item">
                 <div class="d-flex align-items-start gap-3">
-                    <input type="checkbox" class="form-check-input mt-1 calendar-check" style="cursor: pointer;">
+                    <button type="button" class="btn btn-outline-secondary calendar-check" disabled>
+                        <i class="bi bi-circle"></i>
+                    </button>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                            <strong class="calendar-title">{{ ev.title }}</strong>
+                            <h5 class="mb-0 calendar-title">{{ ev.title }}</h5>
                         </div>
                         <small class="text-muted">{{ ev.time_label }}</small>
                     </div>
@@ -142,14 +149,13 @@
             <div class="list-group-item">
                 <div class="d-flex align-items-start gap-3">
                     <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
-                        <input type="checkbox" class="form-check-input mt-1" {% if todo.status == 'completed' %}checked{% endif %} onchange="this.form.submit()">
+                        <button type="submit" class="btn {% if todo.status == 'completed' %}btn-outline-secondary{% elif todo.priority == 'high' %}btn-outline-danger{% elif todo.priority == 'medium' %}btn-outline-orange{% else %}btn-outline-warning{% endif %}" title="{% if todo.status == 'completed' %}Reopen{% else %}Mark as complete{% endif %}">
+                            <i class="bi bi-{% if todo.status == 'completed' %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        </button>
                     </form>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                            <strong class="{% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</strong>
-                            <span class="badge bg-{{ 'danger' if todo.priority == 'high' else 'warning' if todo.priority == 'medium' else 'success' }}">
-                                {{ todo.priority|title }}
-                            </span>
+                            <h5 class="mb-0 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</h5>
                         </div>
                         {% if todo.description %}
                             <p class="mb-1 text-muted">{{ todo.description }}</p>
@@ -177,7 +183,18 @@
     </a>
 
     <style>
-    .streak-badge { opacity: 0.5; }
+    .btn-outline-orange, .btn.btn-outline-orange {
+        color: #fd7e14;
+        border-color: #fd7e14;
+    }
+    .btn-outline-orange:hover,
+    .btn-outline-orange:focus,
+    .btn.btn-outline-orange:hover,
+    .btn.btn-outline-orange:focus {
+        color: #fff;
+        background-color: #fd7e14;
+        border-color: #fd7e14;
+    }
     </style>
 </div>
 {% endblock %}
