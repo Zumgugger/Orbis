@@ -333,6 +333,23 @@ def create_app(config_name=None):
             todos_today, calendar_today, "Today"
         )
 
+        # Recalculate progress to match displayed items
+        # Total: dailies + combined_todos (calendar + todos) + focused_habits
+        total_today = len(dailies_today) + len(combined_todos) + len(focused_habits)
+        # Completed: dailies completed + todos completed + habits incremented today
+        completed_today = (
+            len([d for d in dailies_today if d.is_completed_today()])
+            + sum(
+                1
+                for item in combined_todos
+                if item["kind"] == "todo" and item["todo"].status == "completed"
+            )
+            + len([h for h in focused_habits if h.last_increment_date == today])
+        )
+        today_progress_percent = (
+            int(round((completed_today / total_today) * 100)) if total_today > 0 else 0
+        )
+
         return render_template(
             "index.html",
             todos=todos_today,
@@ -378,11 +395,21 @@ def create_app(config_name=None):
             todos_tomorrow, calendar_tomorrow, "Tomorrow"
         )
 
-        # Progress for Tomorrow
-        total_tomorrow = len(dailies_tomorrow) + len(todos_tomorrow)
-        completed_tomorrow = len(
-            [d for d in dailies_tomorrow if d.is_completed_on(target_date)]
-        ) + len([t for t in todos_tomorrow if t.status == "completed"])
+        # Progress for Tomorrow — count items shown in UI
+        # Total: dailies + combined_todos (calendar + todos) + focused_habits
+        total_tomorrow = (
+            len(dailies_tomorrow) + len(combined_todos) + len(focused_habits)
+        )
+        # Completed: dailies completed + todos completed + habits incremented
+        completed_tomorrow = (
+            len([d for d in dailies_tomorrow if d.is_completed_on(target_date)])
+            + sum(
+                1
+                for item in combined_todos
+                if item["kind"] == "todo" and item["todo"].status == "completed"
+            )
+            + len([h for h in focused_habits if h.last_increment_date == target_date])
+        )
         tomorrow_progress_percent = (
             int(round((completed_tomorrow / total_tomorrow) * 100))
             if total_tomorrow > 0
