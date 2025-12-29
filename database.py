@@ -28,16 +28,24 @@ def apply_migrations():
         inspector = db.inspect(engine)
 
         goal_columns = [col["name"] for col in inspector.get_columns("goals")]
-        if "deadline" not in goal_columns:
-            with engine.connect() as conn:
+        with engine.connect() as conn:
+            if "deadline" not in goal_columns:
                 conn.execute(db.text("ALTER TABLE goals ADD COLUMN deadline DATE"))
+            if "position" not in goal_columns:
+                conn.execute(
+                    db.text("ALTER TABLE goals ADD COLUMN position INTEGER DEFAULT 0")
+                )
 
         daily_columns = [col["name"] for col in inspector.get_columns("dailies")]
         with engine.connect() as conn:
             if "repeat_limit" not in daily_columns:
-                conn.execute(db.text("ALTER TABLE dailies ADD COLUMN repeat_limit INTEGER"))
+                conn.execute(
+                    db.text("ALTER TABLE dailies ADD COLUMN repeat_limit INTEGER")
+                )
             if "exercise_minutes" not in daily_columns:
-                conn.execute(db.text("ALTER TABLE dailies ADD COLUMN exercise_minutes INTEGER"))
+                conn.execute(
+                    db.text("ALTER TABLE dailies ADD COLUMN exercise_minutes INTEGER")
+                )
     except Exception:
         # Avoid blocking app startup if inspection fails
         pass
@@ -512,6 +520,7 @@ class Goal(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
     deadline = db.Column(db.Date, nullable=True)
+    position = db.Column(db.Integer, default=0)
 
     # Relationship to milestones
     milestones = db.relationship(

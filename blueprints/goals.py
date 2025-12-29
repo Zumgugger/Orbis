@@ -163,3 +163,24 @@ def delete_milestone(goal_id, milestone_id):
 
     flash("Milestone deleted successfully!", "success")
     return redirect(url_for("goals.edit", id=goal_id))
+
+
+@goals_bp.route("/reorder", methods=["POST"])
+@login_required
+def reorder():
+    """Persist drag-and-drop order of goals for the current user"""
+    payload = request.get_json(silent=True) or {}
+    order = payload.get("order", [])
+    if not isinstance(order, list):
+        return {"success": False, "error": "Invalid order payload"}, 400
+
+    try:
+        for position, goal_id in enumerate(order):
+            goal = Goal.query.filter_by(id=goal_id, user_id=current_user.id).first()
+            if goal:
+                goal.position = position
+        db.session.commit()
+        return {"success": True}, 200
+    except Exception:
+        db.session.rollback()
+        return {"success": False, "error": "Failed to persist order"}, 500

@@ -11,28 +11,37 @@
 </div>
 
 {% if goals %}
-    <div class="row">
+    <div class="list-group" id="goalList">
         {% for goal in goals %}
-        <div class="col-md-6 mb-3">
-            <div class="card {% if goal.status == 'completed' %}border-success{% endif %}" onclick="window.location='{{ url_for('goals.edit', id=goal.id) }}'" style="cursor: pointer;">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h5 class="card-title mb-0">
+        <div class="list-group-item goal-item" draggable="true" data-goal-id="{{ goal.id }}">
+            <div class="row align-items-center g-3">
+                <div class="col-auto text-muted drag-handle" title="Drag to reorder">
+                    <i class="bi bi-grip-vertical fs-4"></i>
+                </div>
+                <div class="col-auto reorder-controls" title="Tap to reorder">
+                    <button type="button" class="btn btn-outline-secondary btn-sm move-up" aria-label="Move up"><i class="bi bi-caret-up"></i></button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm move-down" aria-label="Move down"><i class="bi bi-caret-down"></i></button>
+                </div>
+                <div class="col" onclick="window.location='{{ url_for('goals.edit', id=goal.id) }}'" style="cursor: pointer;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="mb-1">
                             {{ goal.title }}
                             {% if goal.status == 'completed' %}
                                 <span class="badge bg-success">Completed</span>
                             {% endif %}
                         </h5>
-                        <!-- Edit/Delete buttons removed; click card to edit, delete in edit form -->
+                        {% if goal.deadline %}
+                            <small class="text-muted">
+                                <i class="bi bi-calendar-event"></i> {{ goal.deadline.strftime('%Y-%m-%d') }}
+                            </small>
+                        {% endif %}
                     </div>
-
                     {% if goal.description %}
-                    <p class="card-text text-muted small">{{ goal.description }}</p>
+                        <p class="mb-1 text-muted">{{ goal.description }}</p>
                     {% endif %}
 
-                    <!-- Progress bar -->
                     {% if goal.get_total_milestones_count() > 0 %}
-                    <div class="progress mb-2" style="height: 20px;">
+                    <div class="progress" style="height: 20px;">
                         <div class="progress-bar {% if goal.status == 'completed' %}bg-success{% else %}bg-primary{% endif %}"
                              role="progressbar"
                              style="width: {{ goal.get_progress_percentage() }}%;"
@@ -43,46 +52,7 @@
                         </div>
                     </div>
                     {% endif %}
-
-                    <!-- Milestones as stars -->
-                    {% if goal.milestones %}
-                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                        <span class="text-muted small me-2">Progress:</span>
-                        {% for milestone in goal.milestones|sort(attribute='order') %}
-                        <span title="{{ milestone.title }}" style="font-size: 1.5rem;">
-                            {% if milestone.completed %}
-                                <i class="bi bi-star-fill text-warning"></i>
-                            {% else %}
-                                <i class="bi bi-star text-secondary"></i>
-                            {% endif %}
-                        </span>
-                        {% endfor %}
-                    </div>
-
-                    <!-- Milestone checkboxes -->
-                    <div class="mt-2">
-                        {% for milestone in goal.milestones|sort(attribute='order') %}
-                        <div class="form-check small mb-1">
-                            <form action="{{ url_for('goals.toggle_milestone', goal_id=goal.id, milestone_id=milestone.id) }}" method="POST" class="d-inline">
-                                <input class="form-check-input" type="checkbox" {% if milestone.completed %}checked{% endif %} onchange="this.form.submit()" id="milestone-{{ milestone.id }}">
-                                <label class="form-check-label {% if milestone.completed %}text-decoration-line-through text-muted{% endif %}" for="milestone-{{ milestone.id }}">
-                                    {{ milestone.title }}
-                                </label>
-                            </form>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-muted small fst-italic">
-                        No milestones yet. <a href="{{ url_for('goals.edit', id=goal.id) }}">Add milestones</a> to track progress.
-                    </div>
-                    {% endif %}
                 </div>
-                {% if goal.deadline %}
-                <div class="card-footer text-muted small">
-                    <i class="bi bi-calendar-event"></i> Deadline: {{ goal.deadline.strftime('%Y-%m-%d') }}
-                </div>
-                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -92,4 +62,129 @@
         <i class="bi bi-info-circle"></i> No goals yet.
     </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('goalList');
+    if (!list) return;
+
+    let dragItem = null;
+
+    const items = list.querySelectorAll('.goal-item');
+    items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            dragItem = item;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => {
+            dragItem = null;
+            item.classList.remove('dragging');
+        });
+    });
+
+    list.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(list, e.clientY);
+        if (!dragItem) return;
+        if (afterElement == null) {
+            list.appendChild(dragItem);
+        } else {
+            list.insertBefore(dragItem, afterElement);
+        }
+    });
+
+    list.addEventListener('drop', (e) => {
+        e.preventDefault();
+        persistOrder();
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.goal-item:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+    }
+
+    function persistOrder() {
+        const order = [...list.querySelectorAll('.goal-item')].map(el => parseInt(el.dataset.goalId, 10));
+        fetch('{{ url_for('goals.reorder') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order })
+        }).catch(() => {});
+    }
+
+    // Touch-friendly reorder buttons
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    if (isTouch) {
+        let longPressTimer;
+        let isDraggingEnabled = false;
+
+        list.querySelectorAll('.goal-item').forEach(item => {
+            const up = item.querySelector('.move-up');
+            const down = item.querySelector('.move-down');
+
+            item.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button') || e.target.closest('form')) return;
+
+                longPressTimer = setTimeout(() => {
+                    isDraggingEnabled = true;
+                    item.setAttribute('draggable', 'true');
+                    item.style.opacity = '0.5';
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }, 500);
+            });
+
+            item.addEventListener('touchend', (e) => {
+                clearTimeout(longPressTimer);
+                if (!isDraggingEnabled) {
+                    if (!e.target.closest('button') && !e.target.closest('form')) {
+                        window.location = '{{ url_for('goals.edit', id=0) }}'.replace('0', item.dataset.goalId);
+                    }
+                }
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            item.addEventListener('touchcancel', () => {
+                clearTimeout(longPressTimer);
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            if (up) {
+                up.addEventListener('click', () => {
+                    const prev = item.previousElementSibling;
+                    if (prev) {
+                        list.insertBefore(item, prev);
+                        persistOrder();
+                    }
+                });
+            }
+            if (down) {
+                down.addEventListener('click', () => {
+                    const next = item.nextElementSibling;
+                    if (next) {
+                        list.insertBefore(next, item);
+                        persistOrder();
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.drag-handle { cursor: grab; }
+.goal-item.dragging { opacity: 0.6; }
+</style>
 {% endblock %}
