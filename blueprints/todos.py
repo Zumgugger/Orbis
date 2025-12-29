@@ -65,12 +65,33 @@ def list_todos():
     """Display all todos"""
     todos = (
         Todo.query.filter_by(user_id=current_user.id)
-        .order_by(Todo.created_at.desc())
+        .order_by(Todo.position.asc(), Todo.created_at.desc())
         .all()
     )
     pending = [t for t in todos if t.status == "pending"]
     completed = [t for t in todos if t.status == "completed"]
     return render_template("todos/list.html", pending=pending, completed=completed)
+
+
+@todos_bp.route("/reorder", methods=["POST"])
+@login_required
+def reorder_todos():
+    """Persist drag-and-drop order of pending todos for the current user"""
+    payload = request.get_json(silent=True) or {}
+    order = payload.get("order", [])
+    if not isinstance(order, list):
+        return {"success": False, "error": "Invalid order payload"}, 400
+
+    try:
+        for position, todo_id in enumerate(order):
+            todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first()
+            if todo and todo.status == "pending":
+                todo.position = position
+        db.session.commit()
+        return {"success": True}, 200
+    except Exception:
+        db.session.rollback()
+        return {"success": False, "error": "Failed to persist order"}, 500
 
 
 @todos_bp.route("/create", methods=["GET", "POST"])

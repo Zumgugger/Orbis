@@ -78,6 +78,14 @@ def apply_migrations():
                         "ALTER TABLE shopping_lists ADD COLUMN position INTEGER DEFAULT 0"
                     )
                 )
+
+        # Todos: ensure `position` exists for ordering
+        todo_columns = [col["name"] for col in inspector.get_columns("todos")]
+        with engine.connect() as conn:
+            if "position" not in todo_columns:
+                conn.execute(
+                    db.text("ALTER TABLE todos ADD COLUMN position INTEGER DEFAULT 0")
+                )
     except Exception:
         # Avoid blocking app startup if inspection fails
         pass
@@ -156,6 +164,7 @@ class Todo(db.Model):
     due_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
+    position = db.Column(db.Integer, default=0)
 
     def __repr__(self):
         return f"<Todo {self.id}: {self.title}>"

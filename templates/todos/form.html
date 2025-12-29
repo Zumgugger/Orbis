@@ -6,8 +6,15 @@
 <div class="row justify-content-center mt-4">
     <div class="col-md-8">
         <div class="card">
-            <div class="card-header">
-                <h2>{{ action }} Todo</h2>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">{{ action }} Todo</h2>
+                {% if todo and todo.id %}
+                <form action="{{ url_for('todos.delete_todo', todo_id=todo.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this todo?');">
+                    <button type="submit" class="btn btn-outline-danger" title="Delete Todo" data-bs-toggle="tooltip" data-bs-placement="left">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+                {% endif %}
             </div>
             <div class="card-body">
                 <form method="POST">

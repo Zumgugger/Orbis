@@ -19,52 +19,39 @@
     <div class="col">
         <h3>Pending ({{ pending|length }})</h3>
         {% if pending %}
-            <div class="list-group">
+            <div class="list-group" id="todoListPending">
                 {% for todo in pending %}
-                <div class="list-group-item priority-{{ todo.priority }}">
-                    <div class="row align-items-center">
+                <div class="list-group-item todo-item priority-{{ todo.priority }}" draggable="true" data-todo-id="{{ todo.id }}">
+                    <div class="row align-items-center g-3">
+                        <div class="col-auto reorder-controls" title="Tap to reorder">
+                            <button type="button" class="btn btn-outline-secondary btn-sm move-up" aria-label="Move up"><i class="bi bi-caret-up"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm move-down" aria-label="Move down"><i class="bi bi-caret-down"></i></button>
+                        </div>
                         <div class="col-auto">
                             <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as complete">
+                                <button type="submit" class="btn btn-outline-success" title="Mark as complete" data-bs-toggle="tooltip" data-bs-placement="top">
                                     <i class="bi bi-circle"></i>
                                 </button>
                             </form>
                         </div>
-                        <div class="col">
+                        <div class="col" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
                             <h5 class="mb-1">{{ todo.title }}</h5>
                             {% if todo.description %}
                                 <p class="mb-1 text-muted">{{ todo.description }}</p>
                             {% endif %}
-                            <small class="text-muted">
-                                <span class="badge bg-{{ 'danger' if todo.priority == 'high' else ('warning' if todo.priority == 'medium' else 'success') }}">
-                                    Importance: {{ todo.priority|title }}
-                                </span>
-                                {% if todo.due_date %}
-                                    <i class="bi bi-calendar-event"></i> Due: {{ todo.due_date }}
-                                {% endif %}
-                                <i class="bi bi-clock"></i> Created: {{ todo.created_at.strftime('%Y-%m-%d %H:%M') }}
-                            </small>
                         </div>
                         <div class="col-auto">
-                            <a href="{{ url_for('todos.edit_todo', todo_id=todo.id) }}" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-pencil"></i> Edit
-                            </a>
-                            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal{{ todo.id }}" title="Schedule to Google Calendar">
-                                <i class="bi bi-calendar-plus"></i> Schedule
+                            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal{{ todo.id }}" title="Schedule to Google Calendar" data-bs-placement="top">
+                                <i class="bi bi-calendar-plus"></i>
                             </button>
                             <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to today">
-                                    <i class="bi bi-calendar-check"></i> Today
+                                <button type="submit" class="btn btn-outline-secondary" title="Set due to today" data-bs-toggle="tooltip" data-bs-placement="top">
+                                    <i class="bi bi-calendar-check"></i>
                                 </button>
                             </form>
                             <form action="{{ url_for('todos.set_due_tomorrow', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to tomorrow">
-                                    <i class="bi bi-sunrise"></i> Tomorrow
-                                </button>
-                            </form>
-                            <form action="{{ url_for('todos.delete_todo', todo_id=todo.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash"></i> Delete
+                                <button type="submit" class="btn btn-outline-secondary" title="Set due to tomorrow" data-bs-toggle="tooltip" data-bs-placement="top">
+                                    <i class="bi bi-sunrise"></i>
                                 </button>
                             </form>
                         </div>
@@ -105,18 +92,13 @@
                         </div>
                         <div class="col-auto">
                             <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to today">
-                                    <i class="bi bi-calendar-check"></i> Today
+                                <button type="submit" class="btn btn-outline-secondary" title="Set due to today" data-bs-toggle="tooltip" data-bs-placement="top">
+                                    <i class="bi bi-calendar-check"></i>
                                 </button>
                             </form>
                             <form action="{{ url_for('todos.set_due_tomorrow', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Set due to tomorrow">
-                                    <i class="bi bi-sunrise"></i> Tomorrow
-                                </button>
-                            </form>
-                            <form action="{{ url_for('todos.delete_todo', todo_id=todo.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash"></i> Delete
+                                <button type="submit" class="btn btn-outline-secondary" title="Set due to tomorrow" data-bs-toggle="tooltip" data-bs-placement="top">
+                                    <i class="bi bi-sunrise"></i>
                                 </button>
                             </form>
                         </div>
@@ -184,5 +166,127 @@ function setDuration{{ todo.id }}(hours, minutes) {
     document.getElementById('duration_minutes{{ todo.id }}').value = minutes;
 }
 {% endfor %}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('todoListPending');
+    if (!list) return;
+
+    let dragItem = null;
+
+    const items = list.querySelectorAll('.todo-item');
+    items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            dragItem = item;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => {
+            dragItem = null;
+            item.classList.remove('dragging');
+        });
+    });
+
+    list.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(list, e.clientY);
+        if (!dragItem) return;
+        if (afterElement == null) {
+            list.appendChild(dragItem);
+        } else {
+            list.insertBefore(dragItem, afterElement);
+        }
+    });
+
+    list.addEventListener('drop', (e) => {
+        e.preventDefault();
+        persistOrder();
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.todo-item:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+    }
+
+    function persistOrder() {
+        const order = [...list.querySelectorAll('.todo-item')].map(el => parseInt(el.dataset.todoId, 10));
+        fetch('{{ url_for('todos.reorder_todos') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order })
+        }).catch(() => {});
+    }
+
+    // Touch-friendly reorder buttons and long-press
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    if (isTouch) {
+        let longPressTimer;
+        let isDraggingEnabled = false;
+
+        list.querySelectorAll('.todo-item').forEach(item => {
+            const up = item.querySelector('.move-up');
+            const down = item.querySelector('.move-down');
+
+            item.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button') || e.target.closest('form')) return;
+
+                longPressTimer = setTimeout(() => {
+                    isDraggingEnabled = true;
+                    item.setAttribute('draggable', 'true');
+                    item.style.opacity = '0.5';
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }, 500);
+            });
+
+            item.addEventListener('touchend', (e) => {
+                clearTimeout(longPressTimer);
+                if (!isDraggingEnabled) {
+                    if (!e.target.closest('button') && !e.target.closest('form')) {
+                        window.location = '{{ url_for('todos.edit_todo', todo_id=0) }}'.replace('0', item.dataset.todoId);
+                    }
+                }
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            item.addEventListener('touchcancel', () => {
+                clearTimeout(longPressTimer);
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            if (up) {
+                up.addEventListener('click', () => {
+                    const prev = item.previousElementSibling;
+                    if (prev) {
+                        list.insertBefore(item, prev);
+                        persistOrder();
+                    }
+                });
+            }
+            if (down) {
+                down.addEventListener('click', () => {
+                    const next = item.nextElementSibling;
+                    if (next) {
+                        list.insertBefore(next, item);
+                        persistOrder();
+                    }
+                });
+            }
+        });
+    }
+});
 </script>
+
+<style>
+.todo-item.dragging { opacity: 0.6; }
+</style>
 {% endblock %}
