@@ -14,7 +14,7 @@
     <div class="row">
         {% for idea in ideas %}
         <div class="col-md-6 col-lg-4 mb-3">
-            <div class="card h-100" onclick="window.location='{{ url_for('ideas.edit_idea', idea_id=idea.id) }}'" style="cursor: pointer;">
+            <div class="card h-100" onclick="window.location='{{ url_for('ideas.view_idea', idea_id=idea.id) }}'" style="cursor: pointer;">
                 <div class="card-body">
                     <h5 class="card-title">{{ idea.title }}</h5>
                     {% if idea.description %}

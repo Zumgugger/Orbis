@@ -83,18 +83,10 @@ def create_idea():
     return render_template("ideas/form.html", idea=None)
 
 
-@ideas_bp.route("/<int:idea_id>")
+@ideas_bp.route("/<int:idea_id>", methods=["GET", "POST"])
 @login_required
 def view_idea(idea_id):
-    """View and edit an idea"""
-    idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
-    return render_template("ideas/view.html", idea=idea)
-
-
-@ideas_bp.route("/<int:idea_id>/edit", methods=["GET", "POST"])
-@login_required
-def edit_idea(idea_id):
-    """Edit idea title and description"""
+    """View and edit an idea - unified endpoint"""
     idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
 
     if request.method == "POST":
@@ -110,9 +102,15 @@ def edit_idea(idea_id):
             return redirect(url_for("ideas.view_idea", idea_id=idea.id))
         except ValidationError as e:
             flash(str(e), "error")
-            return render_template("ideas/form.html", idea=idea)
 
-    return render_template("ideas/form.html", idea=idea)
+    return render_template("ideas/view.html", idea=idea)
+
+
+@ideas_bp.route("/<int:idea_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_idea(idea_id):
+    """Backward-compatibility redirect to unified view endpoint"""
+    return view_idea(idea_id)
 
 
 @ideas_bp.route("/<int:idea_id>/delete", methods=["POST"])

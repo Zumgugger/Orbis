@@ -86,9 +86,6 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="bi bi-lightbulb"></i> {{ idea.title }}</h1>
     <div>
-        <a href="{{ url_for('ideas.edit_idea', idea_id=idea.id) }}" class="btn btn-outline-secondary">
-            <i class="bi bi-pencil"></i> Edit
-        </a>
         <a href="{{ url_for('ideas.list_ideas') }}" class="btn btn-outline-primary">
             <i class="bi bi-arrow-left"></i> Back
         </a>
@@ -98,10 +95,6 @@
     </div>
 </div>
 
-{% if idea.description %}
-<p class="text-muted">{{ idea.description }}</p>
-{% endif %}
-
 <div class="save-indicator" id="saveIndicator" style="display: none;">
     <div class="alert alert-success mb-0">
         <i class="bi bi-check-circle"></i> <span id="saveMessage">Saved</span>
@@ -110,7 +103,12 @@
 
 <ul class="nav nav-tabs" id="ideaTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button">
+        <button class="nav-link active" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit" type="button">
+            <i class="bi bi-pencil"></i> Edit
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button">
             <i class="bi bi-journal-text"></i> Notes
         </button>
     </li>
@@ -127,7 +125,34 @@
 </ul>
 
 <div class="tab-content" id="ideaTabContent">
-    <!-- Notes Tab -->
+    <!-- Edit Tab -->
+    <div class="tab-pane fade show active" id="edit" role="tabpanel">
+        <div class="card mt-3">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{{ idea.title }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4">{{ idea.description or '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Changes
+                        </button>
+                        <a href="{{ url_for('ideas.list_ideas') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <div class="tab-pane fade show active" id="notes" role="tabpanel">
         <div class="mb-3" style="position: relative;">
             <label for="notes-editor" class="form-label">Markdown Notes</label>
@@ -647,10 +672,10 @@
 
     // Idea-specific keyboard shortcuts
     document.addEventListener('keydown', function(e) {
-        // Ctrl/Cmd + 1/2/3: Switch tabs
-        if ((e.ctrlKey || e.metaKey) && ['1', '2', '3'].includes(e.key)) {
+        // Ctrl/Cmd + 1/2/3/4: Switch tabs
+        if ((e.ctrlKey || e.metaKey) && ['1', '2', '3', '4'].includes(e.key)) {
             e.preventDefault();
-            const tabs = ['notes-tab', 'mindmap-tab', 'files-tab'];
+            const tabs = ['edit-tab', 'notes-tab', 'mindmap-tab', 'files-tab'];
             const tabIndex = parseInt(e.key) - 1;
             if (tabs[tabIndex]) {
                 document.getElementById(tabs[tabIndex]).click();
