@@ -14,7 +14,11 @@
     <div class="row">
         {% for goal in goals %}
         <div class="col-md-6 mb-3">
+<<<<<<< HEAD
                 <div class="card position-relative {% if goal.status == 'completed' %}border-success{% endif %} goal-card" onclick="window.location='{{ url_for('goals.edit', id=goal.id) }}'" style="cursor: pointer;">
+=======
+            <div class="card {% if goal.status == 'completed' %}border-success{% endif %}" onclick="window.location='{{ url_for('goals.edit', id=goal.id) }}'" style="cursor: pointer;">
+>>>>>>> Task 2 & 4: Remove edit/delete buttons from goals list, make cards clickable to edit
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <h5 class="card-title mb-0">
@@ -23,7 +27,11 @@
                                 <span class="badge bg-success">Completed</span>
                             {% endif %}
                         </h5>
+<<<<<<< HEAD
                         <!-- Buttons removed per request; click card to edit -->
+=======
+                        <!-- Edit/Delete buttons removed - use card click to edit, delete in edit form -->
+>>>>>>> Task 2 & 4: Remove edit/delete buttons from goals list, make cards clickable to edit
                     </div>
 
                     {% if goal.description %}
