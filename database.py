@@ -46,6 +46,10 @@ def apply_migrations():
                 conn.execute(
                     db.text("ALTER TABLE dailies ADD COLUMN exercise_minutes INTEGER")
                 )
+            if "position" not in daily_columns:
+                conn.execute(
+                    db.text("ALTER TABLE dailies ADD COLUMN position INTEGER DEFAULT 0")
+                )
     except Exception:
         # Avoid blocking app startup if inspection fails
         pass
@@ -158,6 +162,7 @@ class Daily(db.Model):
     total_completions = db.Column(db.Integer, default=0)
     last_completed_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    position = db.Column(db.Integer, default=0)
 
     # Optional limits and metadata
     repeat_limit = db.Column(

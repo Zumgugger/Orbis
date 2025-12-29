@@ -38,10 +38,14 @@
 {% if dailies %}
     <div class="row">
         <div class="col">
-            <div class="list-group">
+            <div class="list-group" id="dailyList">
                 {% for daily in dailies %}
-                <div class="list-group-item">
-                    <div class="row align-items-center">
+                <div class="list-group-item daily-item" draggable="true" data-daily-id="{{ daily.id }}">
+                    <div class="row align-items-center g-3">
+                        <div class="col-auto reorder-controls" title="Tap to reorder">
+                            <button type="button" class="btn btn-outline-secondary btn-sm move-up" aria-label="Move up"><i class="bi bi-caret-up"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm move-down" aria-label="Move down"><i class="bi bi-caret-down"></i></button>
+                        </div>
                         <div class="col-auto">
                             {% if daily.should_complete_today() %}
                                 <form action="{{ url_for('dailies.toggle_daily', daily_id=daily.id) }}" method="POST" style="display: inline;">
@@ -87,6 +91,130 @@
         <i class="bi bi-info-circle"></i> No dailies yet. Create your first recurring task!
     </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('dailyList');
+    if (!list) return;
+
+    let dragItem = null;
+
+    const items = list.querySelectorAll('.daily-item');
+    items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            dragItem = item;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => {
+            dragItem = null;
+            item.classList.remove('dragging');
+        });
+    });
+
+    list.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(list, e.clientY);
+        if (!dragItem) return;
+        if (afterElement == null) {
+            list.appendChild(dragItem);
+        } else {
+            list.insertBefore(dragItem, afterElement);
+        }
+    });
+
+    list.addEventListener('drop', (e) => {
+        e.preventDefault();
+        persistOrder();
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.daily-item:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+    }
+
+    function persistOrder() {
+        const order = [...list.querySelectorAll('.daily-item')].map(el => parseInt(el.dataset.dailyId, 10));
+        fetch('{{ url_for('dailies.reorder') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order })
+        }).catch(() => {});
+    }
+
+    // Touch-friendly reorder buttons and long-press
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    if (isTouch) {
+        let longPressTimer;
+        let isDraggingEnabled = false;
+
+        list.querySelectorAll('.daily-item').forEach(item => {
+            const up = item.querySelector('.move-up');
+            const down = item.querySelector('.move-down');
+
+            item.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button') || e.target.closest('form')) return;
+
+                longPressTimer = setTimeout(() => {
+                    isDraggingEnabled = true;
+                    item.setAttribute('draggable', 'true');
+                    item.style.opacity = '0.5';
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }, 500);
+            });
+
+            item.addEventListener('touchend', (e) => {
+                clearTimeout(longPressTimer);
+                if (!isDraggingEnabled) {
+                    if (!e.target.closest('button') && !e.target.closest('form')) {
+                        window.location = '{{ url_for('dailies.edit_daily', daily_id=0) }}'.replace('0', item.dataset.dailyId);
+                    }
+                }
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            item.addEventListener('touchcancel', () => {
+                clearTimeout(longPressTimer);
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            if (up) {
+                up.addEventListener('click', () => {
+                    const prev = item.previousElementSibling;
+                    if (prev) {
+                        list.insertBefore(item, prev);
+                        persistOrder();
+                    }
+                });
+            }
+            if (down) {
+                down.addEventListener('click', () => {
+                    const next = item.nextElementSibling;
+                    if (next) {
+                        list.insertBefore(next, item);
+                        persistOrder();
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.daily-item.dragging { opacity: 0.6; }
+</style>
 
 
 {% endblock %}

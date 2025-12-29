@@ -195,3 +195,24 @@ def toggle_for_date(daily_id):
     if next_page:
         return redirect(next_page)
     return redirect(url_for("dailies.list_dailies"))
+
+
+@dailies_bp.route("/reorder", methods=["POST"])
+@login_required
+def reorder():
+    """Persist drag-and-drop order of dailies for the current user"""
+    payload = request.get_json(silent=True) or {}
+    order = payload.get("order", [])
+    if not isinstance(order, list):
+        return {"success": False, "error": "Invalid order payload"}, 400
+
+    try:
+        for position, daily_id in enumerate(order):
+            daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first()
+            if daily:
+                daily.position = position
+        db.session.commit()
+        return {"success": True}, 200
+    except Exception:
+        db.session.rollback()
+        return {"success": False, "error": "Failed to persist order"}, 500
