@@ -28,7 +28,7 @@
 
 {% if calendar_tomorrow %}
 <div class="card mb-3">
-    <div class="card-header"><i class="bi bi-calendar-event"></i> Calendar Events (Tomorrow)</div>
+    <div class="card-header"><i class="bi bi-calendar3"></i> Calendar Events (Tomorrow)</div>
     <div class="list-group list-group-flush">
         {% for ev in calendar_tomorrow %}
         <div class="list-group-item d-flex justify-content-between align-items-start">
@@ -91,13 +91,11 @@
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
                             <strong class="{% if daily.is_completed_on(target_date) %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</strong>
-                            {% if daily.id in carryover_ids %}
-                                <span class="badge bg-warning text-dark"><i class="bi bi-arrow-return-right"></i> Carry over</span>
-                            {% else %}
-                                <span class="badge bg-secondary"><i class="bi bi-calendar-event"></i> Scheduled</span>
+                            {% if daily.id not in carryover_ids %}
+                                <span class="badge bg-secondary"><i class="bi bi-calendar3"></i> Scheduled</span>
                             {% endif %}
                             {% if daily.streak_count > 0 %}
-                                <span class="badge bg-warning text-dark"><i class="bi bi-fire"></i> {{ daily.streak_count }}</span>
+                                <span class="streak-badge text-muted"><i class="bi bi-fire"></i> {{ daily.streak_count }}</span>
                             {% endif %}
                         </div>
                         {% if daily.description %}
@@ -129,7 +127,6 @@
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
                             <strong class="calendar-title">{{ ev.title }}</strong>
-                            <span class="badge bg-info text-dark">Calendar</span>
                         </div>
                         <small class="text-muted">{{ ev.time_label }}</small>
                     </div>
@@ -158,7 +155,7 @@
                             <p class="mb-1 text-muted">{{ todo.description }}</p>
                         {% endif %}
                         <small class="text-muted">
-                            <i class="bi bi-calendar-event"></i> Due: {{ target_date }}
+                            <i class="bi bi-calendar3"></i> Due: {{ target_date }}
                             {% if todo.created_at %} | <i class="bi bi-clock"></i> Created: {{ todo.created_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}
                         </small>
                     </div>
@@ -175,8 +172,12 @@
 {% endif %}
 
 <div class="text-end">
-    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i> Back to Today
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary" title="Back to Today" data-bs-toggle="tooltip" data-bs-placement="top">
+        <i class="bi bi-arrow-left"></i>
     </a>
+
+    <style>
+    .streak-badge { opacity: 0.5; }
+    </style>
 </div>
 {% endblock %}

@@ -30,7 +30,7 @@
 
 {% if calendar_today %}
 <div class="card mb-4">
-    <div class="card-header"><i class="bi bi-calendar-event"></i> Calendar Events (Today)</div>
+    <div class="card-header"><i class="bi bi-calendar3"></i> Calendar Events (Today)</div>
     <div class="list-group list-group-flush">
         {% for ev in calendar_today %}
         <div class="list-group-item d-flex justify-content-between align-items-start">
@@ -121,7 +121,6 @@
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
                             <span class="fw-semibold calendar-title">{{ ev.title }}</span>
-                            <span class="badge bg-info text-dark">Calendar</span>
                         </div>
                         <small class="text-muted">{{ ev.time_label }}</small>
                     </div>
