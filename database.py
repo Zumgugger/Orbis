@@ -57,6 +57,16 @@ def apply_migrations():
                 conn.execute(
                     db.text("ALTER TABLE ideas ADD COLUMN position INTEGER DEFAULT 0")
                 )
+        # Cleanup orphaned idea files referencing non-existent ideas (from prior tests)
+        try:
+            with engine.connect() as conn:
+                conn.execute(
+                    db.text(
+                        "DELETE FROM idea_files WHERE idea_id NOT IN (SELECT id FROM ideas)"
+                    )
+                )
+        except Exception:
+            pass
         # Shopping lists: ensure `position` exists
         shopping_columns = [
             col["name"] for col in inspector.get_columns("shopping_lists")
@@ -739,7 +749,10 @@ class Idea(db.Model):
     """Idea model for storing ideas with notes, mindmaps, and files"""
 
     __tablename__ = "ideas"
-    __table_args__ = (db.Index("ix_ideas_user_updated", "user_id", "updated_at"),)
+    __table_args__ = (
+        db.Index("ix_ideas_user_updated", "user_id", "updated_at"),
+        {"sqlite_autoincrement": True},  # prevent ID reuse on SQLite
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
@@ -785,7 +798,9 @@ class IdeaFile(db.Model):
     __table_args__ = (db.Index("ix_idea_files_idea_id", "idea_id"),)
 
     id = db.Column(db.Integer, primary_key=True)
-    idea_id = db.Column(db.Integer, db.ForeignKey("ideas.id"), nullable=False)
+    idea_id = db.Column(
+        db.Integer, db.ForeignKey("ideas.id", ondelete="CASCADE"), nullable=False
+    )
     # New fields expected by tests
     original_filename = db.Column(db.String(255), nullable=True)
     stored_filename = db.Column(db.String(255), nullable=True)
