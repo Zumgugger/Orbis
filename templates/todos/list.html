@@ -29,7 +29,7 @@
                         </div>
                         <div class="col-auto">
                             <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-outline-success" title="Mark as complete" data-bs-toggle="tooltip" data-bs-placement="top">
+                                <button type="submit" class="btn {% if todo.priority == 'high' %}btn-outline-danger{% elif todo.priority == 'medium' %}btn-outline-orange{% else %}btn-outline-warning{% endif %}" title="Mark as complete" data-bs-toggle="tooltip" data-bs-placement="top">
                                     <i class="bi bi-circle"></i>
                                 </button>
                             </form>
@@ -86,9 +86,6 @@
                             {% if todo.description %}
                                 <p class="mb-1 text-muted">{{ todo.description }}</p>
                             {% endif %}
-                            <small class="text-muted">
-                                <i class="bi bi-check-circle"></i> Completed: {{ todo.completed_at.strftime('%Y-%m-%d %H:%M') if todo.completed_at else 'N/A' }}
-                            </small>
                         </div>
                         <div class="col-auto">
                             <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
@@ -288,5 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <style>
 .todo-item.dragging { opacity: 0.6; }
+.btn-outline-orange { color: #fd7e14; border-color: #fd7e14; }
+.btn-outline-orange:hover { color: #fff; background-color: #fd7e14; border-color: #fd7e14; }
 </style>
 {% endblock %}
