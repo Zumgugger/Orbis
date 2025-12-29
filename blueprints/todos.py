@@ -68,7 +68,7 @@ def list_todos():
         .order_by(Todo.position.asc(), Todo.created_at.desc())
         .all()
     )
-    pending = [t for t in todos if t.status == "pending"]
+    pending = [t for t in todos if t.status in ("pending", "in_progress")]
     completed = [t for t in todos if t.status == "completed"]
     return render_template("todos/list.html", pending=pending, completed=completed)
 
@@ -85,7 +85,7 @@ def reorder_todos():
     try:
         for position, todo_id in enumerate(order):
             todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first()
-            if todo and todo.status == "pending":
+            if todo and todo.status in ("pending", "in_progress"):
                 todo.position = position
         db.session.commit()
         return {"success": True}, 200
