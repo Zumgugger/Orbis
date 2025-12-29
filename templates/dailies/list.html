@@ -61,11 +61,9 @@
                                 </button>
                             {% endif %}
                         </div>
-                        <div class="col">
+                        <div class="col" onclick="window.location='{{ url_for('dailies.edit_daily', daily_id=daily.id) }}'" style="cursor: pointer;">
                             <h5 class="mb-1">
-                                <a href="{{ url_for('dailies.edit_daily', daily_id=daily.id) }}" class="daily-title-link">
-                                    {{ daily.title }}
-                                </a>
+                                {{ daily.title }}
                                 {% if daily.streak_count > 0 %}
                                     <span class="streak-badge ms-2"
                                           data-bs-toggle="tooltip" data-bs-placement="top"
