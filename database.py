@@ -35,13 +35,9 @@ def apply_migrations():
         daily_columns = [col["name"] for col in inspector.get_columns("dailies")]
         with engine.connect() as conn:
             if "repeat_limit" not in daily_columns:
-                conn.execute(
-                    db.text("ALTER TABLE dailies ADD COLUMN repeat_limit INTEGER")
-                )
+                conn.execute(db.text("ALTER TABLE dailies ADD COLUMN repeat_limit INTEGER"))
             if "exercise_minutes" not in daily_columns:
-                conn.execute(
-                    db.text("ALTER TABLE dailies ADD COLUMN exercise_minutes INTEGER")
-                )
+                conn.execute(db.text("ALTER TABLE dailies ADD COLUMN exercise_minutes INTEGER"))
     except Exception:
         # Avoid blocking app startup if inspection fails
         pass
