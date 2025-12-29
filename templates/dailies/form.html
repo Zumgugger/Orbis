@@ -45,8 +45,7 @@
 
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="3"
-                                  placeholder="Optional details about this daily task">{{ daily.description if daily else '' }}</textarea>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ daily.description if daily else '' }}</textarea>
                     </div>
 
                     <div class="row">
@@ -58,7 +57,6 @@
                                 <option value="monthly" {% if daily and daily.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
                                 <option value="custom" {% if daily and daily.frequency == 'custom' %}selected{% endif %}>Specific Weekdays</option>
                             </select>
-                            <small class="form-text text-muted">Choose how often you want to complete this task</small>
                         </div>
 
                         <!-- Interval for daily/weekly/monthly -->
@@ -66,22 +64,19 @@
                             <label for="frequency_interval" class="form-label">Repeat Every <span id="intervalUnit">day</span> *</label>
                             <input type="number" class="form-control" id="frequency_interval" name="frequency_interval"
                                    value="{{ daily.frequency_interval if daily else 1 }}" min="1" max="365">
-                            <small class="form-text text-muted">Number of <span id="intervalUnitSmall">days</span> between completions</small>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="repeat_limit" class="form-label">Repeat limit (times)</label>
-                            <input type="number" class="form-control" id="repeat_limit" name="repeat_limit" min="1" placeholder="Leave empty for indefinite"
+                            <input type="number" class="form-control" id="repeat_limit" name="repeat_limit" min="1" placeholder="Indefinite"
                                    value="{{ daily.repeat_limit if daily and daily.repeat_limit is not none else '' }}">
-                            <small class="form-text text-muted">Stop showing this daily after it has been completed this many times.</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="exercise_minutes" class="form-label">Exercise minutes</label>
                             <input type="number" class="form-control" id="exercise_minutes" name="exercise_minutes" min="1" placeholder="Optional"
                                    value="{{ daily.exercise_minutes if daily and daily.exercise_minutes is not none else '' }}">
-                            <small class="form-text text-muted">Suggested duration per session (minutes).</small>
                         </div>
                     </div>
 
