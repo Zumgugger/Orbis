@@ -1,35 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}{% if goal %}Edit Goal{% else %}New Goal{% endif %}{% endblock %}
+{% block title %}{{ action }} Goal - Orbis{% endblock %}
 
 {% block extra_css %}
 <style>
-    .text-selectable-wrapper {
-        position: relative;
-    }
+    .text-selectable-wrapper { position: relative; }
     .selection-todo-btn {
-        position: absolute;
-        z-index: 1000;
-        opacity: 0;
-        transition: opacity 0.2s;
-        background: rgba(13, 110, 253, 0.9);
-        border: none;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        pointer-events: auto;
+        position: absolute; z-index: 1000; opacity: 0; transition: opacity 0.2s;
+        background: rgba(13, 110, 253, 0.9); border: none; border-radius: 50%;
+        width: 36px; height: 36px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        display: flex; align-items: center; justify-content: center; color: white; pointer-events: auto;
     }
-    .selection-todo-btn:hover {
-        opacity: 1 !important;
-        background: rgba(13, 110, 253, 1);
-        transform: scale(1.1);
-    }
+    .selection-todo-btn:hover { opacity: 1 !important; background: rgba(13, 110, 253, 1); transform: scale(1.1); }
 </style>
 {% endblock %}
 
@@ -38,7 +20,7 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h2 class="mb-0">{% if goal %}Edit Goal{% else %}New Goal{% endif %}</h2>
+                <h2 class="mb-0">{{ action }} Goal</h2>
                 {% if goal %}
                 <form action="{{ url_for('goals.delete', id=goal.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this goal?');">
                     <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -51,8 +33,7 @@
                 <form method="POST" id="goalForm">
                     <div class="mb-3 text-selectable-wrapper">
                         <label for="title" class="form-label">Title *</label>
-                        <input type="text" class="form-control" id="title" name="title"
-                               value="{% if goal %}{{ goal.title }}{% endif %}" required>
+                        <input type="text" class="form-control" id="title" name="title" value="{% if goal %}{{ goal.title }}{% endif %}" required>
                         <button type="button" class="selection-todo-btn" data-source="goal-title" title="Create todo from selection">
                             <i class="bi bi-check-square"></i>
                         </button>
@@ -71,75 +52,69 @@
                         <input type="date" class="form-control" id="deadline" name="deadline"
                                value="{% if goal and goal.deadline %}{{ goal.deadline.strftime('%Y-%m-%d') }}{% endif %}">
                     </div>
-
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Goal
-                        </button>
-                        <a href="{{ url_for('goals.list') }}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> Cancel
-                        </a>
-                    </div>
                 </form>
 
                 {% if goal %}
-                <!-- Milestones section -->
                 <div class="mt-4 pt-3 border-top">
                     <h5 class="mb-3">Milestones</h5>
-                <!-- Add milestone form -->
-                <form method="POST" action="{{ url_for('goals.add_milestone', id=goal.id) }}" class="mb-3">
-                    <div class="input-group">
-                        <input type="text" class="form-control" name="milestone_title"
-                               placeholder="Enter milestone title..." required>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-plus-circle"></i> Add Milestone
-                        </button>
-                    </div>
-                </form>
 
-                <!-- Existing milestones -->
-                {% if goal.milestones %}
-                <div class="list-group">
-                    {% for milestone in goal.milestones|sort(attribute='order') %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center gap-3 flex-grow-1">
-                            <span style="font-size: 1.3rem;">
-                                {% if milestone.completed %}
-                                    <i class="bi bi-star-fill text-warning"></i>
-                                {% else %}
-                                    <i class="bi bi-star text-secondary"></i>
-                                {% endif %}
-                            </span>
-                            <div class="form-check mb-0 flex-grow-1">
-                                <form action="{{ url_for('goals.toggle_milestone', goal_id=goal.id, milestone_id=milestone.id) }}" method="POST" class="d-inline">
-                                    <input class="form-check-input" type="checkbox" {% if milestone.completed %}checked{% endif %} onchange="this.form.submit()" id="edit-milestone-{{ milestone.id }}">
-                                    <label class="form-check-label {% if milestone.completed %}text-decoration-line-through text-muted{% endif %}" for="edit-milestone-{{ milestone.id }}">
-                                        {{ milestone.title }}
-                                    </label>
-                                </form>
-                            </div>
-                        </div>
-                        <form action="{{ url_for('goals.delete_milestone', goal_id=goal.id, milestone_id=milestone.id) }}"
-                              method="POST"
-                              onsubmit="return confirm('Are you sure you want to delete this milestone?');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i>
+                    <form method="POST" action="{{ url_for('goals.add_milestone', id=goal.id) }}" class="mb-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="milestone_title" placeholder="Enter milestone title..." required>
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="bi bi-plus-circle"></i> Add Milestone
                             </button>
-                        </form>
+                        </div>
+                    </form>
+
+                    {% if goal.milestones %}
+                    <div class="list-group">
+                        {% for milestone in goal.milestones|sort(attribute='order') %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3 flex-grow-1">
+                                <span style="font-size: 1.3rem;">
+                                    {% if milestone.completed %}
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    {% else %}
+                                        <i class="bi bi-star text-secondary"></i>
+                                    {% endif %}
+                                </span>
+                                <div class="form-check mb-0 flex-grow-1">
+                                    <form action="{{ url_for('goals.toggle_milestone', goal_id=goal.id, milestone_id=milestone.id) }}" method="POST" class="d-inline">
+                                        <input class="form-check-input" type="checkbox" {% if milestone.completed %}checked{% endif %} onchange="this.form.submit()" id="edit-milestone-{{ milestone.id }}">
+                                        <label class="form-check-label {% if milestone.completed %}text-decoration-line-through text-muted{% endif %}" for="edit-milestone-{{ milestone.id }}">
+                                            {{ milestone.title }}
+                                        </label>
+                                    </form>
+                                </div>
+                            </div>
+                            <form action="{{ url_for('goals.delete_milestone', goal_id=goal.id, milestone_id=milestone.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this milestone?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="alert alert-info mb-0">
-                    <i class="bi bi-info-circle"></i> No milestones yet. Add milestones to track your progress toward this goal.
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i> No milestones yet. Add milestones to track your progress toward this goal.
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
+
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('goals.list') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Cancel
+                </a>
+                <button type="submit" form="goalForm" class="btn btn-outline-primary">
+                    <i class="bi bi-save"></i> Save Goal
+                </button>
+            </div>
         </div>
-        {% endif %}
     </div>
-
-
 </div>
 {% endblock %}
 
@@ -147,17 +122,14 @@
 <script>
 (function() {
     const selectionButtons = document.querySelectorAll('.selection-todo-btn');
-    let currentButton = null;
     let selectedText = '';
 
     function positionButton(button, targetElement) {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
-
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         const parentRect = targetElement.closest('.text-selectable-wrapper').getBoundingClientRect();
-
         button.style.left = (rect.right - parentRect.left + 8) + 'px';
         button.style.top = (rect.top - parentRect.top) + 'px';
     }
@@ -166,11 +138,9 @@
         selectionButtons.forEach(btn => btn.style.opacity = '0');
     }
 
-    // Handle text selection in input and textarea fields
     ['title', 'description'].forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (!field) return;
-
         const button = field.closest('.text-selectable-wrapper').querySelector('.selection-todo-btn');
 
         ['mouseup', 'keyup'].forEach(eventType => {
@@ -198,7 +168,6 @@
                             positionButton(button, field);
                         }
                         button.style.opacity = '0.8';
-                        currentButton = button;
                     } else {
                         button.style.opacity = '0';
                     }
@@ -207,58 +176,10 @@
         });
     });
 
-    // Hide buttons when clicking elsewhere
     document.addEventListener('mousedown', function(e) {
         if (!e.target.closest('.text-selectable-wrapper') && !e.target.classList.contains('selection-todo-btn')) {
             hideAllButtons();
         }
-    });
-
-    // Create todo from selection
-    selectionButtons.forEach(button => {
-        button.addEventListener('click', async function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (!selectedText) return;
-
-            const source = this.dataset.source;
-            const goalTitle = document.getElementById('title').value || 'Goal';
-
-            try {
-                const response = await fetch('/todos/quick_create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': window.csrfToken || ''
-                    },
-                    body: JSON.stringify({
-                        title: selectedText,
-                        description: 'From goal: ' + goalTitle
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    // Show success notification
-                    const alert = document.createElement('div');
-                    alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
-                    alert.style.cssText = 'top: 70px; right: 20px; z-index: 9999;';
-                    alert.innerHTML = '<i class="bi bi-check-circle"></i> Todo created! <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-                    document.body.appendChild(alert);
-                    setTimeout(() => alert.remove(), 3000);
-
-                    hideAllButtons();
-                    window.getSelection().removeAllRanges();
-                } else {
-                    alert('Error: ' + (result.error || 'Failed to create todo'));
-                }
-            } catch (error) {
-                console.error('Error creating todo:', error);
-                alert('Failed to create todo');
-            }
-        });
     });
 })();
 </script>
