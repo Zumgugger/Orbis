@@ -57,6 +57,17 @@ def apply_migrations():
                 conn.execute(
                     db.text("ALTER TABLE ideas ADD COLUMN position INTEGER DEFAULT 0")
                 )
+        # Shopping lists: ensure `position` exists
+        shopping_columns = [
+            col["name"] for col in inspector.get_columns("shopping_lists")
+        ]
+        with engine.connect() as conn:
+            if "position" not in shopping_columns:
+                conn.execute(
+                    db.text(
+                        "ALTER TABLE shopping_lists ADD COLUMN position INTEGER DEFAULT 0"
+                    )
+                )
     except Exception:
         # Avoid blocking app startup if inspection fails
         pass
@@ -633,6 +644,7 @@ class ShoppingList(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     items = db.Column(db.Text, nullable=True)  # Text field for list items
+    position = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

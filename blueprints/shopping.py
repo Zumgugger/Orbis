@@ -17,7 +17,7 @@ def list():
     """Display all shopping lists"""
     lists = (
         ShoppingList.query.filter_by(user_id=current_user.id)
-        .order_by(ShoppingList.updated_at.desc())
+        .order_by(ShoppingList.position.asc(), ShoppingList.updated_at.desc())
         .all()
     )
     return render_template("shopping/list.html", lists=lists)
@@ -85,3 +85,26 @@ def delete(id):
     db.session.commit()
     flash("Shopping list deleted!", "success")
     return redirect(url_for("shopping.list"))
+
+
+@shopping_bp.route("/reorder", methods=["POST"])
+@login_required
+def reorder():
+    """Persist drag-and-drop order of shopping lists for the current user"""
+    payload = request.get_json(silent=True) or {}
+    order = payload.get("order", [])
+    if not isinstance(order, list):
+        return {"success": False, "error": "Invalid order payload"}, 400
+
+    try:
+        for position, list_id in enumerate(order):
+            sl = ShoppingList.query.filter_by(
+                id=list_id, user_id=current_user.id
+            ).first()
+            if sl:
+                sl.position = position
+        db.session.commit()
+        return {"success": True}, 200
+    except Exception:
+        db.session.rollback()
+        return {"success": False, "error": "Failed to persist order"}, 500

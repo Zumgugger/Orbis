@@ -2,62 +2,39 @@
 
 {% block title %}Shopping Lists{% endblock %}
 
-{% block extra_css %}
-<style>
-    .shopping-item.checked .shopping-text {
-        text-decoration: line-through;
-        color: var(--bs-secondary-color);
-        opacity: 0.7;
-    }
-    .shopping-card:hover {
-        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
-    }
-</style>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.shopping-check').forEach(cb => {
-        cb.addEventListener('change', (e) => {
-            const item = e.target.closest('.shopping-item');
-            if (item) item.classList.toggle('checked', e.target.checked);
-        });
-    });
-});
-</script>
-{% endblock %}
-
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="bi bi-cart3"></i> Shopping Lists</h1>
     <a href="{{ url_for('shopping.create') }}" class="btn btn-outline-primary">
         <i class="bi bi-plus-circle"></i> New List
     </a>
-</div>
+    </div>
 
 {% if lists %}
-    <div class="row">
+    <div class="list-group" id="shoppingList">
         {% for shopping_list in lists %}
-        <div class="col-md-6 mb-3">
-            <div class="card shopping-card">
-                <div class="card-header" style="cursor: pointer;" onclick="window.location='{{ url_for('shopping.edit', id=shopping_list.id) }}'">
-                    <h5 class="mb-0">{{ shopping_list.title }}</h5>
+        <div class="list-group-item shopping-list-item" draggable="true" data-list-id="{{ shopping_list.id }}">
+            <div class="row align-items-start g-3">
+                <div class="col-auto reorder-controls" title="Tap to reorder">
+                    <button type="button" class="btn btn-outline-secondary btn-sm move-up" aria-label="Move up"><i class="bi bi-caret-up"></i></button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm move-down" aria-label="Move down"><i class="bi bi-caret-down"></i></button>
                 </div>
-                {% if shopping_list.items %}
-                    <div class="list-group list-group-flush">
-                        {% for line in shopping_list.items.split('\n') if line.strip() %}
-                        <label class="list-group-item d-flex align-items-center shopping-item py-2">
-                            <input class="form-check-input me-2 shopping-check" type="checkbox">
-                            <span class="flex-grow-1 shopping-text">{{ line }}</span>
-                        </label>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="card-body">
+                <div class="col" onclick="window.location='{{ url_for('shopping.edit', id=shopping_list.id) }}'" style="cursor: pointer;">
+                    <h5 class="mb-2">{{ shopping_list.title }}</h5>
+
+                    {% if shopping_list.items %}
+                        <div class="list-group list-group-flush" onclick="event.stopPropagation();">
+                            {% for line in shopping_list.items.split('\n') if line.strip() %}
+                            <label class="list-group-item d-flex align-items-center shopping-item py-2">
+                                <input class="form-check-input me-2 shopping-check" type="checkbox">
+                                <span class="flex-grow-1 shopping-text">{{ line }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    {% else %}
                         <p class="text-muted fst-italic mb-0">Empty list</p>
-                    </div>
-                {% endif %}
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -67,4 +44,142 @@ document.addEventListener('DOMContentLoaded', () => {
         <i class="bi bi-info-circle"></i> No shopping lists yet. Create your first list to get started!
     </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Scratchable items (visual only)
+    document.querySelectorAll('.shopping-check').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const item = e.target.closest('.shopping-item');
+            if (item) item.classList.toggle('checked', e.target.checked);
+        });
+    });
+
+    const list = document.getElementById('shoppingList');
+    if (!list) return;
+
+    let dragItem = null;
+
+    const items = list.querySelectorAll('.shopping-list-item');
+    items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            dragItem = item;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => {
+            dragItem = null;
+            item.classList.remove('dragging');
+        });
+    });
+
+    list.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(list, e.clientY);
+        if (!dragItem) return;
+        if (afterElement == null) {
+            list.appendChild(dragItem);
+        } else {
+            list.insertBefore(dragItem, afterElement);
+        }
+    });
+
+    list.addEventListener('drop', (e) => {
+        e.preventDefault();
+        persistOrder();
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.shopping-list-item:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+    }
+
+    function persistOrder() {
+        const order = [...list.querySelectorAll('.shopping-list-item')].map(el => parseInt(el.dataset.listId, 10));
+        fetch('{{ url_for('shopping.reorder') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order })
+        }).catch(() => {});
+    }
+
+    // Touch-friendly reorder buttons and long-press drag enable
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    if (isTouch) {
+        let longPressTimer;
+        let isDraggingEnabled = false;
+
+        list.querySelectorAll('.shopping-list-item').forEach(item => {
+            const up = item.querySelector('.move-up');
+            const down = item.querySelector('.move-down');
+
+            item.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button') || e.target.closest('label')) return;
+
+                longPressTimer = setTimeout(() => {
+                    isDraggingEnabled = true;
+                    item.setAttribute('draggable', 'true');
+                    item.style.opacity = '0.5';
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }, 500);
+            });
+
+            item.addEventListener('touchend', (e) => {
+                clearTimeout(longPressTimer);
+                if (!isDraggingEnabled) {
+                    if (!e.target.closest('button') && !e.target.closest('label')) {
+                        window.location = '{{ url_for('shopping.edit', id=0) }}'.replace('0', item.dataset.listId);
+                    }
+                }
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            item.addEventListener('touchcancel', () => {
+                clearTimeout(longPressTimer);
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            if (up) {
+                up.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const prev = item.previousElementSibling;
+                    if (prev) {
+                        list.insertBefore(item, prev);
+                        persistOrder();
+                    }
+                });
+            }
+            if (down) {
+                down.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const next = item.nextElementSibling;
+                    if (next) {
+                        list.insertBefore(next, item);
+                        persistOrder();
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.shopping-item.checked .shopping-text { text-decoration: line-through; color: var(--bs-secondary-color); opacity: 0.7; }
+.shopping-list-item.dragging { opacity: 0.6; }
+@media (max-width: 576px) {
+  .drag-handle { display: none !important; }
+}
+</style>
 {% endblock %}
