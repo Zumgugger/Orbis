@@ -8,11 +8,11 @@
         <h1><i class="bi bi-calendar-check"></i> Today's List</h1>
     </div>
     <div class="col text-end">
-        <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Google Calendar">
-            <i class="bi bi-calendar3"></i>
+        <a href="{{ url_for('tomorrow') }}" class="btn btn-outline-secondary" title="View tomorrow">
+            <i class="bi bi-sunrise"></i>
         </a>
-        <a href="{{ url_for('tomorrow') }}" class="btn btn-outline-secondary ms-2">
-            <i class="bi bi-sunrise"></i> View Tomorrow
+        <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info ms-2" title="Google Calendar">
+            <i class="bi bi-calendar3"></i>
         </a>
         <a href="{{ url_for('todos.create_todo_today') }}" class="btn btn-outline-primary ms-2" title="Add todo for today">
             <i class="bi bi-plus"></i>
