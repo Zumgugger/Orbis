@@ -11,16 +11,20 @@
 </div>
 
 {% if ideas %}
-    <div class="row">
+    <div class="list-group" id="ideaList">
         {% for idea in ideas %}
-        <div class="col-md-6 col-lg-4 mb-3">
-            <div class="card h-100" onclick="window.location='{{ url_for('ideas.view_idea', idea_id=idea.id) }}'" style="cursor: pointer;">
-                <div class="card-body">
-                    <h5 class="card-title">{{ idea.title }}</h5>
+        <div class="list-group-item idea-item" draggable="true" data-idea-id="{{ idea.id }}">
+            <div class="row align-items-center g-3">
+                <div class="col-auto reorder-controls" title="Tap to reorder">
+                    <button type="button" class="btn btn-outline-secondary btn-sm move-up" aria-label="Move up"><i class="bi bi-caret-up"></i></button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm move-down" aria-label="Move down"><i class="bi bi-caret-down"></i></button>
+                </div>
+                <div class="col" onclick="window.location='{{ url_for('ideas.view_idea', idea_id=idea.id) }}'" style="cursor: pointer;">
+                    <h5 class="mb-1">{{ idea.title }}</h5>
                     {% if idea.description %}
-                        <p class="card-text text-muted">{{ idea.description[:100] }}{% if idea.description|length > 100 %}...{% endif %}</p>
+                        <p class="mb-2 text-muted">{{ idea.description[:100] }}{% if idea.description|length > 100 %}...{% endif %}</p>
                     {% endif %}
-                    <div class="d-flex gap-2 mt-3" style="opacity: 0.6;">
+                    <div class="d-flex gap-2" style="opacity: 0.6;">
                         <span class="badge bg-secondary" title="Has notes">
                             <i class="bi bi-journal-text"></i> {% if idea.notes %}✓{% else %}–{% endif %}
                         </span>
@@ -41,5 +45,129 @@
         <i class="bi bi-info-circle"></i> No ideas yet. Create your first idea!
     </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('ideaList');
+    if (!list) return;
+
+    let dragItem = null;
+
+    const items = list.querySelectorAll('.idea-item');
+    items.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            dragItem = item;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => {
+            dragItem = null;
+            item.classList.remove('dragging');
+        });
+    });
+
+    list.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(list, e.clientY);
+        if (!dragItem) return;
+        if (afterElement == null) {
+            list.appendChild(dragItem);
+        } else {
+            list.insertBefore(dragItem, afterElement);
+        }
+    });
+
+    list.addEventListener('drop', (e) => {
+        e.preventDefault();
+        persistOrder();
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.idea-item:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+    }
+
+    function persistOrder() {
+        const order = [...list.querySelectorAll('.idea-item')].map(el => parseInt(el.dataset.ideaId, 10));
+        fetch('{{ url_for('ideas.reorder') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order })
+        }).catch(() => {});
+    }
+
+    // Touch-friendly reorder buttons and long-press
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    if (isTouch) {
+        let longPressTimer;
+        let isDraggingEnabled = false;
+
+        list.querySelectorAll('.idea-item').forEach(item => {
+            const up = item.querySelector('.move-up');
+            const down = item.querySelector('.move-down');
+
+            item.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button') || e.target.closest('form')) return;
+
+                longPressTimer = setTimeout(() => {
+                    isDraggingEnabled = true;
+                    item.setAttribute('draggable', 'true');
+                    item.style.opacity = '0.5';
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }, 500);
+            });
+
+            item.addEventListener('touchend', (e) => {
+                clearTimeout(longPressTimer);
+                if (!isDraggingEnabled) {
+                    if (!e.target.closest('button') && !e.target.closest('form')) {
+                        window.location = '{{ url_for('ideas.view_idea', idea_id=0) }}'.replace('0', item.dataset.ideaId);
+                    }
+                }
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            item.addEventListener('touchcancel', () => {
+                clearTimeout(longPressTimer);
+                isDraggingEnabled = false;
+                item.style.opacity = '1';
+            });
+
+            if (up) {
+                up.addEventListener('click', () => {
+                    const prev = item.previousElementSibling;
+                    if (prev) {
+                        list.insertBefore(item, prev);
+                        persistOrder();
+                    }
+                });
+            }
+            if (down) {
+                down.addEventListener('click', () => {
+                    const next = item.nextElementSibling;
+                    if (next) {
+                        list.insertBefore(next, item);
+                        persistOrder();
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.idea-item.dragging { opacity: 0.6; }
+</style>
 
 {% endblock %}

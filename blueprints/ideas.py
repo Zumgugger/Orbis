@@ -47,7 +47,7 @@ def list_ideas():
             selectinload(Idea.files).load_only(IdeaFile.id),
         )
         .filter_by(user_id=current_user.id)
-        .order_by(Idea.updated_at.desc())
+        .order_by(Idea.position.asc(), Idea.updated_at.desc())
         .all()
     )
     return render_template("ideas/list.html", ideas=ideas)
@@ -340,3 +340,24 @@ def download_file(idea_id, file_id):
             "File not found on download", extra={"idea_id": idea_id, "file_id": file_id}
         )
         return redirect(url_for("ideas.view_idea", idea_id=idea.id))
+
+
+@ideas_bp.route("/reorder", methods=["POST"])
+@login_required
+def reorder():
+    """Persist drag-and-drop order of ideas for the current user"""
+    payload = request.get_json(silent=True) or {}
+    order = payload.get("order", [])
+    if not isinstance(order, list):
+        return {"success": False, "error": "Invalid order payload"}, 400
+
+    try:
+        for position, idea_id in enumerate(order):
+            idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first()
+            if idea:
+                idea.position = position
+        db.session.commit()
+        return {"success": True}, 200
+    except Exception:
+        db.session.rollback()
+        return {"success": False, "error": "Failed to persist order"}, 500

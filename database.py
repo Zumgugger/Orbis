@@ -50,6 +50,13 @@ def apply_migrations():
                 conn.execute(
                     db.text("ALTER TABLE dailies ADD COLUMN position INTEGER DEFAULT 0")
                 )
+
+        idea_columns = [col["name"] for col in inspector.get_columns("ideas")]
+        with engine.connect() as conn:
+            if "position" not in idea_columns:
+                conn.execute(
+                    db.text("ALTER TABLE ideas ADD COLUMN position INTEGER DEFAULT 0")
+                )
     except Exception:
         # Avoid blocking app startup if inspection fails
         pass
@@ -733,6 +740,7 @@ class Idea(db.Model):
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+    position = db.Column(db.Integer, default=0)
 
     files = db.relationship(
         "IdeaFile", backref="idea", lazy=True, cascade="all, delete-orphan"
