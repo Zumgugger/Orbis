@@ -3,7 +3,7 @@ Orbis - Habit and Task Management System
 Main application entry point
 """
 import os
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 
 import bleach
 from dotenv import load_dotenv
@@ -14,10 +14,11 @@ from markupsafe import Markup
 from werkzeug.exceptions import HTTPException
 
 from config import DevConfig, ProdConfig, TestConfig
-from database import Daily, Habit, RolloverState, Todo, User, init_db
+from database import Daily, Habit, Todo, User, init_db
 from exceptions import OrbisError
 from extensions import csrf, db, login_manager
-from time_utils import get_local_tz, iso_start_of_day, today_local
+from services import CalendarService, RolloverService
+from time_utils import today_local
 from utilities import (
     combine_todos_and_calendar,
     error_message,
@@ -180,117 +181,21 @@ def create_app(config_name=None):
             "errors/500.html",
         )
 
+    # Initialize services
+    calendar_service = CalendarService(app.logger)
+    rollover_service = RolloverService(db.session)
+
     def fetch_calendar_events(user, start_date, end_date):
         """Fetch primary calendar events between start_date (inclusive) and end_date (exclusive)."""
         from blueprints.auth import get_google_token_for_user, oauth
 
-        token = get_google_token_for_user(user, logger=app.logger)
-        if not token:
-            return []
-
-        tz = get_local_tz()
-
-        time_min = iso_start_of_day(start_date)
-        time_max = iso_start_of_day(end_date)
-
-        try:
-            resp = oauth.google.get(
-                "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-                params={
-                    "timeMin": time_min,
-                    "timeMax": time_max,
-                    "singleEvents": True,
-                    "orderBy": "startTime",
-                },
-                token=token,
-            )
-        except Exception as exc:
-            app.logger.warning(f"Calendar fetch failed: {exc}")
-            return []
-
-        if resp.status_code != 200:
-            app.logger.warning(
-                f"Calendar fetch returned {resp.status_code}: {resp.text}"
-            )
-            return []
-
-        events = []
-        data = resp.json()
-        for item in data.get("items", []):
-            start = item.get("start", {})
-            end = item.get("end", {})
-            is_all_day = "date" in start
-            raw_start = start.get("dateTime") or start.get("date")
-            raw_end = end.get("dateTime") or end.get("date")
-
-            def fmt_dt(val):
-                if not val:
-                    return None
-                try:
-                    dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
-                    if tz:
-                        dt = dt.astimezone(tz)
-                    return dt
-                except Exception:
-                    return None
-
-            start_dt = fmt_dt(raw_start) if not is_all_day else None
-            end_dt = fmt_dt(raw_end) if not is_all_day else None
-            events.append(
-                {
-                    "title": item.get("summary") or "(No title)",
-                    "start_raw": raw_start,
-                    "end_raw": raw_end,
-                    "start_dt": start_dt,
-                    "end_dt": end_dt,
-                    "all_day": is_all_day,
-                    "html_link": item.get("htmlLink"),
-                }
-            )
-
-        return events
+        return calendar_service.fetch_events_for_user(
+            user, start_date, end_date, get_google_token_for_user, oauth.google
+        )
 
     def process_rollover_for_user(user):
         """Shift unfinished items forward once per day and break missed streaks."""
-        if not user.is_authenticated:
-            return
-
-        today = date.today()
-        state = RolloverState.query.filter_by(user_id=user.id).first()
-
-        if not state:
-            state = RolloverState(user_id=user.id, last_processed_date=today)
-            db.session.add(state)
-            db.session.commit()
-            return
-
-        current_day = state.last_processed_date
-
-        while current_day < today:
-            next_day = current_day + timedelta(days=1)
-
-            # Move pending todos forward by one day
-            pending_todos = Todo.query.filter(
-                Todo.user_id == user.id,
-                Todo.status == "pending",
-                Todo.due_date == current_day,
-            ).all()
-            for todo in pending_todos:
-                todo.due_date = next_day
-
-            # Break streak for dailies missed on the day
-            user_dailies = Daily.query.filter_by(user_id=user.id).all()
-            for daily in user_dailies:
-                if daily.should_complete_on(current_day) and not daily.is_completed_on(
-                    current_day
-                ):
-                    daily.streak_count = 0
-
-            db.session.commit()
-            current_day = next_day
-
-        state.last_processed_date = today
-        db.session.commit()
+        rollover_service.process_rollover(user)
 
     @app.route("/")
     @login_required
