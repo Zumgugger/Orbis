@@ -15,6 +15,7 @@ from validation import (
     ValidationError,
     validate_date,
     validate_duration,
+    validate_integer,
     validate_priority,
     validate_text,
     validate_time,
@@ -22,6 +23,33 @@ from validation import (
 )
 
 todos_bp = Blueprint("todos", __name__, url_prefix="/todos")
+
+
+def _parse_time_fields(form: dict) -> dict:
+    """Parse time scheduling fields from form data."""
+    due_time = validate_time(form.get("due_time"))
+    end_time = validate_time(form.get("end_time"))
+    duration_minutes = validate_integer(
+        form.get("duration_minutes"),
+        field_name="Duration",
+        min_val=1,
+        max_val=1440,  # max 24 hours
+    )
+
+    # If end_time provided, calculate duration automatically
+    if due_time and end_time and not duration_minutes:
+        from datetime import datetime
+
+        start_dt = datetime.combine(datetime.today(), due_time)
+        end_dt = datetime.combine(datetime.today(), end_time)
+        if end_dt > start_dt:
+            duration_minutes = int((end_dt - start_dt).total_seconds() // 60)
+
+    return {
+        "due_time": due_time,
+        "end_time": end_time,
+        "duration_minutes": duration_minutes,
+    }
 
 
 @todos_bp.route("/quick_create", methods=["POST"])
@@ -107,12 +135,16 @@ def create_todo():
             )
             priority = validate_priority(request.form.get("priority"))
             due_date = validate_date(request.form.get("due_date"))
+            time_fields = _parse_time_fields(request.form)
 
             todo = Todo(
                 title=title,
                 description=description,
                 priority=priority,
                 due_date=due_date,
+                due_time=time_fields["due_time"],
+                end_time=time_fields["end_time"],
+                duration_minutes=time_fields["duration_minutes"],
                 user_id=current_user.id,
             )
             db.session.add(todo)
@@ -146,12 +178,16 @@ def create_todo_today():
                 request.form.get("description"), max_length=5000
             )
             priority = validate_priority(request.form.get("priority"))
+            time_fields = _parse_time_fields(request.form)
 
             todo = Todo(
                 title=title,
                 description=description,
                 priority=priority,
                 due_date=preset_date,
+                due_time=time_fields["due_time"],
+                end_time=time_fields["end_time"],
+                duration_minutes=time_fields["duration_minutes"],
                 user_id=current_user.id,
             )
             db.session.add(todo)
@@ -185,12 +221,16 @@ def create_todo_tomorrow():
                 request.form.get("description"), max_length=5000
             )
             priority = validate_priority(request.form.get("priority"))
+            time_fields = _parse_time_fields(request.form)
 
             todo = Todo(
                 title=title,
                 description=description,
                 priority=priority,
                 due_date=preset_date,
+                due_time=time_fields["due_time"],
+                end_time=time_fields["end_time"],
+                duration_minutes=time_fields["duration_minutes"],
                 user_id=current_user.id,
             )
             db.session.add(todo)
@@ -228,6 +268,11 @@ def edit_todo(todo_id):
             )
             todo.priority = validate_priority(request.form.get("priority"))
             todo.due_date = validate_date(request.form.get("due_date"))
+
+            time_fields = _parse_time_fields(request.form)
+            todo.due_time = time_fields["due_time"]
+            todo.end_time = time_fields["end_time"]
+            todo.duration_minutes = time_fields["duration_minutes"]
 
             # Mark as in progress when edited (per tests expectation)
             if todo.status == "pending":

@@ -164,7 +164,15 @@
                     </form>
                     <div class="flex-grow-1">
                         <h5 class="mb-0 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</h5>
+                        {% if item.time_label %}
+                        <small class="text-muted"><i class="bi bi-clock"></i> {{ item.time_label }}</small>
+                        {% endif %}
                     </div>
+                    {% if todo.duration_minutes %}
+                    <span class="badge bg-info text-dark" title="Estimated duration">
+                        <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                    </span>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}

@@ -161,10 +161,20 @@
                     </div>
                     <div class="col" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}" style="cursor: pointer;">
                         <h5 class="mb-1 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</h5>
+                        {% if item.time_label %}
+                        <small class="text-muted"><i class="bi bi-clock"></i> {{ item.time_label }}</small>
+                        {% endif %}
                         {% if todo.description %}
                             <p class="mb-1 text-muted">{{ todo.description }}</p>
                         {% endif %}
                     </div>
+                    {% if todo.duration_minutes %}
+                    <div class="col-auto">
+                        <span class="badge bg-info text-dark" title="Estimated duration">
+                            <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                        </span>
+                    </div>
+                    {% endif %}
                     <div class="col-auto">
                         <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal{{ todo.id }}" title="Schedule to Google Calendar" data-bs-placement="top">
                             <i class="bi bi-calendar-plus"></i>

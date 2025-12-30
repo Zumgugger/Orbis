@@ -120,3 +120,89 @@ def test_cannot_access_other_user_todo(authenticated_client, app):
     # Try to access other user's todo
     response = authenticated_client.get(f"/todos/{other_todo_id}/edit")
     assert response.status_code in [403, 404]  # Should be forbidden or not found
+
+
+def test_create_todo_with_time_scheduling(authenticated_client, app, test_user):
+    """Test creating a todo with time scheduling fields"""
+    response = authenticated_client.post(
+        "/todos/create",
+        data={
+            "title": "Scheduled Meeting",
+            "description": "Team standup",
+            "priority": "high",
+            "due_date": str(date.today()),
+            "due_time": "09:00",
+            "end_time": "09:30",
+            "duration_minutes": "30",
+            "status": "pending",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+
+    # Verify todo was created with time fields
+    with app.app_context():
+        from datetime import time as time_type
+
+        todo = Todo.query.filter_by(
+            title="Scheduled Meeting", user_id=test_user
+        ).first()
+        assert todo is not None
+        assert todo.due_time == time_type(9, 0)
+        assert todo.end_time == time_type(9, 30)
+        assert todo.duration_minutes == 30
+        assert todo.get_time_label() == "09:00 – 09:30"
+        assert todo.get_duration_display() == "30m"
+
+
+def test_todo_time_label_without_end_time(authenticated_client, app, test_user):
+    """Test todo time label when only start time and duration are set"""
+    response = authenticated_client.post(
+        "/todos/create",
+        data={
+            "title": "Quick Task",
+            "priority": "medium",
+            "due_date": str(date.today()),
+            "due_time": "14:00",
+            "duration_minutes": "45",
+            "status": "pending",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        from datetime import time as time_type
+
+        todo = Todo.query.filter_by(title="Quick Task", user_id=test_user).first()
+        assert todo is not None
+        assert todo.due_time == time_type(14, 0)
+        assert todo.end_time is None
+        assert todo.duration_minutes == 45
+        assert todo.get_time_label() == "14:00 (45m)"
+
+
+def test_todo_auto_calculate_duration_from_times(authenticated_client, app, test_user):
+    """Test that duration is auto-calculated when end_time is provided without duration"""
+    response = authenticated_client.post(
+        "/todos/create",
+        data={
+            "title": "Long Meeting",
+            "priority": "high",
+            "due_date": str(date.today()),
+            "due_time": "10:00",
+            "end_time": "12:00",
+            # No duration_minutes provided - should auto-calculate
+            "status": "pending",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        todo = Todo.query.filter_by(title="Long Meeting", user_id=test_user).first()
+        assert todo is not None
+        assert todo.duration_minutes == 120  # 2 hours = 120 minutes

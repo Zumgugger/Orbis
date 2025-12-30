@@ -125,7 +125,8 @@ def combine_todos_and_calendar(
     todos: list[Todo], calendar_events: list[CalendarEvent], date_label: str = "Today"
 ) -> list[dict[str, Any]]:
     """
-    Combine todos and calendar events into a single list with time labels
+    Combine todos and calendar events into a single list with time labels,
+    sorted chronologically by time. Items with times come first, then items without.
 
     Args:
         todos: List of Todo objects
@@ -133,24 +134,63 @@ def combine_todos_and_calendar(
         date_label: Label for the date (e.g., 'Today', 'Tomorrow')
 
     Returns:
-        Combined list with 'kind' and object keys
+        Combined list with 'kind' and object keys, sorted by time
     """
-    # Add time labels to calendar events
+    from datetime import time as time_type
+
+    combined: list[dict[str, Any]] = []
+
+    # Add calendar events with time labels and sort keys
     for event in calendar_events:
         if event.get("all_day"):
             event["time_label"] = generate_time_label(
                 None, date_label, include_time=False
             )
+            # All-day events sort at the top (sort key: 0, midnight)
+            sort_key = (0, time_type(0, 0))
         else:
             event["time_label"] = generate_time_label(
                 event.get("start_dt"), date_label, include_time=True
             )
+            # Timed events sort by their start time
+            start_dt = event.get("start_dt")
+            if start_dt:
+                sort_key = (1, start_dt.time())
+            else:
+                sort_key = (2, time_type(23, 59))
+        combined.append({"kind": "calendar", "event": event, "_sort_key": sort_key})
 
-    # Build combined list
-    combined: list[dict[str, Any]] = [
-        {"kind": "calendar", "event": ev} for ev in calendar_events
-    ]
-    combined += [{"kind": "todo", "todo": t} for t in todos]
+    # Add todos with sort keys
+    for todo in todos:
+        if todo.due_time:
+            # Todos with time sort by their time
+            sort_key = (1, todo.due_time)
+            time_label = todo.get_time_label()
+        else:
+            # Todos without time sort at the end, by position
+            sort_key = (3, time_type(23, 59, 59))
+            time_label = ""
+        combined.append(
+            {
+                "kind": "todo",
+                "todo": todo,
+                "time_label": time_label,
+                "_sort_key": sort_key,
+            }
+        )
+
+    # Sort by sort key (timed items first, then by time, then unscheduled)
+    combined.sort(
+        key=lambda x: (
+            x["_sort_key"][0],
+            x["_sort_key"][1],
+            getattr(x.get("todo"), "position", 0) if x.get("todo") else 0,
+        )
+    )
+
+    # Remove internal sort key from results
+    for item in combined:
+        item.pop("_sort_key", None)
 
     return combined
 
