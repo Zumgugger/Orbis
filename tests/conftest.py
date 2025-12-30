@@ -9,6 +9,15 @@ import pytest
 
 from app import create_app
 from database import Daily, Goal, Habit, Idea, ShoppingList, Todo, User, db
+from tests.factories import (
+    DailyFactory,
+    GoalFactory,
+    HabitFactory,
+    IdeaFactory,
+    ShoppingListFactory,
+    TodoFactory,
+    UserFactory,
+)
 
 
 @pytest.fixture(scope="session")
@@ -100,26 +109,29 @@ def cleanup_database(app):
 
 @pytest.fixture
 def test_user(app):
-    """Create a test user in the database"""
+    """Create a test user in the database using factory"""
     with app.app_context():
         # Clear any existing test users first
         db.session.query(User).filter(User.email == "test@example.com").delete()
         db.session.commit()
 
-        user = User(
+        user = UserFactory.create(
             google_id="test_google_123",
             email="test@example.com",
             name="Test User",
-            profile_pic="https://example.com/pic.jpg",
         )
-        db.session.add(user)
-        db.session.commit()
+        return user.id
 
-        # Refresh to get ID
-        db.session.refresh(user)
-        user_id = user.id
 
-    return user_id
+@pytest.fixture
+def admin_user(app):
+    """Create an admin user for testing admin functionality"""
+    with app.app_context():
+        user = UserFactory.create_admin(
+            email="admin@test.com",
+            name="Admin User",
+        )
+        return user.id
 
 
 @pytest.fixture
@@ -139,41 +151,73 @@ def authenticated_client(client, app, test_user):
 
 @pytest.fixture
 def sample_todo(app, test_user):
-    """Create a sample todo for testing"""
+    """Create a sample todo for testing using factory"""
     with app.app_context():
-        todo = Todo(
+        todo = TodoFactory.create(
             user_id=test_user,
             title="Test Todo",
             description="Test description",
-            priority="medium",
             due_date=date.today(),
-            status="pending",
         )
-        db.session.add(todo)
-        db.session.commit()
-        db.session.refresh(todo)
-        todo_id = todo.id
-
-    return todo_id
+        return todo.id
 
 
 @pytest.fixture
 def sample_idea(app, test_user):
-    """Create a sample idea for testing"""
+    """Create a sample idea for testing using factory"""
     with app.app_context():
-        idea = Idea(
+        idea = IdeaFactory.create(
             user_id=test_user,
             title="Test Idea",
             description="Test idea description",
             notes="Initial notes",
-            mindmap_data="{}",
         )
-        db.session.add(idea)
-        db.session.commit()
-        db.session.refresh(idea)
-        idea_id = idea.id
+        return idea.id
 
-    return idea_id
+
+@pytest.fixture
+def sample_daily(app, test_user):
+    """Create a sample daily for testing"""
+    with app.app_context():
+        daily = DailyFactory.create(
+            user_id=test_user,
+            title="Test Daily",
+        )
+        return daily.id
+
+
+@pytest.fixture
+def sample_habit(app, test_user):
+    """Create a sample habit for testing"""
+    with app.app_context():
+        habit = HabitFactory.create(
+            user_id=test_user,
+            title="Test Habit",
+        )
+        return habit.id
+
+
+@pytest.fixture
+def sample_goal(app, test_user):
+    """Create a sample goal with milestones for testing"""
+    with app.app_context():
+        goal = GoalFactory.create_with_milestones(
+            user_id=test_user,
+            title="Test Goal",
+            milestone_count=2,
+        )
+        return goal.id
+
+
+@pytest.fixture
+def sample_shopping_list(app, test_user):
+    """Create a sample shopping list for testing"""
+    with app.app_context():
+        shopping_list = ShoppingListFactory.create(
+            user_id=test_user,
+            title="Test Shopping List",
+        )
+        return shopping_list.id
 
 
 @pytest.fixture
