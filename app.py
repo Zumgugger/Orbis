@@ -15,6 +15,7 @@ from werkzeug.exceptions import HTTPException
 
 from config import DevConfig, ProdConfig, TestConfig
 from database import Daily, Habit, RolloverState, Todo, User, init_db
+from exceptions import OrbisError
 from extensions import csrf, db, login_manager
 from time_utils import get_local_tz, iso_start_of_day, today_local
 from utilities import (
@@ -139,8 +140,23 @@ def create_app(config_name=None):
             "errors/500.html",
         )
 
+    @app.errorhandler(OrbisError)
+    def handle_orbis_error(e: OrbisError):
+        """Handle application-specific exceptions with proper response format."""
+        db.session.rollback()
+        template_map = {
+            400: "errors/400.html",
+            403: "errors/403.html",
+            404: "errors/404.html",
+        }
+        template = template_map.get(e.status_code, "errors/500.html")
+        if e.status_code >= 500:
+            app.logger.error(f"Application error: {e.message}", extra=e.details)
+        return error_response(e.status_code, e.error_code, e.message, template)
+
     @app.errorhandler(Exception)
     def handle_exception(e):
+        """Handle all other exceptions."""
         db.session.rollback()
         if isinstance(e, HTTPException):
             template_map = {
