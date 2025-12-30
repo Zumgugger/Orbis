@@ -1,12 +1,12 @@
 """
-Masterprompts Blueprint
-Manage categories, sections, and builder assembly for master prompts
+Masterprompts Blueprint - manage categories, sections, and builder assembly
 """
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import func
 
-from database import MasterCategory, MasterSection, db
+from extensions import db
+from models import MasterCategory, MasterSection
 from validation import ValidationError, validate_text, validate_title
 
 masterprompts_bp = Blueprint("masterprompts", __name__, url_prefix="/masterprompts")

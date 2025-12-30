@@ -1,11 +1,11 @@
 """
-Shopping Lists Blueprint
-Manage multiple shopping lists with text-based items
+Shopping Lists Blueprint - manage multiple shopping lists with text-based items
 """
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from database import ShoppingList, db
+from extensions import db
+from models import ShoppingList
 from validation import ValidationError, validate_text, validate_title
 
 shopping_bp = Blueprint("shopping", __name__, url_prefix="/shopping")

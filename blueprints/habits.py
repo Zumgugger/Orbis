@@ -6,7 +6,8 @@ from datetime import datetime
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from database import Habit, db
+from extensions import db
+from models import Habit
 from validation import (
     ValidationError,
     validate_difficulty,

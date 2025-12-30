@@ -17,13 +17,14 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy.orm import load_only, selectinload
 
-from database import Idea, IdeaFile, db
+from extensions import db
 from file_security import (
     FileSecurityError,
     delete_uploaded_file,
     get_file_path,
     save_uploaded_file,
 )
+from models import Idea, IdeaFile
 from utilities import log_exception, log_warning
 from validation import ValidationError, validate_text, validate_title
 

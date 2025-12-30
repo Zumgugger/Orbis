@@ -7,7 +7,8 @@ from datetime import date, datetime, timedelta
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from database import Todo, db
+from extensions import db
+from models import Todo
 from time_utils import get_local_tz, now_local, today_local, tomorrow_local
 from utilities import log_error, log_exception, log_warning
 from validation import (

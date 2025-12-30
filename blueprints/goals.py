@@ -1,12 +1,12 @@
 """
-Goals Blueprint
-Handles goal tracking with milestone management
+Goals Blueprint - handles goal tracking with milestone management
 """
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.orm import selectinload
 
-from database import Goal, Milestone, db
+from extensions import db
+from models import Goal, Milestone
 from validation import ValidationError, validate_text, validate_title
 
 goals_bp = Blueprint("goals", __name__, url_prefix="/goals")

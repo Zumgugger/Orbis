@@ -1,6 +1,5 @@
 """
-Admin Blueprint
-User management for admins
+Admin Blueprint - user management for administrators
 """
 from datetime import datetime
 from functools import wraps
@@ -8,7 +7,8 @@ from functools import wraps
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
-from database import User, db
+from extensions import db
+from models import User
 from validation import ValidationError, validate_email, validate_title
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")

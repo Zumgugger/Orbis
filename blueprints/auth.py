@@ -1,6 +1,5 @@
 """
-Authentication Blueprint
-Handles Google OAuth login/logout
+Authentication Blueprint - handles Google OAuth login/logout
 """
 import json
 import os
@@ -11,7 +10,8 @@ from authlib.integrations.flask_client import OAuth
 from flask import Blueprint, current_app, flash, redirect, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
-from database import User, db
+from extensions import db
+from models import User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 

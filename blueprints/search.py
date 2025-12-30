@@ -1,12 +1,11 @@
 """
-Global Search Blueprint
-Search across user data: todos, dailies, habits, goals, shopping lists, masterprompts, ideas
+Search Blueprint - global search across user data
 """
 from flask import Blueprint, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_
 
-from database import (
+from models import (
     Daily,
     Goal,
     Habit,
