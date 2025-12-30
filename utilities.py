@@ -7,7 +7,10 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, Any, TypedDict
 
-from flask import current_app, jsonify, render_template, request, url_for
+from flask import jsonify, render_template, request, url_for
+
+# Re-export logging functions from centralized module for backward compatibility
+from logging_config import log_exception, log_warning
 
 if TYPE_CHECKING:
     from werkzeug import Response
@@ -391,54 +394,6 @@ def error_response(
     if wants_json_response():
         return jsonify(payload), status_code
     return render_template(template), status_code
-
-
-# Structured logging helpers
-def _with_context(extra: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Build context dict for structured logging."""
-    ctx: dict[str, Any] = {
-        "path": request.path if request else None,
-        "method": request.method if request else None,
-        "remote_addr": request.remote_addr if request else None,
-    }
-    try:
-        from flask_login import current_user
-
-        ctx["user_id"] = getattr(current_user, "id", None)
-    except Exception:
-        ctx["user_id"] = None
-    if extra and isinstance(extra, dict):
-        ctx.update(extra)
-    return ctx
-
-
-def log_warning(message: str, extra: dict[str, Any] | None = None) -> None:
-    """Log a warning with request context."""
-    logger = getattr(current_app, "logger", None)
-    if logger:
-        logger.warning({"message": message, **_with_context(extra)})
-
-
-def log_error(message: str, extra: dict[str, Any] | None = None) -> None:
-    """Log an error with request context."""
-    logger = getattr(current_app, "logger", None)
-    if logger:
-        logger.error({"message": message, **_with_context(extra)})
-
-
-def log_exception(
-    exc: Exception, message: str | None = None, extra: dict[str, Any] | None = None
-) -> None:
-    """Log an exception with full traceback and request context."""
-    logger = getattr(current_app, "logger", None)
-    if logger:
-        logger.exception(
-            {
-                "message": message or str(exc),
-                "exception": str(exc),
-                **_with_context(extra),
-            }
-        )
 
 
 def build_json_error(
