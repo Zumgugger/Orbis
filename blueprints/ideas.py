@@ -6,6 +6,7 @@ from datetime import datetime
 
 from flask import (
     Blueprint,
+    abort,
     flash,
     jsonify,
     redirect,
@@ -288,7 +289,9 @@ def delete_file(idea_id, file_id):
 def delete_file_simple(file_id):
     """Delete a file attachment using file_id only (route expected by tests)."""
     try:
-        idea_file = IdeaFile.query.get_or_404(file_id)
+        idea_file = db.session.get(IdeaFile, file_id)
+        if idea_file is None:
+            abort(404)
         # Ensure the file belongs to the current user
         idea = Idea.query.filter_by(
             id=idea_file.idea_id, user_id=current_user.id

@@ -4,7 +4,7 @@ Admin Blueprint - user management for administrators
 from datetime import datetime
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from extensions import db
@@ -42,7 +42,9 @@ def users():
 @admin_required
 def toggle_role(user_id):
     """Toggle user role between admin and user"""
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
+    if user is None:
+        abort(404)
 
     # Prevent removing your own admin role
     if user.id == current_user.id:
@@ -107,7 +109,9 @@ def create_user():
 @admin_required
 def delete_user(user_id):
     """Delete a user"""
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id)
+    if user is None:
+        abort(404)
 
     # Prevent deleting yourself
     if user.id == current_user.id:
