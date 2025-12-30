@@ -72,6 +72,29 @@ def create_app(config_name=None):
 
     app.jinja_env.globals["csrf_token"] = generate_csrf
 
+    # Security headers (only in production)
+    if cfg_key == "production":
+        from flask_talisman import Talisman
+
+        # Content Security Policy - allow inline styles/scripts for app functionality
+        csp = {
+            "default-src": "'self'",
+            "script-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+            "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+            "img-src": ["'self'", "data:", "https:"],
+            "font-src": ["'self'", "https://cdn.jsdelivr.net"],
+            "connect-src": "'self'",
+        }
+        Talisman(
+            app,
+            content_security_policy=csp,
+            force_https=True,
+            strict_transport_security=True,
+            strict_transport_security_max_age=31536000,
+            frame_options="DENY",
+            content_security_policy_nonce_in=["script-src"],
+        )
+
     # Initialize database
     init_db(app)
 
