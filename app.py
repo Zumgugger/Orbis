@@ -153,6 +153,15 @@ def create_app(config_name=None):
             404, "not_found", error_message(e, "Resource not found"), "errors/404.html"
         )
 
+    @app.errorhandler(413)
+    def request_entity_too_large(e):
+        return error_response(
+            413,
+            "request_entity_too_large",
+            "File too large. Maximum size is 10MB.",
+            "errors/400.html",
+        )
+
     @app.errorhandler(500)
     def internal_error(e):
         db.session.rollback()  # Rollback any failed transactions

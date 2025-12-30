@@ -1,5 +1,13 @@
+"""
+Flask configuration classes.
+
+These classes configure Flask and its extensions.
+For application settings validation, see settings.py.
+"""
 import logging
 import os
+
+from settings import settings
 
 
 class RequestFormatter(logging.Formatter):
@@ -26,11 +34,14 @@ class RequestFormatter(logging.Formatter):
 
 
 class BaseConfig:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///orbis.db")
+    # Load validated settings
+    _settings = settings()
+
+    SECRET_KEY = _settings.SECRET_KEY
+    SQLALCHEMY_DATABASE_URI = _settings.DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_TIME_LIMIT = None  # Avoid unexpected expiry during long sessions
-    # Optional: OAuth client IDs/tokens should come from env vars in production
+    MAX_CONTENT_LENGTH = _settings.max_file_size_bytes
 
     @staticmethod
     def configure_logging(app):
