@@ -47,7 +47,7 @@ def test_toggle_todo_status(authenticated_client, app, sample_todo):
     assert response.status_code == 200
 
     with app.app_context():
-        todo = Todo.query.get(sample_todo)
+        todo = db.session.get(Todo, sample_todo)
         assert todo.status == "completed"
 
     # Toggle back to pending
@@ -57,7 +57,7 @@ def test_toggle_todo_status(authenticated_client, app, sample_todo):
     assert response.status_code == 200
 
     with app.app_context():
-        todo = Todo.query.get(sample_todo)
+        todo = db.session.get(Todo, sample_todo)
         assert todo.status == "pending"
 
 
@@ -78,7 +78,7 @@ def test_edit_todo(authenticated_client, app, sample_todo):
     assert response.status_code == 200
 
     with app.app_context():
-        todo = Todo.query.get(sample_todo)
+        todo = db.session.get(Todo, sample_todo)
         assert todo.title == "Updated Todo Title"
         assert todo.description == "Updated description"
         assert todo.priority == "low"
@@ -93,7 +93,7 @@ def test_delete_todo(authenticated_client, app, sample_todo):
     assert response.status_code == 200
 
     with app.app_context():
-        todo = Todo.query.get(sample_todo)
+        todo = db.session.get(Todo, sample_todo)
         assert todo is None
 
 
