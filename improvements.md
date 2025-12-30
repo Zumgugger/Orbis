@@ -2,72 +2,71 @@
 
 A comprehensive 20-point plan to improve architecture, maintainability, and code cleanliness.
 
----
+## Progress Summary
 
-## 1. Extract Business Logic from Route Handlers into Service Layer
-
-**Current State:** Business logic (rollover processing, streak calculations, calendar fetching) is embedded directly in `app.py` route handlers and model methods.
-
-**Improvement:**
-- Create a `services/` directory with dedicated service modules:
-  - `services/rollover_service.py` - Handle todo rollover and streak reset
-  - `services/calendar_service.py` - Google Calendar integration
-  - `services/completion_service.py` - Daily/Todo completion tracking
-- Routes become thin controllers that delegate to services
-
-**Benefits:** Better testability, single responsibility, easier to modify business rules independently.
-
----
-
-## 2. Consolidate Database Models into Separate Module Files
-
-**Current State:** `database.py` is 824 lines containing all models, making it hard to navigate.
-
-**Improvement:**
-- Create `models/` directory with separate files:
-  - `models/user.py` - User, RolloverState
-  - `models/todo.py` - Todo model
-  - `models/daily.py` - Daily, CompletionLog
-  - `models/habit.py` - Habit model
-  - `models/goal.py` - Goal, Milestone
-  - `models/shopping.py` - ShoppingList
-  - `models/idea.py` - Idea, IdeaFile
-  - `models/masterprompt.py` - MasterCategory, MasterSection
-  - `models/__init__.py` - Re-export all models
-- Keep `database.py` for `init_db()` and migration utilities only
-
-**Benefits:** Easier navigation, focused files, better code organization.
+| # | Item | Status |
+|---|------|--------|
+| 1 | Service Layer | ✅ Complete |
+| 2 | Split Models | ✅ Complete |
+| 3 | Fix Migrations | ✅ Complete |
+| 4 | Standardize Blueprints | ✅ Complete |
+| 5 | Repository Pattern | ⏳ Pending |
+| 6 | Add Type Hints | ✅ Complete |
+| 7 | Flask-WTF Forms | ⏳ Pending |
+| 8 | Error Handling | ✅ Complete |
+| 9 | DTOs/Schemas | ⏳ Pending |
+| 10 | Refactor Daily | ✅ Complete |
+| 11 | Config Validation | ⏳ Pending |
+| 12 | Logging | ⏳ Pending |
+| 13 | Rate Limiting | ⏳ Pending |
+| 14-20 | Remaining | ⏳ Pending |
 
 ---
 
-## 3. Replace Inline Migrations with Proper Alembic Usage
+## 1. Extract Business Logic from Route Handlers into Service Layer ✅
 
-**Current State:** `apply_migrations()` in `database.py` runs raw SQL at startup to add columns, bypassing Alembic.
+**Status:** COMPLETE (commit c78bc65)
 
-**Improvement:**
-- Remove inline `apply_migrations()` function
-- Create proper Alembic migrations for all schema changes
-- Use `flask db migrate` / `flask db upgrade` workflow
-- Add pre-deployment migration checks to CI/CD
-
-**Benefits:** Proper schema versioning, safer production deployments, team collaboration on schema changes.
+**What was done:**
+- Created `services/` directory with dedicated service modules
+- Implemented `CalendarService` for Google Calendar API integration
+- Implemented `RolloverService` for todo rollover and streak management
+- Updated `app.py` to use service instances instead of inline functions
 
 ---
 
-## 4. Standardize Blueprint Structure with Consistent Patterns
+## 2. Consolidate Database Models into Separate Module Files ✅
 
-**Current State:** Blueprints have inconsistent naming (e.g., `goals.list` vs `todos.list_todos`, `goals.edit` vs `todos.edit_todo`).
+**Status:** COMPLETE (commit 5d0d2c2)
 
-**Improvement:**
-- Adopt consistent route naming convention across all blueprints:
-  - `<resource>.list` - List all items
-  - `<resource>.create` - Create new item
-  - `<resource>.view` - View single item
-  - `<resource>.edit` - Edit item
-  - `<resource>.delete` - Delete item
-- Create a base blueprint class or factory for common CRUD patterns
+**What was done:**
+- Created `models/` directory with separate files for each model
+- Models organized into: user.py, todo.py, daily.py, habit.py, goal.py, shopping.py, idea.py, masterprompt.py
+- Updated `database.py` to import from models package
+- All imports updated across the codebase
 
-**Benefits:** Predictable API surface, easier URL generation, reduced cognitive load.
+---
+
+## 3. Replace Inline Migrations with Proper Alembic Usage ✅
+
+**Status:** COMPLETE (commit 785564d)
+
+**What was done:**
+- Renamed `apply_migrations()` to `_apply_legacy_migrations()` with deprecation notice
+- Fixed `db.get_engine()` deprecation warning
+- Existing Alembic migrations in `migrations/versions/` continue to work
+
+---
+
+## 4. Standardize Blueprint Structure with Consistent Patterns ✅
+
+**Status:** COMPLETE (commit a7fa0a1)
+
+**What was done:**
+- Updated all blueprints to import from `models` instead of `database`
+- Import `db` from `extensions` instead of `database`
+- Standardized docstring format across all blueprint modules
+- Added required imports (os, datetime) where needed
 
 ---
 
@@ -87,17 +86,14 @@ A comprehensive 20-point plan to improve architecture, maintainability, and code
 
 ---
 
-## 6. Add Type Hints Throughout Codebase
+## 6. Add Type Hints Throughout Codebase ✅
 
-**Current State:** Minimal type annotations despite having `mypy.ini` configured.
+**Status:** COMPLETE (commit 21af51f)
 
-**Improvement:**
-- Add type hints to all function signatures
-- Define typed dataclasses or TypedDicts for complex return types
-- Enable strict mypy checking gradually
-- Add `py.typed` marker for type-aware imports
-
-**Benefits:** Better IDE support, catch bugs early, self-documenting code.
+**What was done:**
+- Added type hints to `utilities.py`, `validation.py`, `time_utils.py`, `file_security.py`
+- Created TypedDict classes for complex return types (CalendarEvent, CombinedItem, etc.)
+- Added `from __future__ import annotations` for forward references
 
 ---
 
@@ -117,18 +113,14 @@ A comprehensive 20-point plan to improve architecture, maintainability, and code
 
 ---
 
-## 8. Implement Proper Error Handling Strategy
+## 8. Implement Proper Error Handling Strategy ✅
 
-**Current State:** Mixed error handling - some routes return JSON errors, others use flash messages, exception handlers in `app.py`.
+**Status:** COMPLETE (commit 44a4026)
 
-**Improvement:**
-- Create `exceptions.py` with domain-specific exceptions:
-  - `NotFoundError`, `ForbiddenError`, `ValidationError`
-- Implement consistent API error response format
-- Add request content-type detection for JSON vs HTML responses
-- Create error handler decorators for blueprints
-
-**Benefits:** Consistent error responses, better API experience, easier debugging.
+**What was done:**
+- Created `exceptions.py` with domain-specific exception hierarchy
+- Implemented `OrbisError` base class with subclasses: `ValidationError`, `NotFoundError`, `ForbiddenError`, `UnauthorizedError`, `ConflictError`, `RateLimitError`, `ServiceError`
+- Added centralized exception handler in `app.py`
 
 ---
 
@@ -147,17 +139,18 @@ A comprehensive 20-point plan to improve architecture, maintainability, and code
 
 ---
 
-## 10. Refactor Daily Model's Complex Business Logic
+## 10. Refactor Daily Model's Complex Business Logic ✅
 
-**Current State:** `Daily` model has 150+ lines of complex streak/frequency logic in `toggle_completion()` and `toggle_completion_on()`.
+**Status:** COMPLETE (commit ecd10b4)
 
-**Improvement:**
-- Extract frequency calculation into `FrequencyCalculator` class
-- Extract streak tracking into `StreakTracker` class
-- Use strategy pattern for different frequency types
-- Add comprehensive unit tests for edge cases
-
-**Benefits:** Testable logic, single responsibility, easier to add new frequency types.
+**What was done:**
+- Extracted duplicate streak calculation to private methods
+- Added `_calculate_new_streak()` with frequency-specific sub-methods
+- Consolidated `toggle_completion()` to delegate to `toggle_completion_on()`
+- Added `_complete()` and `_uncomplete()` helper methods
+- Extracted `_is_repeat_limit_reached()` and `_should_complete_by_frequency()`
+- Moved `WEEKDAY_NAMES` to module level constant
+- Organized methods with section comments for clarity
 
 ---
 
