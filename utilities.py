@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, TypedDict
 from flask import jsonify, render_template, request, url_for
 
 # Re-export logging functions from centralized module for backward compatibility
-from logging_config import log_exception, log_warning
+from logging_config import log_error, log_exception, log_warning  # noqa: F401
 
 if TYPE_CHECKING:
     from werkzeug import Response
