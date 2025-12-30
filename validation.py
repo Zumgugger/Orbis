@@ -2,9 +2,15 @@
 Validation utilities for form inputs
 Provides reusable validation functions with clear error messages
 """
-from datetime import date, datetime
+from __future__ import annotations
+
+from datetime import date, datetime, time
+from functools import wraps
+from typing import Any, Callable, TypeVar
 
 from flask import flash
+
+T = TypeVar("T")
 
 
 class ValidationError(Exception):
@@ -13,37 +19,52 @@ class ValidationError(Exception):
     pass
 
 
-def validate_required(value, field_name="Field"):
+def validate_required(value: Any, field_name: str = "Field") -> Any:
     """Validate that a field is not empty"""
     if not value or (isinstance(value, str) and not value.strip()):
         raise ValidationError(f"{field_name} is required")
     return value.strip() if isinstance(value, str) else value
 
 
-def validate_title(value, field_name="Title", min_length=1, max_length=200):
+def validate_title(
+    value: str | None,
+    field_name: str = "Title",
+    min_length: int = 1,
+    max_length: int = 200,
+) -> str:
     """Validate title field"""
-    value = validate_required(value, field_name)
-    if len(value) < min_length:
+    result = validate_required(value, field_name)
+    if len(result) < min_length:
         raise ValidationError(f"{field_name} must be at least {min_length} characters")
-    if len(value) > max_length:
+    if len(result) > max_length:
         raise ValidationError(f"{field_name} must not exceed {max_length} characters")
-    return value
+    return result
 
 
-def validate_text(value, field_name="Text", max_length=10000, required=False):
+def validate_text(
+    value: str | None,
+    field_name: str = "Text",
+    max_length: int = 10000,
+    required: bool = False,
+) -> str:
     """Validate text/description field"""
     if not value:
         if required:
             raise ValidationError(f"{field_name} is required")
         return ""
 
-    value = value.strip() if isinstance(value, str) else str(value)
-    if len(value) > max_length:
+    result = value.strip() if isinstance(value, str) else str(value)
+    if len(result) > max_length:
         raise ValidationError(f"{field_name} must not exceed {max_length} characters")
-    return value
+    return result
 
 
-def validate_date(value, field_name="Date", required=False, allow_past=True):
+def validate_date(
+    value: str | date | None,
+    field_name: str = "Date",
+    required: bool = False,
+    allow_past: bool = True,
+) -> date | None:
     """Validate date field (accepts YYYY-MM-DD string or date object)"""
     if not value:
         if required:
@@ -57,8 +78,10 @@ def validate_date(value, field_name="Date", required=False, allow_past=True):
         # Parse string
         try:
             parsed_date = datetime.strptime(str(value).strip(), "%Y-%m-%d").date()
-        except (ValueError, AttributeError):
-            raise ValidationError(f"{field_name} must be a valid date (YYYY-MM-DD)")
+        except (ValueError, AttributeError) as exc:
+            raise ValidationError(
+                f"{field_name} must be a valid date (YYYY-MM-DD)"
+            ) from exc
 
     # Check if date is in the past (if not allowed)
     if not allow_past and parsed_date < date.today():
@@ -67,7 +90,9 @@ def validate_date(value, field_name="Date", required=False, allow_past=True):
     return parsed_date
 
 
-def validate_time(value, field_name="Time", required=False):
+def validate_time(
+    value: str | None, field_name: str = "Time", required: bool = False
+) -> time | None:
     """Validate time field (accepts HH:MM string)"""
     if not value:
         if required:
@@ -77,11 +102,16 @@ def validate_time(value, field_name="Time", required=False):
     try:
         parsed_time = datetime.strptime(str(value).strip(), "%H:%M").time()
         return parsed_time
-    except (ValueError, AttributeError):
-        raise ValidationError(f"{field_name} must be a valid time (HH:MM)")
+    except (ValueError, AttributeError) as exc:
+        raise ValidationError(f"{field_name} must be a valid time (HH:MM)") from exc
 
 
-def validate_choice(value, choices, field_name="Field", required=True):
+def validate_choice(
+    value: str | None,
+    choices: list[str],
+    field_name: str = "Field",
+    required: bool = True,
+) -> str | None:
     """Validate that value is in allowed choices"""
     if not value:
         if required:
@@ -93,7 +123,7 @@ def validate_choice(value, choices, field_name="Field", required=True):
     return value
 
 
-def validate_priority(value):
+def validate_priority(value: str | None) -> str:
     """Validate priority field"""
     return (
         validate_choice(value, ["low", "medium", "high"], "Priority", required=False)
@@ -101,7 +131,7 @@ def validate_priority(value):
     )
 
 
-def validate_difficulty(value):
+def validate_difficulty(value: str | None) -> str:
     """Validate difficulty field"""
     return (
         validate_choice(value, ["easy", "normal", "hard"], "Difficulty", required=False)
@@ -109,7 +139,7 @@ def validate_difficulty(value):
     )
 
 
-def validate_frequency(value):
+def validate_frequency(value: str | None) -> str:
     """Validate frequency field"""
     return (
         validate_choice(
@@ -120,8 +150,12 @@ def validate_frequency(value):
 
 
 def validate_integer(
-    value, field_name="Value", min_val=None, max_val=None, required=False
-):
+    value: int | str | None,
+    field_name: str = "Value",
+    min_val: int | None = None,
+    max_val: int | None = None,
+    required: bool = False,
+) -> int | None:
     """Validate integer field"""
     if value is None or value == "":
         if required:
@@ -130,8 +164,8 @@ def validate_integer(
 
     try:
         int_value = int(value)
-    except (ValueError, TypeError):
-        raise ValidationError(f"{field_name} must be a valid number")
+    except (ValueError, TypeError) as exc:
+        raise ValidationError(f"{field_name} must be a valid number") from exc
 
     if min_val is not None and int_value < min_val:
         raise ValidationError(f"{field_name} must be at least {min_val}")
@@ -141,7 +175,9 @@ def validate_integer(
     return int_value
 
 
-def validate_duration(hours, minutes, field_name="Duration"):
+def validate_duration(
+    hours: int | str | None, minutes: int | str | None, field_name: str = "Duration"
+) -> tuple[int, int]:
     """Validate duration hours and minutes"""
     try:
         h = validate_integer(hours, f"{field_name} hours", min_val=0, max_val=23) or 0
@@ -149,8 +185,8 @@ def validate_duration(hours, minutes, field_name="Duration"):
             validate_integer(minutes, f"{field_name} minutes", min_val=0, max_val=59)
             or 0
         )
-    except ValidationError as e:
-        raise ValidationError(str(e))
+    except ValidationError:
+        raise
 
     if h == 0 and m == 0:
         raise ValidationError(f"{field_name} must be greater than 0 minutes")
@@ -158,24 +194,26 @@ def validate_duration(hours, minutes, field_name="Duration"):
     return h, m
 
 
-def validate_email(value, field_name="Email", required=True):
+def validate_email(
+    value: str | None, field_name: str = "Email", required: bool = True
+) -> str | None:
     """Basic email validation"""
     if not value:
         if required:
             raise ValidationError(f"{field_name} is required")
         return None
 
-    value = value.strip()
-    if "@" not in value or "." not in value.split("@")[-1]:
+    result = value.strip()
+    if "@" not in result or "." not in result.split("@")[-1]:
         raise ValidationError(f"{field_name} must be a valid email address")
 
-    if len(value) > 255:
+    if len(result) > 255:
         raise ValidationError(f"{field_name} is too long")
 
-    return value
+    return result
 
 
-def validate_weekdays(value, required=False):
+def validate_weekdays(value: list[str] | None, required: bool = False) -> list[str]:
     """Validate weekday selection"""
     valid_days = [
         "monday",
@@ -200,12 +238,14 @@ def validate_weekdays(value, required=False):
     return value
 
 
-def flash_validation_error(error, category="error"):
+def flash_validation_error(
+    error: ValidationError | str, category: str = "error"
+) -> None:
     """Flash a validation error message"""
     flash(str(error), category)
 
 
-def handle_validation(form_handler):
+def handle_validation(form_handler: Callable[..., T]) -> Callable[..., T]:
     """
     Decorator to handle validation errors in form routes
     Usage:
@@ -214,10 +254,9 @@ def handle_validation(form_handler):
             title = validate_title(request.form.get('title'))
             # ... more validation
     """
-    from functools import wraps
 
     @wraps(form_handler)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> T:
         try:
             return form_handler(*args, **kwargs)
         except ValidationError as e:

@@ -2,21 +2,24 @@
 File upload security utilities
 Handles validation, secure storage, and path sanitization for file uploads
 """
+from __future__ import annotations
+
 import mimetypes
 import os
 import uuid
 from pathlib import Path
+from typing import Any, BinaryIO
 
 from werkzeug.utils import secure_filename
 
 from utilities import log_warning
 
 # Configuration
-UPLOAD_BASE_DIR = "uploads/idea_files"
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
+UPLOAD_BASE_DIR: str = "uploads/idea_files"
+MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB in bytes
 
 # Strict allowlist of file extensions and their expected MIME types
-ALLOWED_EXTENSIONS = {
+ALLOWED_EXTENSIONS: dict[str, list[str]] = {
     # Documents
     "pdf": ["application/pdf"],
     "txt": ["text/plain"],
@@ -44,7 +47,7 @@ class FileSecurityError(Exception):
     pass
 
 
-def validate_file_extension(filename):
+def validate_file_extension(filename: str | None) -> str:
     """
     Validate file extension against allowlist
 
@@ -52,7 +55,7 @@ def validate_file_extension(filename):
         filename: Original filename from upload
 
     Returns:
-        str: Lowercase extension without dot
+        Lowercase extension without dot
 
     Raises:
         FileSecurityError: If extension is invalid or not allowed
@@ -69,13 +72,16 @@ def validate_file_extension(filename):
     return extension
 
 
-def validate_file_size(file_stream, max_size=MAX_FILE_SIZE):
+def validate_file_size(file_stream: BinaryIO, max_size: int = MAX_FILE_SIZE) -> int:
     """
     Validate file size before saving
 
     Args:
         file_stream: File object from request.files
         max_size: Maximum allowed size in bytes
+
+    Returns:
+        File size in bytes
 
     Raises:
         FileSecurityError: If file exceeds size limit
@@ -92,7 +98,7 @@ def validate_file_size(file_stream, max_size=MAX_FILE_SIZE):
     return size
 
 
-def validate_mime_type(filepath, expected_extension):
+def validate_mime_type(filepath: str | Path, expected_extension: str) -> None:
     """
     Validate MIME type matches expected extension
 
@@ -104,7 +110,7 @@ def validate_mime_type(filepath, expected_extension):
         FileSecurityError: If MIME type doesn't match extension
     """
     # Get MIME type from file
-    mime_type, _ = mimetypes.guess_type(filepath)
+    mime_type, _ = mimetypes.guess_type(str(filepath))
 
     # Some files may not have a detected MIME type
     if mime_type is None:
@@ -118,7 +124,9 @@ def validate_mime_type(filepath, expected_extension):
         )
 
 
-def generate_secure_filepath(original_filename, base_dir=UPLOAD_BASE_DIR):
+def generate_secure_filepath(
+    original_filename: str, base_dir: str = UPLOAD_BASE_DIR
+) -> tuple[str, str, str]:
     """
     Generate a secure file path with random subdirectory
 
@@ -127,7 +135,7 @@ def generate_secure_filepath(original_filename, base_dir=UPLOAD_BASE_DIR):
         base_dir: Base upload directory
 
     Returns:
-        tuple: (full_path, relative_path, secure_filename)
+        Tuple of (full_path, relative_path, secure_filename)
 
     Raises:
         FileSecurityError: If filename is invalid
@@ -155,7 +163,7 @@ def generate_secure_filepath(original_filename, base_dir=UPLOAD_BASE_DIR):
     return full_path, relative_path, unique_filename
 
 
-def validate_file_path(filepath, base_dir=UPLOAD_BASE_DIR):
+def validate_file_path(filepath: str | Path, base_dir: str = UPLOAD_BASE_DIR) -> Path:
     """
     Validate file path to prevent directory traversal attacks
 
@@ -164,7 +172,7 @@ def validate_file_path(filepath, base_dir=UPLOAD_BASE_DIR):
         base_dir: Base upload directory
 
     Returns:
-        Path: Validated absolute path
+        Validated absolute path
 
     Raises:
         FileSecurityError: If path is outside allowed directory
@@ -176,13 +184,13 @@ def validate_file_path(filepath, base_dir=UPLOAD_BASE_DIR):
     # Check if file path is within base directory
     try:
         file_path.relative_to(base_path)
-    except ValueError:
-        raise FileSecurityError("Invalid file path: outside allowed directory")
+    except ValueError as exc:
+        raise FileSecurityError("Invalid file path: outside allowed directory") from exc
 
     return file_path
 
 
-def save_uploaded_file(file, original_filename):
+def save_uploaded_file(file: Any, original_filename: str) -> dict[str, Any]:
     """
     Securely save an uploaded file
 
@@ -191,7 +199,7 @@ def save_uploaded_file(file, original_filename):
         original_filename: Original filename from upload
 
     Returns:
-        dict: File metadata including path, size, and filename
+        File metadata including path, size, and filename
 
     Raises:
         FileSecurityError: If validation fails
@@ -228,7 +236,9 @@ def save_uploaded_file(file, original_filename):
     }
 
 
-def delete_uploaded_file(relative_filepath, base_dir=UPLOAD_BASE_DIR):
+def delete_uploaded_file(
+    relative_filepath: str, base_dir: str = UPLOAD_BASE_DIR
+) -> bool:
     """
     Securely delete an uploaded file
 
@@ -237,7 +247,7 @@ def delete_uploaded_file(relative_filepath, base_dir=UPLOAD_BASE_DIR):
         base_dir: Base upload directory
 
     Returns:
-        bool: True if deleted, False if file not found
+        True if deleted, False if file not found
 
     Raises:
         FileSecurityError: If path validation fails
@@ -270,7 +280,7 @@ def delete_uploaded_file(relative_filepath, base_dir=UPLOAD_BASE_DIR):
     return False
 
 
-def get_file_path(relative_filepath, base_dir=UPLOAD_BASE_DIR):
+def get_file_path(relative_filepath: str, base_dir: str = UPLOAD_BASE_DIR) -> Path:
     """
     Get validated absolute file path for serving
 
@@ -279,7 +289,7 @@ def get_file_path(relative_filepath, base_dir=UPLOAD_BASE_DIR):
         base_dir: Base upload directory
 
     Returns:
-        Path: Validated absolute file path
+        Validated absolute file path
 
     Raises:
         FileSecurityError: If path validation fails or file doesn't exist

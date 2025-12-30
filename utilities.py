@@ -2,12 +2,57 @@
 Shared utility functions for blueprints
 Provides common helpers for time labels, combined lists, redirects, etc.
 """
-from datetime import timedelta
+from __future__ import annotations
+
+from datetime import date, timedelta
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from flask import current_app, jsonify, render_template, request, url_for
 
+if TYPE_CHECKING:
+    from werkzeug import Response
 
-def get_next_url(default_endpoint="index", **kwargs):
+    from models.daily import Daily
+    from models.todo import Todo
+
+
+class CalendarEvent(TypedDict, total=False):
+    """Type definition for calendar event dict"""
+
+    title: str
+    start_raw: str | None
+    end_raw: str | None
+    start_dt: Any | None
+    end_dt: Any | None
+    all_day: bool
+    html_link: str | None
+    time_label: str
+
+
+class CombinedItem(TypedDict):
+    """Type definition for combined todo/calendar item"""
+
+    kind: str
+    event: CalendarEvent | None
+    todo: Todo | None
+
+
+class PriorityDisplay(TypedDict):
+    """Type definition for priority display info"""
+
+    name: str
+    badge_class: str
+    icon: str
+
+
+class DifficultyDisplay(TypedDict):
+    """Type definition for difficulty display info"""
+
+    name: str
+    badge_class: str
+
+
+def get_next_url(default_endpoint: str = "index", **kwargs: Any) -> str:
     """
     Get the next redirect URL from request args or use default
 
@@ -16,11 +61,7 @@ def get_next_url(default_endpoint="index", **kwargs):
         **kwargs: Additional arguments for url_for()
 
     Returns:
-        str: URL to redirect to
-
-    Example:
-        return redirect(get_next_url('todos.list_todos'))
-        return redirect(get_next_url('index', _anchor='todos'))
+        URL to redirect to
     """
     next_url = request.args.get("next")
 
@@ -31,7 +72,9 @@ def get_next_url(default_endpoint="index", **kwargs):
     return url_for(default_endpoint, **kwargs)
 
 
-def build_redirect_with_next(endpoint, next_endpoint=None, **url_params):
+def build_redirect_with_next(
+    endpoint: str, next_endpoint: str | None = None, **url_params: Any
+) -> str:
     """
     Build a URL with a 'next' parameter for return navigation
 
@@ -41,13 +84,7 @@ def build_redirect_with_next(endpoint, next_endpoint=None, **url_params):
         **url_params: Additional URL parameters
 
     Returns:
-        str: URL with next parameter
-
-    Example:
-        url = build_redirect_with_next('todos.edit_todo',
-                                       next_endpoint='index',
-                                       todo_id=5)
-        # Returns: /todos/5/edit?next=/
+        URL with next parameter
     """
     base_url = url_for(endpoint, **url_params)
 
@@ -58,7 +95,9 @@ def build_redirect_with_next(endpoint, next_endpoint=None, **url_params):
     return base_url
 
 
-def generate_time_label(event_datetime, date_label="Today", include_time=True):
+def generate_time_label(
+    event_datetime: Any | None, date_label: str = "Today", include_time: bool = True
+) -> str:
     """
     Generate a time label for calendar events
 
@@ -68,14 +107,7 @@ def generate_time_label(event_datetime, date_label="Today", include_time=True):
         include_time: Whether to include time in label
 
     Returns:
-        str: Formatted time label
-
-    Example:
-        generate_time_label(datetime(2025, 12, 27, 14, 30), 'Today')
-        # Returns: "Today · 14:30"
-
-        generate_time_label(None, 'Tomorrow')
-        # Returns: "Tomorrow"
+        Formatted time label
     """
     if not event_datetime:
         return date_label
@@ -86,7 +118,9 @@ def generate_time_label(event_datetime, date_label="Today", include_time=True):
     return f"{date_label} · {event_datetime.strftime('%H:%M')}"
 
 
-def combine_todos_and_calendar(todos, calendar_events, date_label="Today"):
+def combine_todos_and_calendar(
+    todos: list[Todo], calendar_events: list[CalendarEvent], date_label: str = "Today"
+) -> list[dict[str, Any]]:
     """
     Combine todos and calendar events into a single list with time labels
 
@@ -96,14 +130,7 @@ def combine_todos_and_calendar(todos, calendar_events, date_label="Today"):
         date_label: Label for the date (e.g., 'Today', 'Tomorrow')
 
     Returns:
-        list: Combined list with 'kind' and object keys
-
-    Example:
-        combined = combine_todos_and_calendar(todos_today, events, 'Today')
-        # Returns: [
-        #   {'kind': 'calendar', 'event': {..., 'time_label': 'Today · 14:00'}},
-        #   {'kind': 'todo', 'todo': <Todo object>}
-        # ]
+        Combined list with 'kind' and object keys
     """
     # Add time labels to calendar events
     for event in calendar_events:
@@ -117,15 +144,20 @@ def combine_todos_and_calendar(todos, calendar_events, date_label="Today"):
             )
 
     # Build combined list
-    combined = [{"kind": "calendar", "event": ev} for ev in calendar_events]
+    combined: list[dict[str, Any]] = [
+        {"kind": "calendar", "event": ev} for ev in calendar_events
+    ]
     combined += [{"kind": "todo", "todo": t} for t in todos]
 
     return combined
 
 
 def filter_dailies_for_date(
-    all_dailies, target_date, include_carryover=False, carryover_date=None
-):
+    all_dailies: list[Daily],
+    target_date: date,
+    include_carryover: bool = False,
+    carryover_date: date | None = None,
+) -> tuple[list[Daily], set[int]] | list[Daily]:
     """
     Filter dailies that should appear on a specific date
 
@@ -136,24 +168,17 @@ def filter_dailies_for_date(
         carryover_date: date to check for carryover (defaults to target_date - 1)
 
     Returns:
-        tuple: (filtered_dailies, carryover_ids) if include_carryover else filtered_dailies
-
-    Example:
-        dailies_tomorrow = filter_dailies_for_date(all_dailies, tomorrow_date)
-
-        dailies_tomorrow, carryover = filter_dailies_for_date(
-            all_dailies, tomorrow_date, include_carryover=True, carryover_date=today
-        )
+        (filtered_dailies, carryover_ids) if include_carryover else filtered_dailies
     """
     if include_carryover and carryover_date is None:
         carryover_date = target_date - timedelta(days=1)
 
-    carryover_ids = set()
-    due_ids = set()
+    carryover_ids: set[int] = set()
+    due_ids: set[int] = set()
 
     for daily in all_dailies:
         # Check carryover from previous day
-        if include_carryover:
+        if include_carryover and carryover_date:
             if daily.should_complete_on(carryover_date) and not daily.is_completed_on(
                 carryover_date
             ):
@@ -175,28 +200,25 @@ def filter_dailies_for_date(
     return filtered
 
 
-def format_filesize(size_bytes):
+def format_filesize(size_bytes: int | float) -> str:
     """
     Format file size in human-readable format
 
     Args:
-        size_bytes: Size in bytes (int)
+        size_bytes: Size in bytes
 
     Returns:
-        str: Formatted size (e.g., "1.5 MB", "342 KB")
-
-    Example:
-        format_filesize(1536000)  # Returns: "1.5 MB"
-        format_filesize(2048)      # Returns: "2.0 KB"
+        Formatted size (e.g., "1.5 MB", "342 KB")
     """
+    size = float(size_bytes)
     for unit in ["B", "KB", "MB", "GB"]:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.1f} TB"
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} TB"
 
 
-def format_duration(hours=0, minutes=0):
+def format_duration(hours: int = 0, minutes: int = 0) -> str:
     """
     Format duration as human-readable string
 
@@ -205,14 +227,9 @@ def format_duration(hours=0, minutes=0):
         minutes: Number of minutes
 
     Returns:
-        str: Formatted duration
-
-    Example:
-        format_duration(2, 30)  # Returns: "2h 30m"
-        format_duration(0, 45)   # Returns: "45m"
-        format_duration(1, 0)    # Returns: "1h"
+        Formatted duration
     """
-    parts = []
+    parts: list[str] = []
     if hours:
         parts.append(f"{hours}h")
     if minutes:
@@ -220,7 +237,7 @@ def format_duration(hours=0, minutes=0):
     return " ".join(parts) if parts else "0m"
 
 
-def get_frequency_display_name(frequency_code):
+def get_frequency_display_name(frequency_code: str) -> str:
     """
     Get display name for frequency code
 
@@ -228,12 +245,7 @@ def get_frequency_display_name(frequency_code):
         frequency_code: String frequency code (e.g., 'daily', 'weekly', 'custom')
 
     Returns:
-        str: Human-readable frequency name
-
-    Example:
-        get_frequency_display_name('daily')    # Returns: "Every day"
-        get_frequency_display_name('weekly')   # Returns: "Weekly"
-        get_frequency_display_name('custom')   # Returns: "Custom schedule"
+        Human-readable frequency name
     """
     frequency_map = {
         "daily": "Every day",
@@ -245,7 +257,7 @@ def get_frequency_display_name(frequency_code):
     return frequency_map.get(frequency_code, frequency_code.capitalize())
 
 
-def get_priority_display(priority_code):
+def get_priority_display(priority_code: str) -> PriorityDisplay:
     """
     Get display information for priority level
 
@@ -253,17 +265,9 @@ def get_priority_display(priority_code):
         priority_code: String priority code (e.g., 'low', 'medium', 'high')
 
     Returns:
-        dict: {'name': str, 'badge_class': str, 'icon': str}
-
-    Example:
-        get_priority_display('high')
-        # Returns: {
-        #   'name': 'High',
-        #   'badge_class': 'badge-danger',
-        #   'icon': 'bi-exclamation-triangle-fill'
-        # }
+        Dict with name, badge_class, and icon
     """
-    priority_map = {
+    priority_map: dict[str, PriorityDisplay] = {
         "low": {
             "name": "Low",
             "badge_class": "badge-secondary",
@@ -290,7 +294,7 @@ def get_priority_display(priority_code):
     )
 
 
-def get_difficulty_display(difficulty_code):
+def get_difficulty_display(difficulty_code: str) -> DifficultyDisplay:
     """
     Get display information for difficulty level
 
@@ -298,13 +302,9 @@ def get_difficulty_display(difficulty_code):
         difficulty_code: String difficulty code (e.g., 'trivial', 'easy', 'medium', 'hard')
 
     Returns:
-        dict: {'name': str, 'badge_class': str}
-
-    Example:
-        get_difficulty_display('hard')
-        # Returns: {'name': 'Hard', 'badge_class': 'badge-danger'}
+        Dict with name and badge_class
     """
-    difficulty_map = {
+    difficulty_map: dict[str, DifficultyDisplay] = {
         "trivial": {"name": "Trivial", "badge_class": "badge-secondary"},
         "easy": {"name": "Easy", "badge_class": "badge-success"},
         "medium": {"name": "Medium", "badge_class": "badge-warning"},
@@ -316,7 +316,7 @@ def get_difficulty_display(difficulty_code):
     )
 
 
-def is_overdue(due_date, current_date=None):
+def is_overdue(due_date: date | None, current_date: date | None = None) -> bool:
     """
     Check if a due date is in the past
 
@@ -325,10 +325,7 @@ def is_overdue(due_date, current_date=None):
         current_date: date object (defaults to today)
 
     Returns:
-        bool: True if overdue
-
-    Example:
-        is_overdue(date(2025, 12, 20))  # Returns: True (if today is later)
+        True if overdue
     """
     if not due_date:
         return False
@@ -341,7 +338,9 @@ def is_overdue(due_date, current_date=None):
     return due_date < current_date
 
 
-def group_by_status(items, status_attr="status"):
+def group_by_status(
+    items: list[Any], status_attr: str = "status"
+) -> dict[str, list[Any]]:
     """
     Group items by their status attribute
 
@@ -350,13 +349,9 @@ def group_by_status(items, status_attr="status"):
         status_attr: Name of the status attribute (default: 'status')
 
     Returns:
-        dict: {status: [items]}
-
-    Example:
-        groups = group_by_status(todos)
-        # Returns: {'pending': [...], 'completed': [...]}
+        Dict mapping status to list of items
     """
-    groups = {}
+    groups: dict[str, list[Any]] = {}
     for item in items:
         status = getattr(item, status_attr, "unknown")
         if status not in groups:
@@ -366,12 +361,12 @@ def group_by_status(items, status_attr="status"):
 
 
 # Error/response helpers
-def error_message(exc, default_msg):
+def error_message(exc: Exception, default_msg: str) -> str:
     """Pick a human-readable message from the exception."""
     return getattr(exc, "description", None) or str(exc) or default_msg
 
 
-def wants_json_response():
+def wants_json_response() -> bool:
     """Return True when the client prefers JSON over HTML."""
     accepts = request.accept_mimetypes
     return (
@@ -383,7 +378,10 @@ def wants_json_response():
     )
 
 
-def error_response(status_code, error_key, message, template):
+def error_response(
+    status_code: int, error_key: str, message: str, template: str
+) -> tuple[Response, int] | tuple[str, int]:
+    """Generate error response in JSON or HTML format based on client preference."""
     payload = {
         "status": status_code,
         "error": error_key,
@@ -395,9 +393,10 @@ def error_response(status_code, error_key, message, template):
     return render_template(template), status_code
 
 
-# Structured logging helpers and JSON error builder
-def _with_context(extra=None):
-    ctx = {
+# Structured logging helpers
+def _with_context(extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build context dict for structured logging."""
+    ctx: dict[str, Any] = {
         "path": request.path if request else None,
         "method": request.method if request else None,
         "remote_addr": request.remote_addr if request else None,
@@ -413,19 +412,24 @@ def _with_context(extra=None):
     return ctx
 
 
-def log_warning(message, extra=None):
+def log_warning(message: str, extra: dict[str, Any] | None = None) -> None:
+    """Log a warning with request context."""
     logger = getattr(current_app, "logger", None)
     if logger:
         logger.warning({"message": message, **_with_context(extra)})
 
 
-def log_error(message, extra=None):
+def log_error(message: str, extra: dict[str, Any] | None = None) -> None:
+    """Log an error with request context."""
     logger = getattr(current_app, "logger", None)
     if logger:
         logger.error({"message": message, **_with_context(extra)})
 
 
-def log_exception(exc, message=None, extra=None):
+def log_exception(
+    exc: Exception, message: str | None = None, extra: dict[str, Any] | None = None
+) -> None:
+    """Log an exception with full traceback and request context."""
     logger = getattr(current_app, "logger", None)
     if logger:
         logger.exception(
@@ -437,20 +441,23 @@ def log_exception(exc, message=None, extra=None):
         )
 
 
-def build_json_error(error_key, message, status=400, extra=None):
+def build_json_error(
+    error_key: str,
+    message: str,
+    status: int = 400,
+    extra: dict[str, Any] | None = None,
+) -> tuple[Response, int]:
     """
     Build a consistent JSON error payload and log appropriately.
-
-    Note: This does not enforce usage across all endpoints to avoid breaking tests.
     """
-    payload = {
+    payload: dict[str, Any] = {
         "status": status,
         "error": error_key,
         "message": message,
         "path": request.path,
     }
     if extra and isinstance(extra, dict):
-        payload.update({"extra": extra})
+        payload["extra"] = extra
     if status >= 500:
         log_exception(Exception(message), message=message, extra=extra)
     else:
