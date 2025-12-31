@@ -3,7 +3,16 @@ Todos Blueprint - handles all todo/task related routes
 """
 from datetime import date, datetime, timedelta
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_login import current_user, login_required
 
 from extensions import db
@@ -830,12 +839,28 @@ def quick_schedule(todo_id):
             duration_minutes=todo.duration_minutes or 60,
         )
 
-        if result:
+        if result and result.get("id"):
             todo.google_event_id = result.get("id")
             db.session.commit()
-            flash("Todo added to Google Calendar!", "success")
+            html_link = result.get("htmlLink", "")
+            if html_link:
+                flash(
+                    f'Todo added to Google Calendar! <a href="{html_link}" target="_blank">View event</a>',
+                    "success",
+                )
+            else:
+                flash("Todo added to Google Calendar!", "success")
+        elif result and result.get("error") == "token_invalid":
+            flash("Your Google session has expired. Please reconnect.", "warning")
+            session["next"] = url_for("todos.list_todos")
+            return redirect(url_for("auth.login"))
         else:
-            flash("Failed to create calendar event.", "error")
+            flash(
+                "Failed to create calendar event. Try reconnecting your Google account.",
+                "error",
+            )
+            session["next"] = url_for("todos.list_todos")
+            return redirect(url_for("auth.login"))
     except Exception as e:
         flash(f"Error adding to calendar: {str(e)}", "error")
         log_exception(e, message="Quick schedule failed", extra={"todo_id": todo.id})
