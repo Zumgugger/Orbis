@@ -277,6 +277,11 @@ def edit_todo(todo_id):
             if todo.status == "pending":
                 todo.status = "in_progress"
             db.session.commit()
+
+            # Sync with Google Calendar if linked
+            if todo.google_event_id:
+                _sync_todo_to_calendar(todo)
+
             flash("Todo updated successfully!", "success")
             return redirect(url_for("todos.list_todos"))
         except ValidationError as e:
@@ -348,6 +353,53 @@ def _sync_calendar_completion(todo: Todo, mark_completed: bool) -> None:
     except Exception as e:
         log_warning(
             f"Failed to sync calendar completion: {e}",
+            extra={"todo_id": todo.id, "event_id": todo.google_event_id},
+        )
+
+
+def _sync_todo_to_calendar(todo: Todo) -> None:
+    """Sync todo time and description changes to linked Google Calendar event."""
+    try:
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService
+
+        token = get_google_token_for_user(current_user)
+        if not token:
+            return
+
+        calendar_service = CalendarService(current_app.logger)
+
+        # Build event times from todo fields
+        start_time = None
+        end_time = None
+        event_date = todo.due_date
+
+        if todo.due_time:
+            tzinfo = get_local_tz()
+            event_date = todo.due_date or date.today()
+            start_time = datetime.combine(event_date, todo.due_time, tzinfo=tzinfo)
+            duration = todo.duration_minutes or 60
+            if todo.end_time:
+                end_time = datetime.combine(event_date, todo.end_time, tzinfo=tzinfo)
+            else:
+                end_time = start_time + timedelta(minutes=duration)
+
+        # Update the calendar event
+        calendar_service.update_event(
+            oauth.google,
+            token,
+            todo.google_event_id,
+            title=todo.title,
+            description=todo.description,
+            start_time=start_time,
+            end_time=end_time,
+            event_date=event_date if not start_time else None,
+        )
+    except Exception as e:
+        log_warning(
+            f"Failed to sync todo to calendar: {e}",
             extra={"todo_id": todo.id, "event_id": todo.google_event_id},
         )
 

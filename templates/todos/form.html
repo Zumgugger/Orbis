@@ -128,6 +128,46 @@
 function setQuickDuration(minutes) {
     document.getElementById('duration_minutes').value = minutes;
 }
+
+// Auto-shift end time when start time changes to maintain duration
+(function() {
+    const startInput = document.getElementById('due_time');
+    const endInput = document.getElementById('end_time');
+    const durationInput = document.getElementById('duration_minutes');
+
+    let lastStartTime = startInput ? startInput.value : '';
+
+    function timeToMinutes(timeStr) {
+        if (!timeStr) return null;
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
+    }
+
+    function minutesToTime(mins) {
+        const h = Math.floor(mins / 60) % 24;
+        const m = mins % 60;
+        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    }
+
+    if (startInput && endInput) {
+        startInput.addEventListener('change', function() {
+            const oldStart = timeToMinutes(lastStartTime);
+            const newStart = timeToMinutes(startInput.value);
+            const oldEnd = timeToMinutes(endInput.value);
+
+            if (oldStart !== null && newStart !== null && oldEnd !== null) {
+                // Calculate the shift amount and apply to end time
+                const shift = newStart - oldStart;
+                let newEnd = oldEnd + shift;
+                // Handle day wraparound
+                if (newEnd < 0) newEnd += 1440;
+                if (newEnd >= 1440) newEnd -= 1440;
+                endInput.value = minutesToTime(newEnd);
+            }
+            lastStartTime = startInput.value;
+        });
+    }
+})();
 </script>
 {% endblock %}
 
