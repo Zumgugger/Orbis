@@ -1,7 +1,6 @@
 """
 Todos Blueprint - handles all todo/task related routes
 """
-import os
 from datetime import date, datetime, timedelta
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
@@ -294,21 +293,63 @@ def edit_todo(todo_id):
 @todos_bp.route("/<int:todo_id>/toggle", methods=["POST"])
 @login_required
 def toggle_todo(todo_id):
-    """Toggle todo completion status"""
+    """Toggle todo completion status and sync with Google Calendar if linked"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
 
     if todo.status == "pending":
         todo.status = "completed"
         todo.completed_at = datetime.utcnow()
+
+        # Sync completion to Google Calendar if linked
+        if todo.google_event_id:
+            _sync_calendar_completion(todo, mark_completed=True)
     else:
         todo.status = "pending"
         todo.completed_at = None
+
+        # Remove completion mark from calendar if linked
+        if todo.google_event_id:
+            _sync_calendar_completion(todo, mark_completed=False)
 
     db.session.commit()
     next_page = request.args.get("next")
     if next_page:
         return redirect(next_page)
     return redirect(url_for("todos.list_todos"))
+
+
+def _sync_calendar_completion(todo: Todo, mark_completed: bool) -> None:
+    """Sync todo completion status to linked Google Calendar event."""
+    try:
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService
+
+        token = get_google_token_for_user(current_user)
+        if not token:
+            return
+
+        calendar_service = CalendarService(current_app.logger)
+
+        if mark_completed:
+            calendar_service.update_event(
+                oauth.google,
+                token,
+                todo.google_event_id,
+                mark_completed=True,
+            )
+        else:
+            calendar_service.unmark_completed(
+                oauth.google,
+                token,
+                todo.google_event_id,
+            )
+    except Exception as e:
+        log_warning(
+            f"Failed to sync calendar completion: {e}",
+            extra={"todo_id": todo.id, "event_id": todo.google_event_id},
+        )
 
 
 @todos_bp.route("/<int:todo_id>/delete", methods=["POST"])
@@ -345,8 +386,13 @@ def set_due_tomorrow(todo_id):
 @todos_bp.route("/<int:todo_id>/schedule", methods=["POST"])
 @login_required
 def schedule_todo(todo_id):
-    """Schedule a todo as a Google Calendar event"""
+    """Schedule a todo as a Google Calendar event (creates bidirectional link)"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    # Check if already linked to a calendar event
+    if todo.google_event_id:
+        flash("This todo is already linked to a calendar event.", "warning")
+        return redirect(url_for("todos.list_todos"))
 
     try:
         event_date = validate_date(request.form.get("event_date"), required=True)
@@ -382,15 +428,19 @@ def schedule_todo(todo_id):
     if event_time:
         tzinfo = get_local_tz()
         start_dt = datetime.combine(event_date, event_time, tzinfo=tzinfo)
-        end_dt = start_dt + timedelta(hours=duration_hours, minutes=duration_minutes)
+        total_minutes = (duration_hours * 60) + duration_minutes
+        end_dt = start_dt + timedelta(minutes=total_minutes)
     else:
         # All-day event
         start_dt = None
         end_dt = None
 
-    # Call Google Calendar API
+    # Call Google Calendar API via CalendarService
     try:
-        from blueprints.auth import get_google_token_for_user
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService
 
         token = get_google_token_for_user(current_user)
         if not token:
@@ -398,57 +448,85 @@ def schedule_todo(todo_id):
             log_warning("Missing Google auth token", extra={"todo_id": todo.id})
             return redirect(url_for("auth.login"))
 
-        tz = os.getenv("DEFAULT_TIMEZONE", "Europe/Zurich")
         title = (str(todo.title).strip() if todo.title else "").strip()
         if not title:
             title = f"Todo #{todo.id}"
-        event = {"summary": title, "description": (todo.description or "")}
-        if start_dt and end_dt:
-            event["start"] = {"dateTime": start_dt.isoformat(), "timeZone": tz}
-            event["end"] = {"dateTime": end_dt.isoformat(), "timeZone": tz}
-        else:
-            event["start"] = {"date": event_date.isoformat()}
-            event["end"] = {"date": (event_date + timedelta(days=1)).isoformat()}
 
-        # Use Authlib client to handle token/refresh
-        from blueprints.auth import oauth
-
-        # Debug: log outgoing event structure
-        try:
-            from flask import current_app
-
-            current_app.logger.info(
-                f"Creating calendar event for todo {todo.id}: {event}"
-            )
-        except Exception:
-            pass
-
-        response = oauth.google.post(
-            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-            json=event,
+        calendar_service = CalendarService(current_app.logger)
+        result = calendar_service.create_event(
+            oauth_client=oauth.google,
             token=token,
+            title=title,
+            description=todo.description,
+            event_date=event_date if not start_dt else None,
+            start_time=start_dt,
+            end_time=end_dt,
+            duration_minutes=(duration_hours * 60) + duration_minutes,
         )
 
-        if response.status_code in (200, 201):
+        if result:
+            # Store the calendar event ID for bidirectional sync
+            todo.google_event_id = result.get("id")
+            # Also update todo's time fields to match scheduled time
+            if event_time:
+                todo.due_date = event_date
+                todo.due_time = event_time
+                if end_dt:
+                    todo.end_time = end_dt.time()
+                todo.duration_minutes = (duration_hours * 60) + duration_minutes
+            db.session.commit()
             flash("Todo scheduled in Google Calendar!", "success")
         else:
-            try:
-                err = response.json()
-            except Exception:
-                err = response.text
-            flash(f"Failed to schedule: {err}", "error")
+            flash("Failed to create calendar event.", "error")
             log_error(
-                "Failed to schedule calendar event",
-                extra={
-                    "todo_id": todo.id,
-                    "status_code": response.status_code,
-                    "response": err,
-                },
+                "CalendarService.create_event returned None",
+                extra={"todo_id": todo.id},
             )
     except Exception as e:
         flash(f"Error scheduling event: {str(e)}", "error")
         log_exception(
             e, message="Exception scheduling calendar event", extra={"todo_id": todo.id}
         )
+
+    return redirect(url_for("todos.list_todos"))
+
+
+@todos_bp.route("/<int:todo_id>/unlink_calendar", methods=["POST"])
+@login_required
+def unlink_calendar(todo_id):
+    """Unlink a todo from its Google Calendar event (optionally delete the event)"""
+    todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    if not todo.google_event_id:
+        flash("This todo is not linked to a calendar event.", "warning")
+        return redirect(url_for("todos.list_todos"))
+
+    delete_event = request.form.get("delete_event") == "true"
+
+    if delete_event:
+        try:
+            from flask import current_app
+
+            from blueprints.auth import get_google_token_for_user, oauth
+            from services import CalendarService
+
+            token = get_google_token_for_user(current_user)
+            if token:
+                calendar_service = CalendarService(current_app.logger)
+                calendar_service.delete_event(
+                    oauth.google,
+                    token,
+                    todo.google_event_id,
+                )
+        except Exception as e:
+            log_warning(
+                f"Failed to delete calendar event: {e}",
+                extra={"todo_id": todo.id, "event_id": todo.google_event_id},
+            )
+
+    # Clear the link regardless
+    todo.google_event_id = None
+    db.session.commit()
+    flash("Todo unlinked from calendar event.", "success")
 
     return redirect(url_for("todos.list_todos"))

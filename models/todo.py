@@ -26,6 +26,7 @@ class Todo(db.Model):
     due_time = db.Column(db.Time, nullable=True)  # Optional scheduled start time
     end_time = db.Column(db.Time, nullable=True)  # Optional scheduled end time
     duration_minutes = db.Column(db.Integer, nullable=True)  # Estimated duration
+    google_event_id = db.Column(db.String(255), nullable=True)  # Linked calendar event
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
     position = db.Column(db.Integer, default=0)
@@ -79,6 +80,7 @@ class Todo(db.Model):
             "due_time": self.due_time.isoformat() if self.due_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
             "duration_minutes": self.duration_minutes,
+            "google_event_id": self.google_event_id,
             "created_at": self.created_at.isoformat(),
             "completed_at": self.completed_at.isoformat()
             if self.completed_at

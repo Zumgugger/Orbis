@@ -51,9 +51,15 @@
                         </div>
                         {% endif %}
                         <div class="col-auto">
-                            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal{{ todo.id }}" title="Schedule to Google Calendar" data-bs-placement="top">
+                            {% if todo.google_event_id %}
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#unlinkModal{{ todo.id }}" title="Linked to Google Calendar (click to manage)">
+                                <i class="bi bi-calendar-check-fill"></i>
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal{{ todo.id }}" title="Add to Google Calendar">
                                 <i class="bi bi-calendar-plus"></i>
                             </button>
+                            {% endif %}
                             <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
                                 <button type="submit" class="btn btn-outline-secondary" title="Set due to today" data-bs-toggle="tooltip" data-bs-placement="top">
                                     <i class="bi bi-calendar-check"></i>
@@ -121,15 +127,20 @@
 
 <!-- Schedule Modals -->
 {% for todo in pending %}
+{% if not todo.google_event_id %}
 <div class="modal fade" id="scheduleModal{{ todo.id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Schedule to Google Calendar</h5>
+                <h5 class="modal-title">Add to Google Calendar</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{{ url_for('todos.schedule_todo', todo_id=todo.id) }}">
                 <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        <i class="bi bi-info-circle"></i> This creates a calendar event linked to this todo.
+                        Completing the todo will mark the event as done.
+                    </p>
                     <div class="mb-3">
                         <label for="event_date{{ todo.id }}" class="form-label">Date *</label>
                         <input type="date" class="form-control" id="event_date{{ todo.id }}" name="event_date"
@@ -137,19 +148,21 @@
                     </div>
                     <div class="mb-3">
                         <label for="event_time{{ todo.id }}" class="form-label">Time (optional)</label>
-                        <input type="time" class="form-control" id="event_time{{ todo.id }}" name="event_time">
+                        <input type="time" class="form-control" id="event_time{{ todo.id }}" name="event_time"
+                               value="{{ todo.due_time.strftime('%H:%M') if todo.due_time else '' }}">
                         <small class="text-muted">Leave blank for all-day event</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Duration</label>
                         <div class="input-group mb-2">
-                            <input type="number" class="form-control" id="duration_hours{{ todo.id }}" name="duration_hours" min="0" max="12" value="0" aria-label="Hours">
+                            <input type="number" class="form-control" id="duration_hours{{ todo.id }}" name="duration_hours" min="0" max="12" value="{{ (todo.duration_minutes // 60) if todo.duration_minutes else 0 }}" aria-label="Hours">
                             <span class="input-group-text">hours</span>
-                            <input type="number" class="form-control" id="duration_minutes{{ todo.id }}" name="duration_minutes" min="0" max="55" step="5" value="45" aria-label="Minutes">
+                            <input type="number" class="form-control" id="duration_minutes{{ todo.id }}" name="duration_minutes" min="0" max="55" step="5" value="{{ (todo.duration_minutes % 60) if todo.duration_minutes else 45 }}" aria-label="Minutes">
                             <span class="input-group-text">minutes</span>
                         </div>
                         <div class="btn-group btn-group-sm" role="group">
                             <button type="button" class="btn btn-outline-secondary" onclick="setDuration{{ todo.id }}(0, 30)">30 min</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setDuration{{ todo.id }}(1, 0)">1 hour</button>
                             <button type="button" class="btn btn-outline-secondary" onclick="setDuration{{ todo.id }}(2, 0)">2 hours</button>
                         </div>
                     </div>
@@ -164,14 +177,57 @@
         </div>
     </div>
 </div>
+{% endif %}
+{% endfor %}
+
+<!-- Unlink Calendar Modals -->
+{% for todo in pending %}
+{% if todo.google_event_id %}
+<div class="modal fade" id="unlinkModal{{ todo.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-check-fill text-success"></i> Linked to Google Calendar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>This todo is synced with a Google Calendar event.</p>
+                <ul class="text-muted small">
+                    <li>Completing the todo will mark the calendar event as done (✓)</li>
+                    <li>Reopening the todo will remove the done mark</li>
+                </ul>
+                <hr>
+                <p class="mb-2"><strong>Unlink Options:</strong></p>
+            </div>
+            <div class="modal-footer flex-column">
+                <form method="POST" action="{{ url_for('todos.unlink_calendar', todo_id=todo.id) }}" class="w-100 mb-2">
+                    <input type="hidden" name="delete_event" value="false">
+                    <button type="submit" class="btn btn-outline-warning w-100">
+                        <i class="bi bi-link-45deg"></i> Unlink Only (keep calendar event)
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('todos.unlink_calendar', todo_id=todo.id) }}" class="w-100">
+                    <input type="hidden" name="delete_event" value="true">
+                    <button type="submit" class="btn btn-outline-danger w-100">
+                        <i class="bi bi-trash"></i> Unlink & Delete Calendar Event
+                    </button>
+                </form>
+                <button type="button" class="btn btn-secondary w-100 mt-2" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endfor %}
 
 <script>
 {% for todo in pending %}
+{% if not todo.google_event_id %}
 function setDuration{{ todo.id }}(hours, minutes) {
     document.getElementById('duration_hours{{ todo.id }}').value = hours;
     document.getElementById('duration_minutes{{ todo.id }}').value = minutes;
 }
+{% endif %}
 {% endfor %}
 
 document.addEventListener('DOMContentLoaded', () => {

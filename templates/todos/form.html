@@ -98,16 +98,21 @@
                         </div>
                     </div>
 
+                    {% if todo and todo.id and todo.google_event_id %}
+                    <div class="alert alert-success d-flex align-items-center mb-3">
+                        <i class="bi bi-calendar-check-fill me-2"></i>
+                        <div>
+                            <strong>Linked to Google Calendar</strong>
+                            <small class="d-block text-muted">Completing this todo will mark the calendar event as done.</small>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('todos.list_todos') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Cancel
                         </a>
                         <div>
-                            {% if todo and todo.id %}
-                            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal" title="Schedule to Google Calendar">
-                                <i class="bi bi-calendar-plus"></i> Schedule
-                            </button>
-                            {% endif %}
                             <button type="submit" class="btn btn-outline-primary">
                                 <i class="bi bi-save"></i> Save Todo
                             </button>
@@ -119,59 +124,7 @@
     </div>
 </div>
 
-<!-- Schedule Modal (for edit form) -->
-{% if todo and todo.id %}
-<div class="modal fade" id="scheduleModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Schedule to Google Calendar</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('todos.schedule_todo', todo_id=todo.id) }}">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="event_date" class="form-label">Date *</label>
-                        <input type="date" class="form-control" id="event_date" name="event_date"
-                               value="{{ todo.due_date.isoformat() if todo.due_date else '' }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="event_time" class="form-label">Time (optional)</label>
-                        <input type="time" class="form-control" id="event_time" name="event_time">
-                        <small class="text-muted">Leave blank for all-day event</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Duration</label>
-                        <div class="input-group mb-2">
-                            <input type="number" class="form-control" id="duration_hours_form" name="duration_hours" min="0" max="12" value="0" aria-label="Hours">
-                            <span class="input-group-text">hours</span>
-                            <input type="number" class="form-control" id="duration_minutes_form" name="duration_minutes" min="0" max="55" step="5" value="45" aria-label="Minutes">
-                            <span class="input-group-text">minutes</span>
-                        </div>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-outline-secondary" onclick="setDurationForm(0, 30)">30 min</button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="setDurationForm(2, 0)">2 hours</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-calendar-plus"></i> Add to Calendar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
-
 <script>
-function setDurationForm(hours, minutes) {
-    document.getElementById('duration_hours_form').value = hours;
-    document.getElementById('duration_minutes_form').value = minutes;
-}
-
 function setQuickDuration(minutes) {
     document.getElementById('duration_minutes').value = minutes;
 }
