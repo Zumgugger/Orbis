@@ -169,14 +169,14 @@
                         </a>
                     </li>
                     {% if current_user.is_authenticated %}
+                        {% set initial = (current_user.name or current_user.email or '?')[:1].upper() %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
                                 {% if current_user.profile_pic %}
-                                    <img src="{{ current_user.profile_pic }}" alt="{{ current_user.name }}" class="rounded-circle" style="width: 30px; height: 30px;">
+                                    <img src="{{ current_user.profile_pic }}" alt="{{ initial }}" class="rounded-circle" style="width: 30px; height: 30px;">
                                 {% else %}
-                                    <i class="bi bi-person-circle"></i>
+                                    <span class="badge bg-secondary rounded-circle" style="width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem;">{{ initial }}</span>
                                 {% endif %}
-                                {{ current_user.name }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><h6 class="dropdown-header">{{ current_user.email }}</h6></li>

@@ -35,12 +35,14 @@
                     <div class="mb-3">
                         <label class="form-label">Focus</label>
                         <div>
-                            <form action="{{ url_for('habits.toggle_focus', habit_id=habit.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-outline-warning">
-                                    <i class="bi bi-star{% if habit.focused %}-fill{% endif %}"></i>
-                                    {% if habit.focused %}Remove from{% else %}Add to{% endif %} Focus (shows on Today/Tomorrow)
-                                </button>
-                            </form>
+                            <button type="submit"
+                                    class="btn btn-outline-warning"
+                                    formaction="{{ url_for('habits.toggle_focus', habit_id=habit.id) }}"
+                                    formmethod="post"
+                                    formnovalidate>
+                                <i class="bi bi-star{% if habit.focused %}-fill{% endif %}"></i>
+                                {% if habit.focused %}Remove from{% else %}Add to{% endif %} Focus (shows on Today/Tomorrow)
+                            </button>
                         </div>
                     </div>
                     {% endif %}
