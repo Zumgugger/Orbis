@@ -8,14 +8,7 @@
 ## Part 1: Improvements to Existing Features (Priority 1-10)
 
 
-### Priority 4: Habit Insights & Trends
-**Current:** Simple count and progress bar
-**Improvement:**
-- Line charts showing habit count over time
-- Weekly/monthly trend analysis
-- Best streak tracking per habit
-- Correlation insights (e.g., "You exercise more on Mondays")
-- Heat map visualization like GitHub contributions
+
 
 ### Priority 5: Goal Progress Visualization
 **Current:** Basic milestone checkboxes with percentage
@@ -130,14 +123,6 @@
 - Project templates
 - Import/export templates
 
-### Priority 9: Tags & Categories System
-**Description:** Cross-cutting organization
-- Add tags to any entity (todos, ideas, goals, etc.)
-- Color-coded tags
-- Tag-based views and dashboards
-- Smart tags (auto-assigned based on content)
-- Tag statistics and usage
-
 ### Priority 10: Subtasks for Todos
 **Description:** Break todos into smaller steps
 - Checkbox subtasks within todos
@@ -146,13 +131,6 @@
 - Indent/nest subtasks
 - Subtask templates
 
-### Priority 11: Collaboration Features
-**Description:** Share and collaborate (multi-user enhancement)
-- Share individual items with other users
-- Assign todos to team members
-- Shared shopping lists
-- Comments on shared items
-- Activity feed for shared items
 
 ### Priority 12: Import/Export System
 **Description:** Data portability
