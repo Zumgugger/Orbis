@@ -55,8 +55,8 @@
                             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#unlinkModal{{ todo.id }}" title="Linked to Google Calendar (click to manage)">
                                 <i class="bi bi-calendar-check-fill"></i>
                             </button>
-                            {% elif todo.due_date %}
-                            {# Has date - can quick schedule without modal #}
+                            {% elif todo.due_date or todo.due_time %}
+                            {# Has date/time - can quick schedule without modal #}
                             <form action="{{ url_for('todos.quick_schedule', todo_id=todo.id) }}" method="POST" style="display: inline;">
                                 <button type="submit" class="btn btn-outline-info" title="Add to Google Calendar">
                                     <i class="bi bi-calendar-plus"></i>
@@ -132,9 +132,9 @@
     </div>
 </div>
 
-<!-- Schedule Modals (only for todos without due_date, otherwise quick_schedule is used) -->
+<!-- Schedule Modals (only for todos without due_date/due_time, otherwise quick_schedule is used) -->
 {% for todo in pending %}
-{% if not todo.google_event_id and not todo.due_date %}
+{% if not todo.google_event_id and not todo.due_date and not todo.due_time %}
 <div class="modal fade" id="scheduleModal{{ todo.id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -237,7 +237,7 @@
 
 <script>
 {% for todo in pending %}
-{% if not todo.google_event_id and not todo.due_date %}
+{% if not todo.google_event_id and not todo.due_date and not todo.due_time %}
 function setDuration{{ todo.id }}(hours, minutes) {
     document.getElementById('duration_hours{{ todo.id }}').value = hours;
     document.getElementById('duration_minutes{{ todo.id }}').value = minutes;

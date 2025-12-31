@@ -543,18 +543,21 @@ def quick_schedule(todo_id):
         flash("This todo is already linked to a calendar event.", "warning")
         return redirect(url_for("todos.list_todos"))
 
-    # Must have at least a due_date
-    if not todo.due_date:
-        flash("Please set a due date first.", "warning")
+    # Must have at least a due_date or due_time
+    if not todo.due_date and not todo.due_time:
+        flash("Please set a due date or time first.", "warning")
         return redirect(url_for("todos.list_todos"))
+
+    # Default to today if no due_date but has time
+    event_date = todo.due_date or date.today()
 
     # Build event times from todo fields
     if todo.due_time:
         tzinfo = get_local_tz()
-        start_dt = datetime.combine(todo.due_date, todo.due_time, tzinfo=tzinfo)
+        start_dt = datetime.combine(event_date, todo.due_time, tzinfo=tzinfo)
         duration = todo.duration_minutes or 60  # Default 1 hour
         if todo.end_time:
-            end_dt = datetime.combine(todo.due_date, todo.end_time, tzinfo=tzinfo)
+            end_dt = datetime.combine(event_date, todo.end_time, tzinfo=tzinfo)
         else:
             end_dt = start_dt + timedelta(minutes=duration)
     else:
@@ -583,7 +586,7 @@ def quick_schedule(todo_id):
             token=token,
             title=title,
             description=todo.description,
-            event_date=todo.due_date if not start_dt else None,
+            event_date=event_date if not start_dt else None,
             start_time=start_dt,
             end_time=end_dt,
             duration_minutes=todo.duration_minutes or 60,
