@@ -236,6 +236,9 @@ class CalendarService:
                     self.logger.error(
                         f"Failed to create event: {resp.status_code} - {resp.text}"
                     )
+                # Return error dict for token issues so caller can redirect to re-auth
+                if resp.status_code in (401, 403):
+                    return {"error": "token_invalid"}
                 return None
         except Exception as exc:
             if self.logger:
@@ -284,6 +287,9 @@ class CalendarService:
                     self.logger.warning(
                         f"Failed to get event {event_id}: {get_resp.status_code}"
                     )
+                # Return error string for token issues so caller can redirect to re-auth
+                if get_resp.status_code in (401, 403):
+                    return "token_invalid"
                 return False
 
             current_event = get_resp.json()
@@ -330,6 +336,9 @@ class CalendarService:
                     self.logger.error(
                         f"Failed to update event {event_id}: {resp.status_code}"
                     )
+                # Return error string for token issues so caller can redirect to re-auth
+                if resp.status_code in (401, 403):
+                    return "token_invalid"
                 return False
         except Exception as exc:
             if self.logger:
@@ -369,6 +378,9 @@ class CalendarService:
                     self.logger.error(
                         f"Failed to delete event {event_id}: {resp.status_code}"
                     )
+                # Return error string for token issues so caller can redirect to re-auth
+                if resp.status_code in (401, 403):
+                    return "token_invalid"
                 return False
         except Exception as exc:
             if self.logger:
