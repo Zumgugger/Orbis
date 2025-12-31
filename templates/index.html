@@ -136,7 +136,7 @@
                             <i class="bi bi-{% if todo.status == 'completed' %}check-circle-fill{% else %}circle{% endif %}"></i>
                         </button>
                     </form>
-                    <div class="flex-grow-1">
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
                         <h5 class="mb-0 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</h5>
                         {% if item.time_label %}
                         <small class="text-muted"><i class="bi bi-clock"></i> {{ item.time_label }}</small>
@@ -146,6 +146,17 @@
                     <span class="badge bg-info text-dark" title="Estimated duration">
                         <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
                     </span>
+                    {% endif %}
+                    {% if todo.google_event_id %}
+                    <button type="button" class="btn btn-success btn-sm" title="Linked to Google Calendar">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </button>
+                    {% elif todo.due_date or todo.due_time %}
+                    <form action="{{ url_for('todos.quick_schedule', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-info btn-sm" title="Add to Google Calendar">
+                            <i class="bi bi-calendar-plus"></i>
+                        </button>
+                    </form>
                     {% endif %}
                 </div>
             </div>
