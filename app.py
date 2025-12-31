@@ -238,8 +238,15 @@ def create_app(config_name=None):
         # Get todos due today for current user (all, including completed)
         today = today_local()
         target_date = today
+        # Include todos with due_date=today OR todos with due_time but no due_date (implicit today)
+        from sqlalchemy import and_, or_
+
         todos_today = Todo.query.filter(
-            Todo.user_id == current_user.id, Todo.due_date == today
+            Todo.user_id == current_user.id,
+            or_(
+                Todo.due_date == today,
+                and_(Todo.due_date.is_(None), Todo.due_time.isnot(None)),
+            ),
         ).all()
 
         # Get all dailies that should be done today OR were completed today (including completed ones)
