@@ -243,6 +243,15 @@ class CalendarService:
         except Exception as exc:
             if self.logger:
                 self.logger.exception(f"Exception creating calendar event: {exc}")
+            # Check if it's an auth-related exception
+            exc_str = str(exc).lower()
+            if (
+                "token" in exc_str
+                or "auth" in exc_str
+                or "401" in exc_str
+                or "403" in exc_str
+            ):
+                return {"error": "token_invalid"}
             return None
 
     def update_event(
