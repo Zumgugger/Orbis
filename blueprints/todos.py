@@ -90,7 +90,11 @@ def quick_create():
 @todos_bp.route("/")
 @login_required
 def list_todos():
-    """Display all todos and today's calendar events"""
+    """Display all todos, syncing calendar events to todos"""
+    # Sync calendar events to todos first
+    _sync_calendar_events_to_todos()
+
+    # Then get all todos
     todos = (
         Todo.query.filter_by(user_id=current_user.id)
         .order_by(Todo.position.asc(), Todo.created_at.desc())
@@ -99,35 +103,10 @@ def list_todos():
     pending = [t for t in todos if t.status in ("pending", "in_progress")]
     completed = [t for t in todos if t.status == "completed"]
 
-    # Fetch today's calendar events
-    from time_utils import today_local
-
-    today = today_local()
-    calendar_events = []
-    try:
-        from flask import current_app
-
-        from blueprints.auth import get_google_token_for_user, oauth
-        from services import CalendarService
-
-        token = get_google_token_for_user(current_user)
-        if token:
-            calendar_service = CalendarService(current_app.logger)
-            calendar_events = calendar_service.fetch_events_for_user(
-                current_user,
-                today,
-                today + timedelta(days=1),
-                get_google_token_for_user,
-                oauth.google,
-            )
-    except Exception as e:
-        log_warning(f"Failed to fetch calendar events: {e}")
-
     return render_template(
         "todos/list.html",
         pending=pending,
         completed=completed,
-        calendar_events=calendar_events,
     )
 
 
@@ -351,6 +330,82 @@ def toggle_todo(todo_id):
     if next_page:
         return redirect(next_page)
     return redirect(url_for("todos.list_todos"))
+
+
+def _sync_calendar_events_to_todos() -> None:
+    """Sync Google Calendar events to todos - create todos for new events."""
+    from time_utils import today_local
+
+    today = today_local()
+
+    try:
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService
+
+        token = get_google_token_for_user(current_user)
+        if not token:
+            return
+
+        calendar_service = CalendarService(current_app.logger)
+        # Fetch events for today and tomorrow to catch upcoming items
+        calendar_events = calendar_service.fetch_events_for_user(
+            current_user,
+            today,
+            today + timedelta(days=2),
+            get_google_token_for_user,
+            oauth.google,
+        )
+
+        # Get existing todos linked to calendar events
+        existing_event_ids = {
+            t.google_event_id
+            for t in Todo.query.filter(
+                Todo.user_id == current_user.id,
+                Todo.google_event_id.isnot(None),
+            ).all()
+        }
+
+        # Create todos for events that don't have one yet
+        for event in calendar_events:
+            event_id = event.get("id")
+            if not event_id or event_id in existing_event_ids:
+                continue
+
+            # Parse event times
+            start_dt = event.get("start_dt")
+            due_date = start_dt.date() if start_dt else today
+            due_time = (
+                start_dt.time() if start_dt and not event.get("all_day") else None
+            )
+
+            end_dt = event.get("end_dt")
+            end_time = end_dt.time() if end_dt and not event.get("all_day") else None
+
+            # Calculate duration
+            duration_minutes = None
+            if start_dt and end_dt and not event.get("all_day"):
+                duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
+
+            # Create the todo
+            todo = Todo(
+                title=event.get("title", "Calendar Event"),
+                description=event.get("description", ""),
+                priority="medium",
+                due_date=due_date,
+                due_time=due_time,
+                end_time=end_time,
+                duration_minutes=duration_minutes,
+                user_id=current_user.id,
+                google_event_id=event_id,
+            )
+            db.session.add(todo)
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        log_warning(f"Failed to sync calendar events to todos: {e}")
 
 
 def _sync_calendar_completion(todo: Todo, mark_completed: bool) -> None:

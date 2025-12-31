@@ -227,6 +227,77 @@ def create_app(config_name=None):
             user, start_date, end_date, get_google_token_for_user, oauth.google
         )
 
+    def _sync_calendar_events_to_todos(user):
+        """Sync Google Calendar events to todos - create todos for new events."""
+        from blueprints.auth import get_google_token_for_user, oauth
+
+        today = today_local()
+
+        try:
+            token = get_google_token_for_user(user)
+            if not token:
+                return
+
+            # Fetch events for today and tomorrow
+            calendar_events = calendar_service.fetch_events_for_user(
+                user,
+                today,
+                today + timedelta(days=2),
+                get_google_token_for_user,
+                oauth.google,
+            )
+
+            # Get existing todos linked to calendar events
+            existing_event_ids = {
+                t.google_event_id
+                for t in Todo.query.filter(
+                    Todo.user_id == user.id,
+                    Todo.google_event_id.isnot(None),
+                ).all()
+            }
+
+            # Create todos for events that don't have one yet
+            for event in calendar_events:
+                event_id = event.get("id")
+                if not event_id or event_id in existing_event_ids:
+                    continue
+
+                # Parse event times
+                start_dt = event.get("start_dt")
+                due_date = start_dt.date() if start_dt else today
+                due_time = (
+                    start_dt.time() if start_dt and not event.get("all_day") else None
+                )
+
+                end_dt = event.get("end_dt")
+                end_time = (
+                    end_dt.time() if end_dt and not event.get("all_day") else None
+                )
+
+                # Calculate duration
+                duration_minutes = None
+                if start_dt and end_dt and not event.get("all_day"):
+                    duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
+
+                # Create the todo
+                todo = Todo(
+                    title=event.get("title", "Calendar Event"),
+                    description=event.get("description", ""),
+                    priority="medium",
+                    due_date=due_date,
+                    due_time=due_time,
+                    end_time=end_time,
+                    duration_minutes=duration_minutes,
+                    user_id=user.id,
+                    google_event_id=event_id,
+                )
+                db.session.add(todo)
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"Failed to sync calendar events to todos: {e}")
+
     def process_rollover_for_user(user):
         """Shift unfinished items forward once per day and break missed streaks."""
         rollover_service.process_rollover(user)
@@ -235,6 +306,9 @@ def create_app(config_name=None):
     @login_required
     def index():
         process_rollover_for_user(current_user)
+        # Sync calendar events to todos first
+        _sync_calendar_events_to_todos(current_user)
+
         # Get todos due today for current user (all, including completed)
         today = today_local()
         target_date = today
