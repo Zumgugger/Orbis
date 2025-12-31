@@ -80,9 +80,11 @@ def get_google_token_for_user(user, logger=None):
 
         # If token is expired or expiring within 60s, try to refresh
         if expires_at and expires_at - now <= 60 and refresh_token:
-            token_endpoint = oauth.google._client.server_metadata.get("token_endpoint")
-            new_token = oauth.google.refresh_token(
-                token_endpoint, refresh_token=refresh_token
+            # Get token endpoint from well-known config
+            token_endpoint = "https://oauth2.googleapis.com/token"
+            new_token = oauth.google.fetch_access_token(
+                grant_type="refresh_token",
+                refresh_token=refresh_token,
             )
             # Persist refreshed token
             user.set_oauth_token(new_token)

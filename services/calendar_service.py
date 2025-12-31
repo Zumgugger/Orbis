@@ -133,7 +133,9 @@ class CalendarService:
 
             events.append(
                 {
+                    "id": item.get("id"),
                     "title": item.get("summary") or "(No title)",
+                    "description": item.get("description", ""),
                     "start_raw": raw_start,
                     "end_raw": raw_end,
                     "start_dt": start_dt,
