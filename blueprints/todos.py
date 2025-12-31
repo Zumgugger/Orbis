@@ -332,6 +332,44 @@ def toggle_todo(todo_id):
     return redirect(url_for("todos.list_todos"))
 
 
+def _parse_single_event(event_data: dict) -> dict:
+    """Parse a single event from Google Calendar API response."""
+    from datetime import datetime as dt
+
+    start = event_data.get("start", {})
+    end = event_data.get("end", {})
+
+    # Check if all-day event
+    all_day = "date" in start and "dateTime" not in start
+
+    start_dt = None
+    end_dt = None
+
+    if all_day:
+        start_str = start.get("date")
+        end_str = end.get("date")
+        if start_str:
+            start_dt = dt.strptime(start_str, "%Y-%m-%d")
+        if end_str:
+            end_dt = dt.strptime(end_str, "%Y-%m-%d")
+    else:
+        start_str = start.get("dateTime")
+        end_str = end.get("dateTime")
+        if start_str:
+            start_dt = dt.fromisoformat(start_str.replace("Z", "+00:00"))
+        if end_str:
+            end_dt = dt.fromisoformat(end_str.replace("Z", "+00:00"))
+
+    return {
+        "id": event_data.get("id"),
+        "title": event_data.get("summary", ""),
+        "description": event_data.get("description", ""),
+        "start_dt": start_dt,
+        "end_dt": end_dt,
+        "all_day": all_day,
+    }
+
+
 def _sync_calendar_events_to_todos() -> None:
     """Sync Google Calendar events to todos - create, update, and handle deletions."""
     from time_utils import today_local
@@ -349,7 +387,7 @@ def _sync_calendar_events_to_todos() -> None:
             return
 
         calendar_service = CalendarService(current_app.logger)
-        # Fetch events for today and tomorrow to catch upcoming items
+        # Fetch events for today and tomorrow (for creating NEW todos only)
         calendar_events = calendar_service.fetch_events_for_user(
             current_user,
             today,
@@ -361,7 +399,7 @@ def _sync_calendar_events_to_todos() -> None:
         # Build a map of event_id -> event data
         events_by_id = {ev.get("id"): ev for ev in calendar_events if ev.get("id")}
 
-        # Get existing todos linked to calendar events
+        # Get ALL existing todos linked to calendar events (regardless of date)
         linked_todos = Todo.query.filter(
             Todo.user_id == current_user.id,
             Todo.google_event_id.isnot(None),
@@ -371,21 +409,25 @@ def _sync_calendar_events_to_todos() -> None:
         for todo in linked_todos:
             existing_event_ids.add(todo.google_event_id)
 
-            # Check if this event still exists in calendar (within our fetch window)
+            # Check if this event is in our 2-day fetch window
             if todo.google_event_id in events_by_id:
-                # Event exists - update todo from calendar if changed
+                # Event exists in window - update from fetched data
                 event = events_by_id[todo.google_event_id]
                 _update_todo_from_event(todo, event, today)
             else:
-                # Event might be deleted OR outside our fetch window
-                # Only delete if the todo's due_date is within our fetch window
-                if todo.due_date and today <= todo.due_date <= today + timedelta(
-                    days=1
-                ):
-                    # Event was in our window but not found - likely deleted
+                # Event not in 2-day window - fetch it individually to check if still exists
+                event_data = calendar_service.get_event(
+                    oauth.google, token, todo.google_event_id
+                )
+                if event_data:
+                    # Event exists - parse and update todo
+                    event = _parse_single_event(event_data)
+                    _update_todo_from_event(todo, event, today)
+                else:
+                    # Event was deleted from calendar - delete the todo
                     db.session.delete(todo)
 
-        # Create todos for new events
+        # Create todos for NEW events within the 2-day window only
         for event in calendar_events:
             event_id = event.get("id")
             if not event_id or event_id in existing_event_ids:
