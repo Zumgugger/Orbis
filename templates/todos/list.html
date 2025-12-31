@@ -55,12 +55,19 @@
                             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#unlinkModal{{ todo.id }}" title="Linked to Google Calendar (click to manage)">
                                 <i class="bi bi-calendar-check-fill"></i>
                             </button>
+                            {% elif todo.due_date %}
+                            {# Has date - can quick schedule without modal #}
+                            <form action="{{ url_for('todos.quick_schedule', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-outline-info" title="Add to Google Calendar">
+                                    <i class="bi bi-calendar-plus"></i>
+                                </button>
+                            </form>
                             {% else %}
+                            {# No date - needs modal to set date/time #}
                             <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal{{ todo.id }}" title="Add to Google Calendar">
                                 <i class="bi bi-calendar-plus"></i>
                             </button>
                             {% endif %}
-                            <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
                                 <button type="submit" class="btn btn-outline-secondary" title="Set due to today" data-bs-toggle="tooltip" data-bs-placement="top">
                                     <i class="bi bi-calendar-check"></i>
                                 </button>
@@ -125,9 +132,9 @@
     </div>
 </div>
 
-<!-- Schedule Modals -->
+<!-- Schedule Modals (only for todos without due_date, otherwise quick_schedule is used) -->
 {% for todo in pending %}
-{% if not todo.google_event_id %}
+{% if not todo.google_event_id and not todo.due_date %}
 <div class="modal fade" id="scheduleModal{{ todo.id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -197,6 +204,14 @@
                     <li>Reopening the todo will remove the done mark</li>
                 </ul>
                 <hr>
+                <p class="mb-2"><strong>Sync Options:</strong></p>
+                <form method="POST" action="{{ url_for('todos.sync_from_calendar', todo_id=todo.id) }}" class="mb-3">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-arrow-down-circle"></i> Sync Description from Calendar
+                    </button>
+                    <small class="text-muted d-block mt-1">Update this todo's description with changes made in Google Calendar</small>
+                </form>
+                <hr>
                 <p class="mb-2"><strong>Unlink Options:</strong></p>
             </div>
             <div class="modal-footer flex-column">
@@ -222,7 +237,7 @@
 
 <script>
 {% for todo in pending %}
-{% if not todo.google_event_id %}
+{% if not todo.google_event_id and not todo.due_date %}
 function setDuration{{ todo.id }}(hours, minutes) {
     document.getElementById('duration_hours{{ todo.id }}').value = hours;
     document.getElementById('duration_minutes{{ todo.id }}').value = minutes;

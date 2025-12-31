@@ -530,3 +530,121 @@ def unlink_calendar(todo_id):
     flash("Todo unlinked from calendar event.", "success")
 
     return redirect(url_for("todos.list_todos"))
+
+
+@todos_bp.route("/<int:todo_id>/quick_schedule", methods=["POST"])
+@login_required
+def quick_schedule(todo_id):
+    """Quickly add todo to Google Calendar using existing time fields (no form needed)"""
+    todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    # Check if already linked
+    if todo.google_event_id:
+        flash("This todo is already linked to a calendar event.", "warning")
+        return redirect(url_for("todos.list_todos"))
+
+    # Must have at least a due_date
+    if not todo.due_date:
+        flash("Please set a due date first.", "warning")
+        return redirect(url_for("todos.list_todos"))
+
+    # Build event times from todo fields
+    if todo.due_time:
+        tzinfo = get_local_tz()
+        start_dt = datetime.combine(todo.due_date, todo.due_time, tzinfo=tzinfo)
+        duration = todo.duration_minutes or 60  # Default 1 hour
+        if todo.end_time:
+            end_dt = datetime.combine(todo.due_date, todo.end_time, tzinfo=tzinfo)
+        else:
+            end_dt = start_dt + timedelta(minutes=duration)
+    else:
+        # All-day event
+        start_dt = None
+        end_dt = None
+
+    try:
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService
+
+        token = get_google_token_for_user(current_user)
+        if not token:
+            flash("You must authenticate with Google first.", "error")
+            return redirect(url_for("auth.login"))
+
+        title = (str(todo.title).strip() if todo.title else "").strip()
+        if not title:
+            title = f"Todo #{todo.id}"
+
+        calendar_service = CalendarService(current_app.logger)
+        result = calendar_service.create_event(
+            oauth_client=oauth.google,
+            token=token,
+            title=title,
+            description=todo.description,
+            event_date=todo.due_date if not start_dt else None,
+            start_time=start_dt,
+            end_time=end_dt,
+            duration_minutes=todo.duration_minutes or 60,
+        )
+
+        if result:
+            todo.google_event_id = result.get("id")
+            db.session.commit()
+            flash("Todo added to Google Calendar!", "success")
+        else:
+            flash("Failed to create calendar event.", "error")
+    except Exception as e:
+        flash(f"Error adding to calendar: {str(e)}", "error")
+        log_exception(e, message="Quick schedule failed", extra={"todo_id": todo.id})
+
+    return redirect(url_for("todos.list_todos"))
+
+
+@todos_bp.route("/<int:todo_id>/sync_from_calendar", methods=["POST"])
+@login_required
+def sync_from_calendar(todo_id):
+    """Sync todo description from linked Google Calendar event"""
+    todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    if not todo.google_event_id:
+        flash("This todo is not linked to a calendar event.", "warning")
+        return redirect(url_for("todos.list_todos"))
+
+    try:
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService
+
+        token = get_google_token_for_user(current_user)
+        if not token:
+            flash("You must authenticate with Google first.", "error")
+            return redirect(url_for("auth.login"))
+
+        calendar_service = CalendarService(current_app.logger)
+        event_data = calendar_service.get_event(
+            oauth.google,
+            token,
+            todo.google_event_id,
+        )
+
+        if event_data:
+            # Update description from calendar
+            new_description = event_data.get("description", "")
+            if new_description != todo.description:
+                todo.description = new_description
+                db.session.commit()
+                flash("Description synced from calendar!", "success")
+            else:
+                flash("Description is already in sync.", "info")
+        else:
+            flash("Could not fetch calendar event.", "error")
+    except Exception as e:
+        flash(f"Error syncing from calendar: {str(e)}", "error")
+        log_exception(
+            e, message="Sync from calendar failed", extra={"todo_id": todo.id}
+        )
+
+    return redirect(url_for("todos.list_todos"))

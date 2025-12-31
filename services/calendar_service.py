@@ -373,6 +373,42 @@ class CalendarService:
                 self.logger.exception(f"Exception deleting event {event_id}: {exc}")
             return False
 
+    def get_event(
+        self,
+        oauth_client: Any,
+        token: dict[str, Any],
+        event_id: str,
+    ) -> dict[str, Any] | None:
+        """
+        Get a calendar event by ID.
+
+        Args:
+            oauth_client: OAuth client for API calls
+            token: OAuth token dict for authentication
+            event_id: Google Calendar event ID
+
+        Returns:
+            Event data dict if successful, None otherwise
+        """
+        try:
+            resp = oauth_client.get(
+                f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                token=token,
+            )
+
+            if resp.status_code == 200:
+                return resp.json()
+            else:
+                if self.logger:
+                    self.logger.warning(
+                        f"Failed to get event {event_id}: {resp.status_code}"
+                    )
+                return None
+        except Exception as exc:
+            if self.logger:
+                self.logger.exception(f"Exception getting event {event_id}: {exc}")
+            return None
+
     def unmark_completed(
         self,
         oauth_client: Any,
