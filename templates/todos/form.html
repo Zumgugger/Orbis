@@ -56,14 +56,14 @@
                                 <div class="row">
                                     <div class="col-md-3 mb-3">
                                         <label for="scheduling_date" class="form-label">Date</label>
-                                        <div class="input-group">
-                                            <input type="date" class="form-control" id="scheduling_date" name="scheduling_date"
-                                                   value="{{ todo.due_date.isoformat() if todo and todo.due_date else '' }}">
+                                        <input type="date" class="form-control mb-2" id="scheduling_date" name="scheduling_date"
+                                               value="{{ todo.due_date.isoformat() if todo and todo.due_date else '' }}">
+                                        <div class="btn-group btn-group-sm w-100" role="group">
                                             <button class="btn btn-outline-secondary" id="btnScheduleToday" type="button" title="Set to today" data-bs-toggle="tooltip">
-                                                <i class="bi bi-calendar-check"></i>
+                                                <i class="bi bi-calendar-check"></i> Today
                                             </button>
                                             <button class="btn btn-outline-secondary" id="btnScheduleTomorrow" type="button" title="Set to tomorrow" data-bs-toggle="tooltip">
-                                                <i class="bi bi-sunrise"></i>
+                                                <i class="bi bi-sunrise"></i> Tomorrow
                                             </button>
                                         </div>
                                     </div>
@@ -79,21 +79,17 @@
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <label for="duration_minutes" class="form-label">Duration (min)</label>
-                                        <input type="number" class="form-control" id="duration_minutes" name="duration_minutes"
+                                        <input type="number" class="form-control mb-2" id="duration_minutes" name="duration_minutes"
                                                min="1" max="1440" placeholder="45"
                                                value="{{ todo.duration_minutes if todo and todo.duration_minutes else '' }}"
                                                style="-moz-appearance: textfield;">
+                                        <div class="btn-group btn-group-sm w-100" role="group">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="setQuickDuration(30)">30m</button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="setQuickDuration(60)">1h</button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="setQuickDuration(120)">2h</button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="setQuickDuration(30)">30m</button>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="setQuickDuration(45)">45m</button>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="setQuickDuration(60)">1h</button>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="setQuickDuration(120)">2h</button>
-                                </div>
-                                <small class="text-muted d-block mt-2">
-                                    <i class="bi bi-info-circle"></i> Set date and start time to schedule. Duration is auto-calculated if end time is set.
-                                </small>
                             </div>
                         </div>
                     </div>
