@@ -128,6 +128,8 @@ def combine_todos_and_calendar(
     Combine todos and calendar events into a single list with time labels,
     sorted chronologically by time. Items with times come first, then items without.
 
+    Calendar events that are already linked to a todo are excluded to avoid duplicates.
+
     Args:
         todos: List of Todo objects
         calendar_events: List of calendar event dicts
@@ -140,8 +142,15 @@ def combine_todos_and_calendar(
 
     combined: list[dict[str, Any]] = []
 
-    # Add calendar events with time labels and sort keys
+    # Get event IDs that are already linked to todos (to avoid duplicates)
+    linked_event_ids = {todo.google_event_id for todo in todos if todo.google_event_id}
+
+    # Add calendar events with time labels and sort keys (skip if already a todo)
     for event in calendar_events:
+        # Skip events that are already linked to a todo
+        if event.get("id") in linked_event_ids:
+            continue
+
         if event.get("all_day"):
             event["time_label"] = generate_time_label(
                 None, date_label, include_time=False

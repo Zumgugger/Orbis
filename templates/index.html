@@ -110,17 +110,18 @@
             {% set ev = item.event %}
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
-                    <button type="button" class="btn btn-outline-secondary calendar-check" disabled>
-                        <i class="bi bi-circle"></i>
+                    <button type="button" class="btn btn-outline-info" disabled title="Calendar event">
+                        <i class="bi bi-calendar-event"></i>
                     </button>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                            <h5 class="mb-0 calendar-title">{{ ev.title }}</h5>
+                            <h5 class="mb-0">{{ ev.title }}</h5>
+                            <span class="badge bg-info text-dark"><i class="bi bi-calendar3"></i> Calendar</span>
                         </div>
-                        <small class="text-muted">{{ ev.time_label }}</small>
+                        <small class="text-muted"><i class="bi bi-clock"></i> {{ ev.time_label }}</small>
                     </div>
                     {% if ev.html_link %}
-                    <a class="btn btn-sm btn-outline-secondary" href="{{ ev.html_link }}" target="_blank" rel="noopener noreferrer">
+                    <a class="btn btn-sm btn-outline-info" href="{{ ev.html_link }}" target="_blank" rel="noopener noreferrer" title="Open in Google Calendar">
                         <i class="bi bi-box-arrow-up-right"></i>
                     </a>
                     {% endif %}
