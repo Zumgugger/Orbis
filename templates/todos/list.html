@@ -71,15 +71,6 @@
                                 <i class="bi bi-calendar-plus"></i>
                             </button>
                             {% endif %}
-                                <button type="submit" class="btn btn-outline-secondary" title="Set due to today" data-bs-toggle="tooltip" data-bs-placement="top">
-                                    <i class="bi bi-calendar-check"></i>
-                                </button>
-                            </form>
-                            <form action="{{ url_for('todos.set_due_tomorrow', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-outline-secondary" title="Set due to tomorrow" data-bs-toggle="tooltip" data-bs-placement="top">
-                                    <i class="bi bi-sunrise"></i>
-                                </button>
-                            </form>
                         </div>
                     </div>
                 </div>
@@ -113,17 +104,6 @@
                                 <p class="mb-1 text-muted">{{ todo.description }}</p>
                             {% endif %}
                         </div>
-                        <div class="col-auto">
-                            <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-outline-secondary" title="Set due to today" data-bs-toggle="tooltip" data-bs-placement="top">
-                                    <i class="bi bi-calendar-check"></i>
-                                </button>
-                            </form>
-                            <form action="{{ url_for('todos.set_due_tomorrow', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                                <button type="submit" class="btn btn-outline-secondary" title="Set due to tomorrow" data-bs-toggle="tooltip" data-bs-placement="top">
-                                    <i class="bi bi-sunrise"></i>
-                                </button>
-                            </form>
                         </div>
                     </div>
                 </div>
