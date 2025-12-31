@@ -29,34 +29,20 @@
                         <textarea class="form-control" id="description" name="description" rows="3">{{ todo.description if todo else '' }}</textarea>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="priority" class="form-label">Importance</label>
-                            <select class="form-select" id="priority" name="priority">
-                                <option value="low" {% if todo and todo.priority == 'low' %}selected{% endif %}>Low</option>
-                                <option value="medium" {% if todo and todo.priority == 'medium' %}selected{% elif not todo %}selected{% endif %}>Medium</option>
-                                <option value="high" {% if todo and todo.priority == 'high' %}selected{% endif %}>High</option>
-                            </select>
-                        </div>
-
-                        {% if show_due_date %}
-                        <div class="col-md-6 mb-3">
-                            <label for="due_date" class="form-label">Due Date</label>
-                            <div class="input-group">
-                                <input type="date" class="form-control" id="due_date" name="due_date"
-                                       value="{{ todo.due_date if todo and todo.due_date else preset_due_date }}">
-                                <button class="btn btn-outline-secondary" id="btnDueToday" type="button" title="Set to today">
-                                    <i class="bi bi-calendar-check"></i>
-                                </button>
-                                <button class="btn btn-outline-secondary" id="btnDueTomorrow" type="button" title="Set to tomorrow">
-                                    <i class="bi bi-sunrise"></i>
-                                </button>
-                            </div>
-                        </div>
-                        {% else %}
-                        <input type="hidden" id="due_date" name="due_date" value="{{ preset_due_date }}">
-                        {% endif %}
+                    <div class="mb-3">
+                        <label for="priority" class="form-label">Importance</label>
+                        <select class="form-select" id="priority" name="priority">
+                            <option value="low" {% if todo and todo.priority == 'low' %}selected{% endif %}>Low</option>
+                            <option value="medium" {% if todo and todo.priority == 'medium' %}selected{% elif not todo %}selected{% endif %}>Medium</option>
+                            <option value="high" {% if todo and todo.priority == 'high' %}selected{% endif %}>High</option>
+                        </select>
                     </div>
+
+                    {% if show_due_date %}
+                    <input type="hidden" id="due_date" name="due_date" value="{{ preset_due_date }}">
+                    {% else %}
+                    <input type="hidden" id="due_date" name="due_date" value="{{ preset_due_date }}">
+                    {% endif %}
 
                     <!-- Scheduling Section -->
                     <div class="card mb-3">
