@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Habit Insights - Orbis{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* GitHub-style heat map */
+    .heatmap-container {
+        overflow-x: auto;
+    }
+    .heatmap {
+        display: flex;
+        gap: 3px;
+    }
+    .heatmap-week {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+    .heatmap-day {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        cursor: pointer;
+    }
+    .heatmap-day.level-0 { background-color: #ebedf0; }
+    .heatmap-day.level-1 { background-color: #9be9a8; }
+    .heatmap-day.level-2 { background-color: #40c463; }
+    .heatmap-day.level-3 { background-color: #30a14e; }
+    .heatmap-day.level-4 { background-color: #216e39; }
+    .heatmap-day.is-today { outline: 2px solid #007bff; }
+    .heatmap-legend {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 8px;
+    }
+    .heatmap-legend-item {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+    }
+    .day-labels {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        margin-right: 8px;
+        font-size: 10px;
+        color: #666;
+    }
+    .day-labels span {
+        height: 12px;
+        line-height: 12px;
+    }
+
+    /* Stats cards */
+    .stat-card {
+        text-align: center;
+        padding: 1rem;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    /* Streak items */
+    .streak-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    .streak-item:last-child {
+        border-bottom: none;
+    }
+
+    /* Charts */
+    .chart-container {
+        position: relative;
+        height: 200px;
+    }
+    .bar-chart {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        height: 150px;
+        padding: 0 10px;
+        border-bottom: 1px solid #ddd;
+    }
+    .bar-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+    }
+    .bar {
+        width: 60%;
+        background: linear-gradient(180deg, #28a745 0%, #20c997 100%);
+        border-radius: 3px 3px 0 0;
+        min-height: 2px;
+        transition: height 0.3s ease;
+    }
+    .bar-label {
+        font-size: 10px;
+        color: #666;
+        margin-top: 4px;
+        text-align: center;
+    }
+    .bar-value {
+        font-size: 10px;
+        color: #333;
+        margin-bottom: 2px;
+    }
+
+    /* Day correlation */
+    .correlation-bars {
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-end;
+        height: 120px;
+        padding: 0 10px;
+    }
+    .correlation-bar-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 40px;
+    }
+    .correlation-bar {
+        width: 30px;
+        background: linear-gradient(180deg, #007bff 0%, #6610f2 100%);
+        border-radius: 3px 3px 0 0;
+        min-height: 2px;
+    }
+    .correlation-bar.best {
+        background: linear-gradient(180deg, #ffc107 0%, #fd7e14 100%);
+    }
+
+    /* Habit stats table */
+    .habit-stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    .habit-stat-row:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-graph-up"></i> Habit Insights & Trends</h1>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('habits.list_habits') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Habits
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="stat-value text-primary">{{ week_increments }}</div>
+            <div class="stat-label">Weekly Increments</div>
+            <small class="text-muted">{{ week_active_habits }}/{{ total_habits }} habits active</small>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="stat-value text-success">{{ month_increments }}</div>
+            <div class="stat-label">Monthly Increments</div>
+            <small class="text-muted">{{ month_active_habits }}/{{ total_habits }} habits active</small>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="stat-value text-warning">{{ total_habits }}</div>
+            <div class="stat-label">Total Habits</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            {% if best_day %}
+            <div class="stat-value text-info">{{ best_day[:3] }}</div>
+            <div class="stat-label">Most Active Day</div>
+            {% else %}
+            <div class="stat-value text-muted">-</div>
+            <div class="stat-label">Most Active Day</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Heat Map -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-calendar-check"></i> Activity Heat Map (Last 90 Days)
+            </div>
+            <div class="card-body">
+                <div class="heatmap-container">
+                    <div class="d-flex">
+                        <div class="day-labels">
+                            <span>&nbsp;</span>
+                            <span>Mon</span>
+                            <span>&nbsp;</span>
+                            <span>Wed</span>
+                            <span>&nbsp;</span>
+                            <span>Fri</span>
+                            <span>&nbsp;</span>
+                        </div>
+                        <div class="heatmap">
+                            {% for week in heatmap_weeks %}
+                            <div class="heatmap-week">
+                                {% for day in week %}
+                                    {% if day %}
+                                    <div class="heatmap-day level-{{ day.level }} {% if day.is_today %}is-today{% endif %}"
+                                         title="{{ day.date.strftime('%b %d, %Y') }}: {{ day.activity }} increment{% if day.activity != 1 %}s{% endif %}"
+                                         data-bs-toggle="tooltip">
+                                    </div>
+                                    {% else %}
+                                    <div class="heatmap-day" style="visibility: hidden;"></div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="heatmap-legend">
+                    <small class="text-muted me-2">Less</small>
+                    <div class="heatmap-legend-item level-0" style="background-color: #ebedf0;"></div>
+                    <div class="heatmap-legend-item level-1" style="background-color: #9be9a8;"></div>
+                    <div class="heatmap-legend-item level-2" style="background-color: #40c463;"></div>
+                    <div class="heatmap-legend-item level-3" style="background-color: #30a14e;"></div>
+                    <div class="heatmap-legend-item level-4" style="background-color: #216e39;"></div>
+                    <small class="text-muted ms-2">More</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best Streaks -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-trophy"></i> Best Streaks
+            </div>
+            <div class="card-body">
+                {% if best_streaks %}
+                    {% for habit in best_streaks %}
+                    <div class="streak-item">
+                        <div>
+                            <strong>{{ habit.title }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                Current: {{ habit.current_streak or 0 }} day{% if (habit.current_streak or 0) != 1 %}s{% endif %}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-fire"></i> {{ habit.best_streak or 0 }}
+                            </span>
+                            <br>
+                            <small class="text-muted">best</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No streaks yet. Start incrementing habits daily!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Weekly Trend Chart -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bar-chart"></i> Weekly Trend (Last 12 Weeks)
+            </div>
+            <div class="card-body">
+                {% set max_weekly = weekly_data|map(attribute='total')|max or 1 %}
+                <div class="bar-chart">
+                    {% for week in weekly_data %}
+                    <div class="bar-wrapper">
+                        <div class="bar-value">{{ week.total }}</div>
+                        <div class="bar" style="height: {{ (week.total / max_weekly * 130)|int }}px;"></div>
+                        <div class="bar-label">{{ week.week }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day of Week Correlation -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-calendar-week"></i> Day of Week Activity
+                {% if best_day %}
+                <span class="badge bg-warning text-dark float-end">Most active: {{ best_day }}</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% set max_day = day_correlations|map(attribute='total')|max or 1 %}
+                <div class="correlation-bars">
+                    {% for day in day_correlations %}
+                    <div class="correlation-bar-wrapper">
+                        <div class="bar-value">{{ day.total }}</div>
+                        <div class="correlation-bar {% if day.day == best_day %}best{% endif %}" 
+                             style="height: {{ (day.total / max_day * 100)|int }}px;"></div>
+                        <div class="bar-label">{{ day.day[:3] }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Per-Habit Statistics -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-list-check"></i> Per-Habit Statistics
+    </div>
+    <div class="card-body">
+        {% if habit_stats %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Habit</th>
+                        <th>Count</th>
+                        <th>Current Streak</th>
+                        <th>Best Streak</th>
+                        <th>+/- (90 days)</th>
+                        <th>Week Activity</th>
+                        <th>Best Day</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in habit_stats %}
+                    <tr>
+                        <td>
+                            <strong>{{ stat.habit.title }}</strong>
+                            {% if stat.habit.focused %}
+                            <i class="bi bi-star-fill text-warning ms-1" title="Focused"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="{% if stat.habit.count > 0 %}text-success{% elif stat.habit.count < 0 %}text-danger{% endif %}">
+                                {{ stat.habit.count }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if stat.habit.current_streak and stat.habit.current_streak > 0 %}
+                            <span class="badge bg-success"><i class="bi bi-fire"></i> {{ stat.habit.current_streak }}</span>
+                            {% else %}
+                            <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ stat.habit.best_streak or 0 }}</td>
+                        <td>
+                            <span class="text-success">+{{ stat.total_increments }}</span>
+                            /
+                            <span class="text-danger">-{{ stat.total_decrements }}</span>
+                        </td>
+                        <td>
+                            {% for i in range(7) %}
+                                {% if i < stat.week_activity_days %}
+                                <i class="bi bi-circle-fill text-success" style="font-size: 8px;"></i>
+                                {% else %}
+                                <i class="bi bi-circle text-muted" style="font-size: 8px;"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <small class="text-muted ms-1">({{ stat.week_activity_days }}/7)</small>
+                        </td>
+                        <td>
+                            {% if stat.best_day %}
+                            {{ stat.best_day[:3] }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No habits yet. Create your first habit to see insights!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Monthly Trend -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-calendar-month"></i> Monthly Trend (Last 6 Months)
+    </div>
+    <div class="card-body">
+        {% set max_monthly = monthly_data|map(attribute='total')|max or 1 %}
+        <div class="bar-chart" style="height: 120px;">
+            {% for month in monthly_data %}
+            <div class="bar-wrapper">
+                <div class="bar-value">{{ month.total }}</div>
+                <div class="bar" style="height: {{ (month.total / max_monthly * 100)|int }}px; background: linear-gradient(180deg, #6f42c1 0%, #e83e8c 100%);"></div>
+                <div class="bar-label">{{ month.month }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
+{% endblock %}

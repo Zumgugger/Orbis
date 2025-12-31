@@ -4,7 +4,7 @@ Re-exports all models for convenient importing
 """
 from models.daily import CompletionLog, Daily
 from models.goal import Goal, Milestone
-from models.habit import Habit
+from models.habit import Habit, HabitLog
 from models.idea import Idea, IdeaFile
 from models.masterprompt import MasterCategory, MasterSection
 from models.note import Note, NoteCategory
@@ -19,6 +19,7 @@ __all__ = [
     "Daily",
     "CompletionLog",
     "Habit",
+    "HabitLog",
     "Goal",
     "Milestone",
     "ShoppingList",

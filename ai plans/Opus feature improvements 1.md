@@ -7,13 +7,6 @@
 
 ## Part 1: Improvements to Existing Features (Priority 1-10)
 
-### Priority 3: Daily Streak Recovery & History
-**Current:** Streaks break with no recovery option, no history view
-**Improvement:**
-- "Streak freeze" feature (1-3 per month) to preserve streaks
-- Visual streak calendar showing completion history
-- Weekly/monthly completion rate statistics
-- Allow marking dailies complete for past dates (within reason)
 
 ### Priority 4: Habit Insights & Trends
 **Current:** Simple count and progress bar
