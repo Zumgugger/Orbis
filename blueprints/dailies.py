@@ -1,13 +1,13 @@
 """
 Dailies Blueprint - handles recurring daily tasks
 """
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Daily
+from models import CompletionLog, Daily
 from validation import (
     ValidationError,
     validate_frequency,
@@ -217,3 +217,168 @@ def reorder():
     except Exception:
         db.session.rollback()
         return {"success": False, "error": "Failed to persist order"}, 500
+
+
+# ---- Yesterday's Dailies (Complete for past date) ----
+@dailies_bp.route("/<int:daily_id>/complete_yesterday", methods=["POST"])
+@login_required
+def complete_yesterday(daily_id):
+    """Mark a daily as complete for yesterday"""
+    daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
+    yesterday = date.today() - timedelta(days=1)
+
+    if not daily.should_complete_on(yesterday):
+        flash("This daily was not scheduled for yesterday.", "warning")
+        return redirect(request.referrer or url_for("index"))
+
+    if daily.is_completed_on(yesterday):
+        flash("Already completed for yesterday.", "info")
+        return redirect(request.referrer or url_for("index"))
+
+    # Complete for yesterday
+    daily.toggle_completion_on(yesterday)
+
+    # Log completion
+    log = CompletionLog(
+        user_id=current_user.id,
+        item_type="daily",
+        item_id=daily.id,
+        title_snapshot=daily.title,
+        description_snapshot=daily.description,
+        completed_date=yesterday,
+    )
+    db.session.add(log)
+    db.session.commit()
+
+    flash(f"'{daily.title}' marked complete for yesterday!", "success")
+    return redirect(request.referrer or url_for("index"))
+
+
+@dailies_bp.route("/dismiss_yesterday", methods=["POST"])
+@login_required
+def dismiss_yesterday():
+    """Dismiss the yesterday's dailies popup and break streaks"""
+
+    yesterday = date.today() - timedelta(days=1)
+    dailies = Daily.query.filter_by(user_id=current_user.id).all()
+
+    for daily in dailies:
+        if daily.should_complete_on(yesterday) and not daily.is_completed_on(yesterday):
+            # Break streak
+            daily.streak_count = 0
+
+    db.session.commit()
+    flash("Yesterday's missed dailies dismissed. Streaks reset.", "info")
+    return redirect(url_for("index"))
+
+
+# ---- Streak Freeze ----
+@dailies_bp.route("/<int:daily_id>/use_freeze", methods=["POST"])
+@login_required
+def use_streak_freeze(daily_id):
+    """Use a streak freeze to preserve streak for a missed daily"""
+    daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
+
+    if not daily.can_use_streak_freeze():
+        if daily.streak_count == 0:
+            flash("No streak to preserve.", "warning")
+        else:
+            flash("No streak freezes remaining this month.", "warning")
+        return redirect(request.referrer or url_for("dailies.list_dailies"))
+
+    if daily.use_streak_freeze():
+        db.session.commit()
+        remaining = daily.get_freezes_remaining()
+        flash(
+            f"Streak freeze used for '{daily.title}'! {remaining} freeze(s) remaining this month.",
+            "success",
+        )
+    else:
+        flash("Could not use streak freeze.", "error")
+
+    return redirect(request.referrer or url_for("dailies.list_dailies"))
+
+
+# ---- History & Stats ----
+@dailies_bp.route("/history")
+@login_required
+def history():
+    """Show completion history calendar and stats"""
+    # Get all dailies
+    dailies = (
+        Daily.query.filter_by(user_id=current_user.id)
+        .order_by(Daily.position.asc(), Daily.id.asc())
+        .all()
+    )
+
+    # Get completion logs for last 90 days
+    ninety_days_ago = date.today() - timedelta(days=90)
+    logs = (
+        CompletionLog.query.filter(
+            CompletionLog.user_id == current_user.id,
+            CompletionLog.item_type == "daily",
+            CompletionLog.completed_date >= ninety_days_ago,
+        )
+        .order_by(CompletionLog.completed_date.desc())
+        .all()
+    )
+
+    # Build calendar data (last 35 days for 5-week view)
+    today = date.today()
+    calendar_days = []
+    for i in range(34, -1, -1):
+        d = today - timedelta(days=i)
+        calendar_days.append(d)
+
+    # Map logs by date
+    completion_map = {}
+    for log in logs:
+        d = log.completed_date
+        if d not in completion_map:
+            completion_map[d] = []
+        completion_map[d].append(log)
+
+    # Calculate stats
+    # Weekly (last 7 days)
+    week_ago = today - timedelta(days=7)
+    week_completions = sum(1 for log in logs if log.completed_date > week_ago)
+    week_expected = 0
+    for daily in dailies:
+        for i in range(7):
+            d = today - timedelta(days=i)
+            if daily.should_complete_on(d):
+                week_expected += 1
+    week_rate = (
+        int((week_completions / week_expected) * 100) if week_expected > 0 else 0
+    )
+
+    # Monthly (last 30 days)
+    month_ago = today - timedelta(days=30)
+    month_completions = sum(1 for log in logs if log.completed_date > month_ago)
+    month_expected = 0
+    for daily in dailies:
+        for i in range(30):
+            d = today - timedelta(days=i)
+            if daily.should_complete_on(d):
+                month_expected += 1
+    month_rate = (
+        int((month_completions / month_expected) * 100) if month_expected > 0 else 0
+    )
+
+    # Best streaks
+    best_streaks = sorted(dailies, key=lambda d: d.best_streak or 0, reverse=True)[:5]
+
+    return render_template(
+        "dailies/history.html",
+        dailies=dailies,
+        calendar_days=calendar_days,
+        completion_map=completion_map,
+        week_completions=week_completions,
+        week_expected=week_expected,
+        week_rate=week_rate,
+        month_completions=month_completions,
+        month_expected=month_expected,
+        month_rate=month_rate,
+        best_streaks=best_streaks,
+        today=today,
+    )

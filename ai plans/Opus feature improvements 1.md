@@ -7,22 +7,6 @@
 
 ## Part 1: Improvements to Existing Features (Priority 1-10)
 
-### Priority 1: Google Calendar Two-Way Sync ⭐⭐⭐
-**Current:** Read-only calendar events displayed on Today/Tomorrow pages
-**Improvement:**
-- Create todos/events directly to Google Calendar from Orbis
-- Sync completed todos back to calendar as "done" events
-- Handle event updates/deletions bidirectionally
-- Add "Create Calendar Event" button on todo items
-
-### Priority 2: Todo Time Scheduling
-**Current:** Todos have due dates but no specific times
-**Improvement:**
-- Add optional start time and end time to todos
-- Show todos in chronological order mixed with calendar events
-- Time-block visualization on Today/Tomorrow views
-- Estimated duration field for better time planning
-
 ### Priority 3: Daily Streak Recovery & History
 **Current:** Streaks break with no recovery option, no history view
 **Improvement:**
@@ -128,14 +112,6 @@
 - Daily/weekly time reports
 - Integration with calendar for time blocking
 - Pomodoro timer option
-
-### Priority 5: Notes/Journal Module
-**Description:** Daily journaling and note-taking
-- Daily journal entries with prompts
-- Gratitude logging
-- Link journal entries to dailies completed
-- Weekly reflection prompts
-- Mood tracking integration
 
 ### Priority 6: Focus Mode / Do Not Disturb
 **Description:** Distraction-free work sessions

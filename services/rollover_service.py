@@ -24,7 +24,7 @@ class RolloverService:
         """
         self.session = session
 
-    def process_rollover(self, user: User) -> None:
+    def process_rollover(self, user: User) -> dict:
         """
         Process rollover for a user: shift unfinished items forward and break missed streaks.
 
@@ -33,22 +33,32 @@ class RolloverService:
 
         Args:
             user: User model instance with is_authenticated property
+
+        Returns:
+            Dict with info about missed dailies from yesterday
         """
         from models import RolloverState
 
+        result = {"missed_yesterday": []}
+
         if not user.is_authenticated:
-            return
+            return result
 
         today = date.today()
+        yesterday = today - timedelta(days=1)
         state = RolloverState.query.filter_by(user_id=user.id).first()
 
         if not state:
             state = RolloverState(user_id=user.id, last_processed_date=today)
             self.session.add(state)
             self.session.commit()
-            return
+            return result
 
         current_day = state.last_processed_date
+
+        # Collect missed dailies from yesterday specifically (for the popup)
+        if current_day <= yesterday:
+            result["missed_yesterday"] = self._get_missed_dailies(user.id, yesterday)
 
         while current_day < today:
             next_day = current_day + timedelta(days=1)
@@ -56,14 +66,42 @@ class RolloverService:
             # Move pending todos forward by one day
             self._rollover_todos(user.id, current_day, next_day)
 
-            # Break streak for dailies missed on the day
-            self._break_missed_streaks(user.id, current_day)
+            # Break streak for dailies missed on the day (unless freeze is used)
+            # Skip yesterday - we'll let user mark them complete first
+            if current_day < yesterday:
+                self._break_missed_streaks(user.id, current_day)
 
             self.session.commit()
             current_day = next_day
 
         state.last_processed_date = today
         self.session.commit()
+
+        return result
+
+    def _get_missed_dailies(self, user_id: int, check_date: date) -> list[Daily]:
+        """
+        Get dailies that were due but not completed on a given date.
+
+        Args:
+            user_id: ID of the user
+            check_date: Date to check for missed completions
+
+        Returns:
+            List of Daily instances that were missed
+        """
+        from models import Daily
+
+        user_dailies = Daily.query.filter_by(user_id=user_id).all()
+        missed: list[Daily] = []
+
+        for daily in user_dailies:
+            if daily.should_complete_on(check_date) and not daily.is_completed_on(
+                check_date
+            ):
+                missed.append(daily)
+
+        return missed
 
     def _rollover_todos(
         self, user_id: int, from_date: date, to_date: date

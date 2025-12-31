@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Daily History - Orbis{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+        max-width: 400px;
+    }
+    .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        position: relative;
+    }
+    .calendar-day.completed {
+        background-color: #28a745;
+        color: white;
+    }
+    .calendar-day.partial {
+        background-color: #ffc107;
+        color: #333;
+    }
+    .calendar-day.missed {
+        background-color: #dc3545;
+        color: white;
+    }
+    .calendar-day.none {
+        background-color: #e9ecef;
+        color: #666;
+    }
+    .calendar-day.today {
+        border: 2px solid #007bff;
+    }
+    .stat-card {
+        text-align: center;
+        padding: 1rem;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+    }
+    .streak-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    .streak-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-calendar3"></i> Daily History & Stats</h1>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('dailies.list_dailies') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dailies
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="stat-value text-primary">{{ week_rate }}%</div>
+            <div class="stat-label">Weekly Rate</div>
+            <small class="text-muted">{{ week_completions }}/{{ week_expected }} last 7 days</small>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="stat-value text-success">{{ month_rate }}%</div>
+            <div class="stat-label">Monthly Rate</div>
+            <small class="text-muted">{{ month_completions }}/{{ month_expected }} last 30 days</small>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="stat-value text-warning">{{ dailies|length }}</div>
+            <div class="stat-label">Active Dailies</div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="stat-value text-info">{{ dailies|sum(attribute='total_completions') }}</div>
+            <div class="stat-label">Total Completions</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Calendar -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-calendar-check"></i> Last 5 Weeks
+            </div>
+            <div class="card-body">
+                <div class="calendar-grid">
+                    <!-- Weekday headers -->
+                    {% for day_name in ['M', 'T', 'W', 'T', 'F', 'S', 'S'] %}
+                    <div class="text-center text-muted small">{{ day_name }}</div>
+                    {% endfor %}
+
+                    <!-- Calendar days -->
+                    {% for day in calendar_days %}
+                        {% set completions = completion_map.get(day, []) %}
+                        {% set expected_count = 0 %}
+                        {% for daily in dailies %}
+                            {% if daily.should_complete_on(day) %}
+                                {% set expected_count = expected_count + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set completion_count = completions|length %}
+
+                        {% if expected_count == 0 %}
+                            {% set status = 'none' %}
+                        {% elif completion_count >= expected_count %}
+                            {% set status = 'completed' %}
+                        {% elif completion_count > 0 %}
+                            {% set status = 'partial' %}
+                        {% else %}
+                            {% set status = 'missed' %}
+                        {% endif %}
+
+                        <div class="calendar-day {{ status }} {% if day == today %}today{% endif %}"
+                             title="{{ day.strftime('%b %d') }}: {{ completion_count }}/{{ expected_count }} completed"
+                             data-bs-toggle="tooltip">
+                            {{ day.day }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <span class="badge" style="background-color: #28a745;">●</span> All done
+                        <span class="badge" style="background-color: #ffc107;">●</span> Partial
+                        <span class="badge" style="background-color: #dc3545;">●</span> Missed
+                        <span class="badge" style="background-color: #e9ecef; color: #666;">●</span> None scheduled
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best Streaks -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-trophy"></i> Best Streaks
+            </div>
+            <div class="card-body">
+                {% if best_streaks %}
+                    {% for daily in best_streaks %}
+                    <div class="streak-item">
+                        <div>
+                            <strong>{{ daily.title }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                Current: {{ daily.streak_count }} day{% if daily.streak_count != 1 %}s{% endif %}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-fire"></i> {{ daily.best_streak or 0 }}
+                            </span>
+                            <br>
+                            <small class="text-muted">best</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No dailies yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Individual Daily Stats -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-bar-chart"></i> Per-Daily Statistics
+    </div>
+    <div class="card-body">
+        {% if dailies %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Daily</th>
+                        <th>Current Streak</th>
+                        <th>Best Streak</th>
+                        <th>Total Completions</th>
+                        <th>Freezes Used</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for daily in dailies %}
+                    <tr>
+                        <td>{{ daily.title }}</td>
+                        <td>
+                            {% if daily.streak_count > 0 %}
+                            <span class="badge bg-success"><i class="bi bi-fire"></i> {{ daily.streak_count }}</span>
+                            {% else %}
+                            <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ daily.best_streak or 0 }}</td>
+                        <td>{{ daily.total_completions }}</td>
+                        <td>
+                            {{ daily.streak_freezes_used or 0 }}/3 this month
+                            {% if daily.get_freezes_remaining() > 0 %}
+                            <span class="badge bg-info">{{ daily.get_freezes_remaining() }} left</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No dailies yet. Create your first daily to see stats!</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -401,12 +401,13 @@ def create_app(config_name=None):
 
     def process_rollover_for_user(user):
         """Shift unfinished items forward once per day and break missed streaks."""
-        rollover_service.process_rollover(user)
+        return rollover_service.process_rollover(user)
 
     @app.route("/")
     @login_required
     def index():
-        process_rollover_for_user(current_user)
+        rollover_result = process_rollover_for_user(current_user)
+        missed_yesterday = rollover_result.get("missed_yesterday", [])
         # Sync calendar events to todos first
         _sync_calendar_events_to_todos(current_user)
 
@@ -498,6 +499,7 @@ def create_app(config_name=None):
             today_completed=completed_today,
             today_total=total_today,
             today_progress_percent=today_progress_percent,
+            missed_yesterday=missed_yesterday,
         )
 
     @app.route("/tomorrow")

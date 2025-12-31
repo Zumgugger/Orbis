@@ -19,6 +19,9 @@ WEEKDAY_NAMES = [
     "sunday",
 ]
 
+# Streak freeze constants
+MAX_STREAK_FREEZES_PER_MONTH = 3
+
 
 class Daily(db.Model):
     """Daily recurring task model"""
@@ -31,10 +34,17 @@ class Daily(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     streak_count = db.Column(db.Integer, default=0)
+    best_streak = db.Column(db.Integer, default=0)  # Track best streak ever
     total_completions = db.Column(db.Integer, default=0)
     last_completed_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     position = db.Column(db.Integer, default=0)
+
+    # Streak freeze tracking
+    streak_freezes_used = db.Column(db.Integer, default=0)  # Freezes used this month
+    streak_freezes_month = db.Column(
+        db.Integer, nullable=True
+    )  # Month (1-12) for tracking
 
     # Optional limits and metadata
     repeat_limit = db.Column(
@@ -184,6 +194,7 @@ class Daily(db.Model):
         self.total_completions += 1
         self.streak_count = self._calculate_new_streak(target_date)
         self.last_completed_date = target_date
+        self.update_best_streak()
 
     # ---------- Streak calculation ----------
 
@@ -236,6 +247,43 @@ class Daily(db.Model):
         if days_since == 1:
             return self.streak_count + 1
         return 1
+
+    # ---------- Streak freeze methods ----------
+
+    def get_freezes_remaining(self) -> int:
+        """Get number of streak freezes remaining this month"""
+        current_month = date.today().month
+        # Reset count if new month
+        if self.streak_freezes_month != current_month:
+            return MAX_STREAK_FREEZES_PER_MONTH
+        return max(0, MAX_STREAK_FREEZES_PER_MONTH - (self.streak_freezes_used or 0))
+
+    def can_use_streak_freeze(self) -> bool:
+        """Check if a streak freeze can be used"""
+        return self.get_freezes_remaining() > 0 and self.streak_count > 0
+
+    def use_streak_freeze(self) -> bool:
+        """
+        Use a streak freeze to preserve the current streak.
+        Returns True if successful, False if no freezes available.
+        """
+        if not self.can_use_streak_freeze():
+            return False
+
+        current_month = date.today().month
+
+        # Reset counter if new month
+        if self.streak_freezes_month != current_month:
+            self.streak_freezes_used = 0
+            self.streak_freezes_month = current_month
+
+        self.streak_freezes_used += 1
+        return True
+
+    def update_best_streak(self) -> None:
+        """Update best streak if current streak is higher"""
+        if self.streak_count > (self.best_streak or 0):
+            self.best_streak = self.streak_count
 
 
 class CompletionLog(db.Model):

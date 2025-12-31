@@ -41,6 +41,42 @@
 </div>
 <small class="text-muted d-block mb-3">{{ today_completed }}/{{ today_total }} completed</small>
 
+{% if missed_yesterday and missed_yesterday|length > 0 %}
+<!-- Yesterday's Missed Dailies Popup -->
+<div class="alert alert-warning mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h5 class="alert-heading"><i class="bi bi-clock-history"></i> Yesterday's Dailies</h5>
+            <p class="mb-2">You have {{ missed_yesterday|length }} daily{% if missed_yesterday|length != 1 %}s{% endif %} from yesterday that weren't marked complete:</p>
+            <ul class="mb-3">
+                {% for daily in missed_yesterday %}
+                <li class="d-flex align-items-center gap-2 mb-2">
+                    <form action="{{ url_for('dailies.complete_yesterday', daily_id=daily.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-success" title="Mark complete for yesterday">
+                            <i class="bi bi-check"></i>
+                        </button>
+                    </form>
+                    <span>{{ daily.title }}</span>
+                    {% if daily.streak_count > 0 %}
+                    <span class="badge bg-warning text-dark">
+                        <i class="bi bi-fire"></i> {{ daily.streak_count }} streak at risk
+                    </span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <form action="{{ url_for('dailies.dismiss_yesterday') }}" method="POST">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" onclick="return confirm('This will break streaks for any uncompleted dailies. Continue?');">
+                <i class="bi bi-x"></i> Dismiss (break streaks)
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 {% if everything_done %}
     <div class="alert alert-success alert-lg py-5 text-center mb-4">
         <h2 class="mb-3">
