@@ -90,7 +90,7 @@ def quick_create():
 @todos_bp.route("/")
 @login_required
 def list_todos():
-    """Display all todos"""
+    """Display all todos and today's calendar events"""
     todos = (
         Todo.query.filter_by(user_id=current_user.id)
         .order_by(Todo.position.asc(), Todo.created_at.desc())
@@ -98,7 +98,37 @@ def list_todos():
     )
     pending = [t for t in todos if t.status in ("pending", "in_progress")]
     completed = [t for t in todos if t.status == "completed"]
-    return render_template("todos/list.html", pending=pending, completed=completed)
+
+    # Fetch today's calendar events
+    from time_utils import today_local
+
+    today = today_local()
+    calendar_events = []
+    try:
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService
+
+        token = get_google_token_for_user(current_user)
+        if token:
+            calendar_service = CalendarService(current_app.logger)
+            calendar_events = calendar_service.fetch_events_for_user(
+                current_user,
+                today,
+                today + timedelta(days=1),
+                get_google_token_for_user,
+                oauth.google,
+            )
+    except Exception as e:
+        log_warning(f"Failed to fetch calendar events: {e}")
+
+    return render_template(
+        "todos/list.html",
+        pending=pending,
+        completed=completed,
+        calendar_events=calendar_events,
+    )
 
 
 @todos_bp.route("/reorder", methods=["POST"])

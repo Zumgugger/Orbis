@@ -8,11 +8,53 @@
         <h1><i class="bi bi-check2-square"></i> My Todos</h1>
     </div>
     <div class="col text-end">
-        <a href="{{ url_for('todos.create_todo') }}" class="btn btn-outline-primary">
+        <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Open Google Calendar">
+            <i class="bi bi-calendar3"></i>
+        </a>
+        <a href="{{ url_for('todos.create_todo') }}" class="btn btn-outline-primary ms-2">
             <i class="bi bi-plus-circle"></i> New Todo
         </a>
     </div>
 </div>
+
+<!-- Today's Calendar Events -->
+{% if calendar_events %}
+<div class="row mb-4">
+    <div class="col">
+        <h3><i class="bi bi-calendar3"></i> Today's Calendar</h3>
+        <div class="list-group">
+            {% for ev in calendar_events %}
+            <div class="list-group-item">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="btn btn-outline-secondary disabled">
+                            <i class="bi bi-calendar-event"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <h5 class="mb-1">{{ ev.title }}</h5>
+                        <small class="text-muted">
+                            {% if ev.all_day %}
+                                All-day
+                            {% else %}
+                                {{ ev.start }} – {{ ev.end }}
+                            {% endif %}
+                        </small>
+                    </div>
+                    <div class="col-auto">
+                        {% if ev.html_link %}
+                        <a href="{{ ev.html_link }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary" title="Open in Google Calendar">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Pending Todos -->
 <div class="row mb-4">
