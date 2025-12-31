@@ -122,6 +122,7 @@ def create_app(config_name=None):
     from blueprints.habits import habits_bp
     from blueprints.ideas import ideas_bp
     from blueprints.masterprompts import masterprompts_bp
+    from blueprints.notes import notes_bp
     from blueprints.search import search_bp
     from blueprints.shopping import shopping_bp
     from blueprints.todos import todos_bp
@@ -137,6 +138,7 @@ def create_app(config_name=None):
     app.register_blueprint(masterprompts_bp)
     app.register_blueprint(ideas_bp)
     app.register_blueprint(search_bp)
+    app.register_blueprint(notes_bp)
 
     # Error handlers
     @app.errorhandler(400)

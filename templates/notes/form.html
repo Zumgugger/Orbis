@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} Note - Orbis{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">{{ action }} Note</h2>
+                {% if note and note.id %}
+                <div class="d-flex gap-2">
+                    <form action="{{ url_for('notes.toggle_pin', note_id=note.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-warning" title="{{ 'Unpin' if note.pinned else 'Pin' }}">
+                            <i class="bi bi-pin{% if note.pinned %}-fill{% endif %}"></i>
+                        </button>
+                    </form>
+                    <form action="{{ url_for('notes.delete_note', note_id=note.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this note?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if prompts %}
+                <div class="alert alert-light mb-3">
+                    <strong><i class="bi bi-lightbulb"></i> Prompts to consider:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% for prompt in prompts %}
+                        <li>{{ prompt }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{{ note.title if note else '' }}" required
+                               placeholder="Note title">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="note_type" class="form-label">Type</label>
+                            <select class="form-select" id="note_type" name="note_type">
+                                {% for type_val, type_name in note_types %}
+                                <option value="{{ type_val }}"
+                                    {% if (note and note.note_type == type_val) or (not note and preset_type == type_val) %}selected{% endif %}>
+                                    {{ type_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="category_id" class="form-label">
+                                Category
+                                <a href="{{ url_for('notes.categories') }}" class="small text-muted">(manage)</a>
+                            </label>
+                            <select class="form-select" id="category_id" name="category_id">
+                                <option value="">-- None --</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}"
+                                    {% if note and note.category_id == cat.id %}selected{% endif %}>
+                                    {{ cat.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3" id="dateFieldContainer">
+                            <label for="entry_date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="entry_date" name="entry_date"
+                                   value="{{ note.entry_date.isoformat() if note and note.entry_date else preset_date }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Content</label>
+                        <textarea class="form-control" id="content" name="content" rows="15"
+                                  placeholder="Write your note here...">{{ note.content if note else '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('notes.list_notes') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-save"></i> Save Note
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const typeSelect = document.getElementById('note_type');
+    const dateContainer = document.getElementById('dateFieldContainer');
+    const dateInput = document.getElementById('entry_date');
+
+    function updateDateVisibility() {
+        const type = typeSelect.value;
+        if (type === 'journal' || type === 'weekly') {
+            dateContainer.style.display = 'block';
+            // Set default date if empty
+            if (!dateInput.value) {
+                const today = new Date();
+                if (type === 'weekly') {
+                    // Get Monday of this week
+                    const day = today.getDay();
+                    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+                    today.setDate(diff);
+                }
+                dateInput.value = today.toISOString().split('T')[0];
+            }
+        } else {
+            // Keep visible but not required for other types
+            dateContainer.style.display = 'block';
+        }
+    }
+
+    typeSelect.addEventListener('change', updateDateVisibility);
+    updateDateVisibility();
+});
+</script>
+{% endblock %}

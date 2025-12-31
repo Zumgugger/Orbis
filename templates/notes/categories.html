@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Note Categories - Orbis{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-tags"></i> Note Categories</h1>
+    </div>
+</div>
+
+<!-- Sub-navigation -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('notes.list_notes') }}">
+            <i class="bi bi-list"></i> All Notes
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('notes.journal') }}">
+            <i class="bi bi-calendar-day"></i> Journal
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('notes.weekly') }}">
+            <i class="bi bi-calendar-week"></i> Weekly
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{{ url_for('notes.categories') }}">
+            <i class="bi bi-tags"></i> Categories
+        </a>
+    </li>
+</ul>
+
+<!-- Add Category Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-plus-circle"></i> Add New Category
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('notes.create_category') }}" class="d-flex gap-2">
+            <input type="text" class="form-control" name="name" placeholder="Category name" required maxlength="100">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-plus"></i> Add
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Category List -->
+{% if categories %}
+<div class="list-group">
+    {% for cat in categories %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-tag"></i> {{ cat.name }}
+        </div>
+        <form action="{{ url_for('notes.delete_category', cat_id=cat.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this category? Notes with this category will be uncategorized.');">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash"></i>
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No categories yet. Add your first category above!
+</div>
+{% endif %}
+{% endblock %}
