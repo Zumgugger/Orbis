@@ -104,6 +104,11 @@
                     </div>
                     {% endif %}
 
+                    {# Tag Input Component #}
+                    {% set entity_type = 'todo' %}
+                    {% set entity_id = todo.id if todo else None %}
+                    {% include 'tags/_tag_input.html' %}
+
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('todos.list_todos') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Cancel

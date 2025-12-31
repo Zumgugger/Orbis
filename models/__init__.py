@@ -9,6 +9,17 @@ from models.idea import Idea, IdeaFile
 from models.masterprompt import MasterCategory, MasterSection
 from models.note import Note, NoteCategory
 from models.shopping import ShoppingList
+from models.tag import (
+    SMART_TAG_KEYWORDS,
+    TAG_COLORS,
+    EntityTag,
+    Tag,
+    add_tag_to_entity,
+    get_entities_by_tag,
+    get_tags_for_entity,
+    remove_tag_from_entity,
+    sync_entity_tags,
+)
 from models.todo import Todo
 from models.user import RolloverState, User
 
@@ -29,4 +40,13 @@ __all__ = [
     "MasterSection",
     "Note",
     "NoteCategory",
+    "Tag",
+    "EntityTag",
+    "TAG_COLORS",
+    "SMART_TAG_KEYWORDS",
+    "get_tags_for_entity",
+    "add_tag_to_entity",
+    "remove_tag_from_entity",
+    "sync_entity_tags",
+    "get_entities_by_tag",
 ]

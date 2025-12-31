@@ -25,11 +25,21 @@ from file_security import (
     get_file_path,
     save_uploaded_file,
 )
-from models import Idea, IdeaFile
+from models import Idea, IdeaFile, sync_entity_tags
 from utilities import log_exception, log_warning
 from validation import ValidationError, validate_text, validate_title
 
 ideas_bp = Blueprint("ideas", __name__, url_prefix="/ideas")
+
+
+def _parse_tag_ids(form_data: str) -> list[int]:
+    """Parse tag IDs from form data (comma-separated string)."""
+    if not form_data:
+        return []
+    try:
+        return [int(tid.strip()) for tid in form_data.split(",") if tid.strip()]
+    except ValueError:
+        return []
 
 
 @ideas_bp.route("/")
@@ -74,6 +84,13 @@ def create_idea():
                 user_id=current_user.id,
             )
             db.session.add(idea)
+            db.session.flush()  # Get idea.id
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            if tag_ids:
+                sync_entity_tags(current_user.id, "idea", idea.id, tag_ids)
+
             db.session.commit()
 
             flash("Idea created successfully!", "success")
@@ -98,6 +115,11 @@ def view_idea(idea_id):
                 request.form.get("description"), max_length=5000
             )
             idea.updated_at = datetime.utcnow()
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags(current_user.id, "idea", idea.id, tag_ids)
+
             db.session.commit()
 
             flash("Idea updated successfully!", "success")

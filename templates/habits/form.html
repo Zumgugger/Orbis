@@ -62,6 +62,11 @@
                         </select>
                     </div>
 
+                    {# Tag Input Component #}
+                    {% set entity_type = 'habit' %}
+                    {% set entity_id = habit.id if habit else None %}
+                    {% include 'tags/_tag_input.html' %}
+
                     {% if habit %}
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i>

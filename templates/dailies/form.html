@@ -100,6 +100,11 @@
                         </small>
                     </div>
 
+                    {# Tag Input Component #}
+                    {% set entity_type = 'daily' %}
+                    {% set entity_id = daily.id if daily else None %}
+                    {% include 'tags/_tag_input.html' %}
+
                     {% if daily %}
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i>

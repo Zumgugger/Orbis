@@ -16,6 +16,16 @@
                        value="{{ idea.title if idea else '' }}" required>
             </div>
 
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ idea.description if idea else '' }}</textarea>
+            </div>
+
+            {# Tag Input Component #}
+            {% set entity_type = 'idea' %}
+            {% set entity_id = idea.id if idea else None %}
+            {% include 'tags/_tag_input.html' %}
+
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-save"></i> Save

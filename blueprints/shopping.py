@@ -5,8 +5,16 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import ShoppingList
+from models import ShoppingList, sync_entity_tags
 from validation import ValidationError, validate_text, validate_title
+
+
+def _parse_tag_ids(form_value: str) -> list[int]:
+    """Parse comma-separated tag IDs from form input."""
+    if not form_value:
+        return []
+    return [int(tid) for tid in form_value.split(",") if tid.strip().isdigit()]
+
 
 shopping_bp = Blueprint("shopping", __name__, url_prefix="/shopping")
 
@@ -36,6 +44,12 @@ def create():
                 title=title, items=items, user_id=current_user.id
             )
             db.session.add(shopping_list)
+            db.session.flush()  # Get shopping_list.id for tag syncing
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags("shopping", shopping_list.id, tag_ids, current_user.id)
+
             db.session.commit()
 
             flash("Shopping list created!", "success")
@@ -63,6 +77,10 @@ def edit(id):
             shopping_list.items = validate_text(
                 request.form.get("items"), max_length=10000
             )
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags("shopping", shopping_list.id, tag_ids, current_user.id)
 
             db.session.commit()
             flash("Shopping list updated!", "success")

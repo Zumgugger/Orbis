@@ -6,16 +6,23 @@ from datetime import date, datetime, timedelta
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import func
 
 from extensions import db
-from models import Habit, HabitLog
+from models import Habit, HabitLog, sync_entity_tags
 from validation import (
     ValidationError,
     validate_difficulty,
     validate_text,
     validate_title,
 )
+
+
+def _parse_tag_ids(form_value: str) -> list[int]:
+    """Parse comma-separated tag IDs from form input."""
+    if not form_value:
+        return []
+    return [int(tid) for tid in form_value.split(",") if tid.strip().isdigit()]
+
 
 habits_bp = Blueprint("habits", __name__, url_prefix="/habits")
 
@@ -51,6 +58,12 @@ def create_habit():
                 user_id=current_user.id,
             )
             db.session.add(habit)
+            db.session.flush()  # Get habit.id for tag syncing
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags("habit", habit.id, tag_ids, current_user.id)
+
             db.session.commit()
 
             flash("Habit created successfully!", "success")
@@ -75,6 +88,10 @@ def edit_habit(habit_id):
                 request.form.get("description"), max_length=5000
             )
             habit.difficulty = validate_difficulty(request.form.get("difficulty"))
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags("habit", habit.id, tag_ids, current_user.id)
 
             db.session.commit()
             flash("Habit updated successfully!", "success")
@@ -193,14 +210,14 @@ def delete_habit(habit_id):
 def insights():
     """Display habit insights, trends, and history"""
     today = date.today()
-    
+
     # Get all user habits
     habits = (
         Habit.query.filter_by(user_id=current_user.id)
         .order_by(Habit.position.asc(), Habit.id.asc())
         .all()
     )
-    
+
     # Get logs for the last 90 days for heat map
     ninety_days_ago = today - timedelta(days=90)
     logs = (
@@ -211,16 +228,16 @@ def insights():
         .order_by(HabitLog.logged_date.asc())
         .all()
     )
-    
+
     # Build heat map data - activity per day
     activity_by_date = defaultdict(int)
     for log in logs:
         if log.delta > 0:  # Only count positive increments
             activity_by_date[log.logged_date] += log.delta
-    
+
     # Get max activity for color scaling
     max_activity = max(activity_by_date.values()) if activity_by_date else 1
-    
+
     # Build 13 weeks (91 days) of heat map data
     heatmap_weeks = []
     start_date = today - timedelta(days=90)
@@ -228,7 +245,7 @@ def insights():
     start_date = start_date - timedelta(days=start_date.weekday() + 1)
     if start_date.weekday() != 6:  # 6 = Sunday
         start_date = start_date - timedelta(days=(start_date.weekday() + 1) % 7)
-    
+
     current_date = start_date
     while current_date <= today:
         week = []
@@ -246,78 +263,90 @@ def insights():
                     level = 3
                 else:
                     level = 4
-                week.append({
-                    "date": current_date,
-                    "activity": activity,
-                    "level": level,
-                    "is_today": current_date == today
-                })
+                week.append(
+                    {
+                        "date": current_date,
+                        "activity": activity,
+                        "level": level,
+                        "is_today": current_date == today,
+                    }
+                )
             else:
                 week.append(None)
             current_date += timedelta(days=1)
         heatmap_weeks.append(week)
-    
+
     # Weekly trend data (last 12 weeks)
     weekly_data = []
     for i in range(11, -1, -1):
         week_end = today - timedelta(days=today.weekday()) - timedelta(weeks=i)
         week_start = week_end - timedelta(days=6)
         week_total = sum(
-            log.delta for log in logs 
+            log.delta
+            for log in logs
             if week_start <= log.logged_date <= week_end and log.delta > 0
         )
-        weekly_data.append({
-            "week": week_start.strftime("%b %d"),
-            "total": week_total
-        })
-    
+        weekly_data.append({"week": week_start.strftime("%b %d"), "total": week_total})
+
     # Monthly trend data (last 6 months)
     monthly_data = []
     for i in range(5, -1, -1):
-        month_date = today.replace(day=1) - timedelta(days=i*30)
+        month_date = today.replace(day=1) - timedelta(days=i * 30)
         month_start = month_date.replace(day=1)
         if month_date.month == 12:
-            month_end = month_date.replace(year=month_date.year + 1, month=1, day=1) - timedelta(days=1)
+            month_end = month_date.replace(
+                year=month_date.year + 1, month=1, day=1
+            ) - timedelta(days=1)
         else:
-            month_end = month_date.replace(month=month_date.month + 1, day=1) - timedelta(days=1)
-        
+            month_end = month_date.replace(
+                month=month_date.month + 1, day=1
+            ) - timedelta(days=1)
+
         month_total = sum(
-            log.delta for log in logs 
+            log.delta
+            for log in logs
             if month_start <= log.logged_date <= month_end and log.delta > 0
         )
-        monthly_data.append({
-            "month": month_start.strftime("%b"),
-            "total": month_total
-        })
-    
+        monthly_data.append({"month": month_start.strftime("%b"), "total": month_total})
+
     # Day of week correlation (which days have most activity)
     day_of_week_totals = defaultdict(int)
-    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    day_names = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
     for log in logs:
         if log.delta > 0:
             day_of_week_totals[log.logged_date.weekday()] += log.delta
-    
+
     day_correlations = [
-        {"day": day_names[i], "total": day_of_week_totals.get(i, 0)}
-        for i in range(7)
+        {"day": day_names[i], "total": day_of_week_totals.get(i, 0)} for i in range(7)
     ]
     best_day_idx = max(range(7), key=lambda i: day_of_week_totals.get(i, 0))
     best_day = day_names[best_day_idx] if day_of_week_totals else None
-    
+
     # Per-habit statistics
     habit_stats = []
     for habit in habits:
-        habit_logs = [l for l in logs if l.habit_id == habit.id]
-        total_increments = sum(l.delta for l in habit_logs if l.delta > 0)
-        total_decrements = abs(sum(l.delta for l in habit_logs if l.delta < 0))
-        
+        habit_logs = [log for log in logs if log.habit_id == habit.id]
+        total_increments = sum(log.delta for log in habit_logs if log.delta > 0)
+        total_decrements = abs(sum(log.delta for log in habit_logs if log.delta < 0))
+
         # Days with activity in last 7 days
         week_ago = today - timedelta(days=7)
-        week_activity_days = len(set(
-            l.logged_date for l in habit_logs 
-            if l.logged_date >= week_ago and l.delta > 0
-        ))
-        
+        week_activity_days = len(
+            set(
+                log.logged_date
+                for log in habit_logs
+                if log.logged_date >= week_ago and log.delta > 0
+            )
+        )
+
         # Per-habit day correlation
         habit_day_totals = defaultdict(int)
         for log in habit_logs:
@@ -325,34 +354,54 @@ def insights():
                 habit_day_totals[log.logged_date.weekday()] += log.delta
         habit_best_day = None
         if habit_day_totals:
-            habit_best_day_idx = max(habit_day_totals.keys(), key=lambda k: habit_day_totals[k])
+            habit_best_day_idx = max(
+                habit_day_totals.keys(), key=lambda k: habit_day_totals[k]
+            )
             habit_best_day = day_names[habit_best_day_idx]
-        
-        habit_stats.append({
-            "habit": habit,
-            "total_increments": total_increments,
-            "total_decrements": total_decrements,
-            "week_activity_days": week_activity_days,
-            "best_day": habit_best_day
-        })
-    
+
+        habit_stats.append(
+            {
+                "habit": habit,
+                "total_increments": total_increments,
+                "total_decrements": total_decrements,
+                "week_activity_days": week_activity_days,
+                "best_day": habit_best_day,
+            }
+        )
+
     # Best streaks (top 5 habits by best_streak)
     best_streaks = sorted(
         [h for h in habits if (h.best_streak or 0) > 0],
         key=lambda h: h.best_streak or 0,
-        reverse=True
+        reverse=True,
     )[:5]
-    
+
     # Weekly stats
     week_ago = today - timedelta(days=7)
-    week_increments = sum(l.delta for l in logs if l.logged_date >= week_ago and l.delta > 0)
-    week_active_habits = len(set(l.habit_id for l in logs if l.logged_date >= week_ago and l.delta > 0))
-    
+    week_increments = sum(
+        log.delta for log in logs if log.logged_date >= week_ago and log.delta > 0
+    )
+    week_active_habits = len(
+        set(
+            log.habit_id
+            for log in logs
+            if log.logged_date >= week_ago and log.delta > 0
+        )
+    )
+
     # Monthly stats
     month_ago = today - timedelta(days=30)
-    month_increments = sum(l.delta for l in logs if l.logged_date >= month_ago and l.delta > 0)
-    month_active_habits = len(set(l.habit_id for l in logs if l.logged_date >= month_ago and l.delta > 0))
-    
+    month_increments = sum(
+        log.delta for log in logs if log.logged_date >= month_ago and log.delta > 0
+    )
+    month_active_habits = len(
+        set(
+            log.habit_id
+            for log in logs
+            if log.logged_date >= month_ago and log.delta > 0
+        )
+    )
+
     return render_template(
         "habits/insights.html",
         habits=habits,
@@ -369,5 +418,5 @@ def insights():
         month_active_habits=month_active_habits,
         total_habits=len(habits),
         today=today,
-        max_activity=max_activity
+        max_activity=max_activity,
     )

@@ -1,0 +1,416 @@
+{# Tag Input Component - Include this in entity forms #}
+{# Required context: entity_type (string), entity_id (int or None for new) #}
+
+<style>
+    .tag-input-container {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+        min-height: 42px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        cursor: text;
+    }
+    .tag-input-container:focus-within {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    .tag-badge-sm {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25em 0.5em;
+        font-size: 0.8rem;
+        font-weight: 500;
+        border-radius: 0.25rem;
+        background-color: transparent;
+        border: 2px solid;
+        gap: 0.25rem;
+    }
+    .tag-badge-sm .remove-tag {
+        cursor: pointer;
+        opacity: 0.7;
+        margin-left: 2px;
+    }
+    .tag-badge-sm .remove-tag:hover {
+        opacity: 1;
+    }
+    .tag-input-field {
+        border: none;
+        outline: none;
+        flex: 1;
+        min-width: 100px;
+        background: transparent;
+    }
+    .tag-suggestions {
+        position: absolute;
+        z-index: 1000;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-height: 200px;
+        overflow-y: auto;
+        width: 100%;
+        display: none;
+    }
+    .tag-suggestions.show {
+        display: block;
+    }
+    .tag-suggestion-item {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .tag-suggestion-item:hover, .tag-suggestion-item.active {
+        background-color: #f8f9fa;
+    }
+    .tag-suggestion-item .tag-badge-sm {
+        pointer-events: none;
+    }
+    .smart-tag-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .smart-tag-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25em 0.5em;
+        font-size: 0.75rem;
+        border-radius: 0.25rem;
+        background-color: transparent;
+        border: 1px dashed;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .smart-tag-btn:hover {
+        border-style: solid;
+    }
+    [data-bs-theme="dark"] .tag-input-container {
+        border-color: rgba(255,255,255,0.15);
+        background-color: #2b3035;
+    }
+    [data-bs-theme="dark"] .tag-input-field {
+        color: #dee2e6;
+    }
+    [data-bs-theme="dark"] .tag-suggestions {
+        background-color: #2b3035;
+        border-color: rgba(255,255,255,0.15);
+    }
+    [data-bs-theme="dark"] .tag-suggestion-item:hover,
+    [data-bs-theme="dark"] .tag-suggestion-item.active {
+        background-color: rgba(255,255,255,0.1);
+    }
+</style>
+
+<div class="mb-3">
+    <label class="form-label">
+        <i class="bi bi-tags"></i> Tags <small class="text-muted">(optional)</small>
+    </label>
+    <div class="position-relative">
+        <div class="tag-input-container" id="tagInputContainer" onclick="document.getElementById('tagInputField').focus()">
+            <div id="selectedTags"></div>
+            <input type="text" class="tag-input-field" id="tagInputField"
+                   placeholder="Type to search or create tags..."
+                   autocomplete="off">
+        </div>
+        <div class="tag-suggestions" id="tagSuggestions"></div>
+    </div>
+    <div id="smartTagSuggestions" class="smart-tag-suggestions"></div>
+    <input type="hidden" name="tag_ids" id="tagIdsInput" value="">
+</div>
+
+<script>
+(function() {
+    const entityType = '{{ entity_type }}';
+    const entityId = {{ entity_id if entity_id else 'null' }};
+
+    let allTags = [];
+    let selectedTagIds = [];
+    let suggestionIndex = -1;
+
+    const container = document.getElementById('tagInputContainer');
+    const input = document.getElementById('tagInputField');
+    const suggestions = document.getElementById('tagSuggestions');
+    const selectedTagsDiv = document.getElementById('selectedTags');
+    const tagIdsInput = document.getElementById('tagIdsInput');
+    const smartSuggestionsDiv = document.getElementById('smartTagSuggestions');
+
+    // Load all user tags
+    async function loadTags() {
+        try {
+            const resp = await fetch('/tags/api/list');
+            allTags = await resp.json();
+
+            // Load existing tags for entity if editing
+            if (entityId) {
+                const entityResp = await fetch(`/tags/api/entity/${entityType}/${entityId}`);
+                const entityTags = await entityResp.json();
+                entityTags.forEach(tag => addSelectedTag(tag));
+            }
+        } catch (e) {
+            console.error('Failed to load tags:', e);
+        }
+    }
+
+    // Render selected tags
+    function renderSelectedTags() {
+        selectedTagsDiv.innerHTML = selectedTagIds.map(id => {
+            const tag = allTags.find(t => t.id === id);
+            if (!tag) return '';
+            return `
+                <span class="tag-badge-sm" style="border-color: ${tag.color}; color: ${tag.color};">
+                    ${tag.name}
+                    <span class="remove-tag" onclick="window.tagInputRemoveTag(${tag.id})">&times;</span>
+                </span>
+            `;
+        }).join('');
+        tagIdsInput.value = selectedTagIds.join(',');
+    }
+
+    // Add a tag
+    function addSelectedTag(tag) {
+        if (!selectedTagIds.includes(tag.id)) {
+            selectedTagIds.push(tag.id);
+            if (!allTags.find(t => t.id === tag.id)) {
+                allTags.push(tag);
+            }
+            renderSelectedTags();
+        }
+        input.value = '';
+        hideSuggestions();
+    }
+
+    // Remove a tag - exposed globally for onclick
+    window.tagInputRemoveTag = function(tagId) {
+        selectedTagIds = selectedTagIds.filter(id => id !== tagId);
+        renderSelectedTags();
+    };
+
+    // Show suggestions
+    function showSuggestions(query) {
+        const filtered = allTags.filter(tag =>
+            tag.name.toLowerCase().includes(query.toLowerCase()) &&
+            !selectedTagIds.includes(tag.id)
+        );
+
+        let html = '';
+
+        // Show matching tags
+        filtered.slice(0, 5).forEach((tag, i) => {
+            html += `
+                <div class="tag-suggestion-item ${i === suggestionIndex ? 'active' : ''}"
+                     data-tag-id="${tag.id}" onclick="window.tagInputSelectSuggestion(${tag.id})">
+                    <span class="tag-badge-sm" style="border-color: ${tag.color}; color: ${tag.color};">
+                        ${tag.name}
+                    </span>
+                </div>
+            `;
+        });
+
+        // Show create option if no exact match
+        if (query && !allTags.find(t => t.name.toLowerCase() === query.toLowerCase())) {
+            html += `
+                <div class="tag-suggestion-item ${filtered.length === suggestionIndex ? 'active' : ''}"
+                     data-create="${query}" onclick="window.tagInputCreateTag('${query.replace(/'/g, "\\'")}')">
+                    <i class="bi bi-plus-circle text-primary"></i>
+                    <span>Create "<strong>${query}</strong>"</span>
+                </div>
+            `;
+        }
+
+        if (html) {
+            suggestions.innerHTML = html;
+            suggestions.classList.add('show');
+        } else {
+            hideSuggestions();
+        }
+    }
+
+    function hideSuggestions() {
+        suggestions.classList.remove('show');
+        suggestionIndex = -1;
+    }
+
+    // Select suggestion - exposed globally
+    window.tagInputSelectSuggestion = function(tagId) {
+        const tag = allTags.find(t => t.id === tagId);
+        if (tag) addSelectedTag(tag);
+    };
+
+    // Create new tag - exposed globally
+    window.tagInputCreateTag = async function(name) {
+        try {
+            const resp = await fetch('/tags/api/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ name })
+            });
+
+            if (resp.ok) {
+                const tag = await resp.json();
+                allTags.push(tag);
+                addSelectedTag(tag);
+            } else if (resp.status === 409) {
+                // Tag already exists
+                const data = await resp.json();
+                if (data.tag) addSelectedTag(data.tag);
+            }
+        } catch (e) {
+            console.error('Failed to create tag:', e);
+        }
+    };
+
+    // Add smart tag - exposed globally
+    window.tagInputAddSmartTag = async function(name, color) {
+        // Check if tag exists
+        const existing = allTags.find(t => t.name.toLowerCase() === name.toLowerCase());
+        if (existing) {
+            addSelectedTag(existing);
+        } else {
+            // Create new tag
+            try {
+                const resp = await fetch('/tags/api/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ name, color })
+                });
+
+                if (resp.ok) {
+                    const tag = await resp.json();
+                    allTags.push(tag);
+                    addSelectedTag(tag);
+                }
+            } catch (e) {
+                console.error('Failed to create smart tag:', e);
+            }
+        }
+        updateSmartSuggestions();
+    };
+
+    // Get smart suggestions based on title/description
+    async function updateSmartSuggestions() {
+        const titleInput = document.querySelector('input[name="title"]');
+        const descInput = document.querySelector('textarea[name="description"]');
+
+        const text = [
+            titleInput ? titleInput.value : '',
+            descInput ? descInput.value : ''
+        ].join(' ');
+
+        if (!text.trim()) {
+            smartSuggestionsDiv.innerHTML = '';
+            return;
+        }
+
+        try {
+            const existingNames = selectedTagIds.map(id => {
+                const tag = allTags.find(t => t.id === id);
+                return tag ? tag.name : '';
+            }).filter(n => n);
+
+            const resp = await fetch('/tags/api/smart-suggestions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ text, existing_tags: existingNames })
+            });
+
+            const suggestions = await resp.json();
+
+            if (suggestions.length > 0) {
+                smartSuggestionsDiv.innerHTML = '<small class="text-muted me-2">Suggested:</small>' +
+                    suggestions.map(s => {
+                        const color = s.exists ? s.tag.color : s.color;
+                        return `
+                            <button type="button" class="smart-tag-btn"
+                                    style="border-color: ${color}; color: ${color};"
+                                    onclick="window.tagInputAddSmartTag('${s.name}', '${color}')">
+                                <i class="bi bi-plus me-1"></i>${s.name}
+                            </button>
+                        `;
+                    }).join('');
+            } else {
+                smartSuggestionsDiv.innerHTML = '';
+            }
+        } catch (e) {
+            console.error('Failed to get smart suggestions:', e);
+        }
+    }
+
+    // Event listeners
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        if (query) {
+            showSuggestions(query);
+        } else {
+            hideSuggestions();
+        }
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const items = suggestions.querySelectorAll('.tag-suggestion-item');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            suggestionIndex = Math.min(suggestionIndex + 1, items.length - 1);
+            items.forEach((item, i) => item.classList.toggle('active', i === suggestionIndex));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            suggestionIndex = Math.max(suggestionIndex - 1, 0);
+            items.forEach((item, i) => item.classList.toggle('active', i === suggestionIndex));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (suggestionIndex >= 0 && items[suggestionIndex]) {
+                items[suggestionIndex].click();
+            } else if (input.value.trim()) {
+                // Create new tag
+                window.tagInputCreateTag(input.value.trim());
+            }
+        } else if (e.key === 'Escape') {
+            hideSuggestions();
+        } else if (e.key === 'Backspace' && !input.value && selectedTagIds.length > 0) {
+            // Remove last tag on backspace
+            window.tagInputRemoveTag(selectedTagIds[selectedTagIds.length - 1]);
+        }
+    });
+
+    // Hide suggestions on click outside
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target) && !suggestions.contains(e.target)) {
+            hideSuggestions();
+        }
+    });
+
+    // Update smart suggestions when title/description changes
+    const titleInput = document.querySelector('input[name="title"]');
+    const descInput = document.querySelector('textarea[name="description"]');
+
+    let smartDebounce;
+    function debouncedSmartSuggestions() {
+        clearTimeout(smartDebounce);
+        smartDebounce = setTimeout(updateSmartSuggestions, 500);
+    }
+
+    if (titleInput) titleInput.addEventListener('input', debouncedSmartSuggestions);
+    if (descInput) descInput.addEventListener('input', debouncedSmartSuggestions);
+
+    // Initialize
+    loadTags().then(() => {
+        updateSmartSuggestions();
+    });
+})();
+</script>

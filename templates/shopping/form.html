@@ -74,6 +74,11 @@
                         </button>
                     </div>
 
+                    {# Tag Input Component #}
+                    {% set entity_type = 'shopping' %}
+                    {% set entity_id = shopping_list.id if shopping_list else None %}
+                    {% include 'tags/_tag_input.html' %}
+
                     <div class="d-flex justify-content-between align-items-center">
                         <a href="{{ url_for('shopping.list') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Cancel

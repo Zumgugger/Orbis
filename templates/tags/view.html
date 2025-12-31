@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tag.name }} - Tags - Orbis{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tag-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35em 0.65em;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 0.375rem;
+        background-color: transparent;
+        border: 2px solid;
+    }
+    .entity-section {
+        margin-bottom: 1.5rem;
+    }
+    .entity-type-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    .entity-type-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    .entity-type-icon.todo { background-color: #0d6efd; }
+    .entity-type-icon.idea { background-color: #6f42c1; }
+    .entity-type-icon.goal { background-color: #198754; }
+    .entity-type-icon.daily { background-color: #fd7e14; }
+    .entity-type-icon.habit { background-color: #20c997; }
+    .entity-type-icon.note { background-color: #6c757d; }
+    .entity-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .entity-item:last-child {
+        border-bottom: none;
+    }
+    [data-bs-theme="dark"] .entity-item {
+        border-color: rgba(255,255,255,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>
+            <span class="tag-badge"
+                  style="border-color: {{ tag.color }}; color: {{ tag.color }};">
+                <i class="bi bi-tag me-1"></i> {{ tag.name }}
+            </span>
+        </h1>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('tags.edit_tag', tag_id=tag.id) }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <a href="{{ url_for('tags.list_tags') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Tags
+        </a>
+    </div>
+</div>
+
+{% set entity_icons = {
+    'todo': 'check2-square',
+    'idea': 'lightbulb',
+    'goal': 'trophy',
+    'daily': 'calendar-check',
+    'habit': 'arrow-repeat',
+    'note': 'journal-text'
+} %}
+
+{% set entity_urls = {
+    'todo': 'todos.edit_todo',
+    'idea': 'ideas.view_idea',
+    'goal': 'goals.edit_goal',
+    'daily': 'dailies.edit_daily',
+    'habit': 'habits.edit_habit',
+    'note': 'notes.edit_note'
+} %}
+
+{% if entities_by_type %}
+    {% for entity_type, entities in entities_by_type.items() %}
+    <div class="entity-section">
+        <div class="entity-type-header">
+            <div class="entity-type-icon {{ entity_type }}">
+                <i class="bi bi-{{ entity_icons.get(entity_type, 'file') }}"></i>
+            </div>
+            <h5 class="mb-0">{{ entity_type|capitalize }}s ({{ entities|length }})</h5>
+        </div>
+        <div class="card">
+            <div class="card-body p-0">
+                {% for entity in entities %}
+                <div class="entity-item">
+                    <div>
+                        <strong>{{ entity.title }}</strong>
+                        {% if entity.description %}
+                        <br><small class="text-muted">{{ entity.description[:100] }}{% if entity.description|length > 100 %}...{% endif %}</small>
+                        {% endif %}
+                    </div>
+                    <a href="{{ url_for(entity_urls.get(entity_type, 'index'), **{entity_type + '_id': entity.id} if entity_type != 'note' else {'note_id': entity.id}) }}"
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+        <h5 class="mt-3">No items with this tag</h5>
+        <p class="text-muted">Add this tag to your todos, ideas, goals, and more!</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

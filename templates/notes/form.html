@@ -83,6 +83,11 @@
                                   placeholder="Write your note here...">{{ note.content if note else '' }}</textarea>
                     </div>
 
+                    {# Tag Input Component #}
+                    {% set entity_type = 'note' %}
+                    {% set entity_id = note.id if note else None %}
+                    {% include 'tags/_tag_input.html' %}
+
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('notes.list_notes') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Cancel

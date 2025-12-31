@@ -7,8 +7,16 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Note, NoteCategory
+from models import Note, NoteCategory, sync_entity_tags
 from validation import ValidationError, validate_title
+
+
+def _parse_tag_ids(form_value: str) -> list[int]:
+    """Parse comma-separated tag IDs from form input."""
+    if not form_value:
+        return []
+    return [int(tid) for tid in form_value.split(",") if tid.strip().isdigit()]
+
 
 notes_bp = Blueprint("notes", __name__, url_prefix="/notes")
 
@@ -160,6 +168,10 @@ def edit_note(note_id):
                     pass
             else:
                 note.entry_date = None
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags("note", note.id, tag_ids, current_user.id)
 
             db.session.commit()
             flash("Note updated successfully!", "success")

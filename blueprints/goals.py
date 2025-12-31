@@ -6,8 +6,16 @@ from flask_login import current_user, login_required
 from sqlalchemy.orm import selectinload
 
 from extensions import db
-from models import Goal, Milestone
+from models import Goal, Milestone, sync_entity_tags
 from validation import ValidationError, validate_text, validate_title
+
+
+def _parse_tag_ids(form_value: str) -> list[int]:
+    """Parse comma-separated tag IDs from form input."""
+    if not form_value:
+        return []
+    return [int(tid) for tid in form_value.split(",") if tid.strip().isdigit()]
+
 
 goals_bp = Blueprint("goals", __name__, url_prefix="/goals")
 
@@ -38,15 +46,21 @@ def create():
 
             goal = Goal(title=title, description=description, user_id=current_user.id)
             db.session.add(goal)
+            db.session.flush()  # Get goal.id for tag syncing
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags("goal", goal.id, tag_ids, current_user.id)
+
             db.session.commit()
 
             flash("Goal created successfully!", "success")
             return redirect(url_for("goals.edit", id=goal.id))
         except ValidationError as e:
             flash(str(e), "error")
-            return render_template("goals/form.html", goal=None)
+            return render_template("goals/form.html", goal=None, action="Create")
 
-    return render_template("goals/form.html", goal=None)
+    return render_template("goals/form.html", goal=None, action="Create")
 
 
 @goals_bp.route("/<int:id>/edit", methods=["GET", "POST"])
@@ -66,14 +80,18 @@ def edit(id):
                 request.form.get("description"), max_length=5000
             )
 
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags("goal", goal.id, tag_ids, current_user.id)
+
             db.session.commit()
             flash("Goal updated successfully!", "success")
             return redirect(url_for("goals.list"))
         except ValidationError as e:
             flash(str(e), "error")
-            return render_template("goals/form.html", goal=goal)
+            return render_template("goals/form.html", goal=goal, action="Edit")
 
-    return render_template("goals/form.html", goal=goal)
+    return render_template("goals/form.html", goal=goal, action="Edit")
 
 
 @goals_bp.route("/<int:id>/delete", methods=["POST"])

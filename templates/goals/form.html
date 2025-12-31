@@ -52,6 +52,11 @@
                         <input type="date" class="form-control" id="deadline" name="deadline"
                                value="{% if goal and goal.deadline %}{{ goal.deadline.strftime('%Y-%m-%d') }}{% endif %}">
                     </div>
+
+                    {# Tag Input Component #}
+                    {% set entity_type = 'goal' %}
+                    {% set entity_id = goal.id if goal else None %}
+                    {% include 'tags/_tag_input.html' %}
                 </form>
 
                 {% if goal %}

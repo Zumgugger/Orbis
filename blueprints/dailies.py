@@ -7,7 +7,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import CompletionLog, Daily
+from models import CompletionLog, Daily, sync_entity_tags
 from validation import (
     ValidationError,
     validate_frequency,
@@ -16,6 +16,14 @@ from validation import (
     validate_title,
     validate_weekdays,
 )
+
+
+def _parse_tag_ids(form_value: str) -> list[int]:
+    """Parse comma-separated tag IDs from form input."""
+    if not form_value:
+        return []
+    return [int(tid) for tid in form_value.split(",") if tid.strip().isdigit()]
+
 
 dailies_bp = Blueprint("dailies", __name__, url_prefix="/dailies")
 
@@ -119,6 +127,10 @@ def edit_daily(daily_id):
                 daily.set_weekdays(selected_weekdays)
             else:
                 daily.weekdays = None
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags("daily", daily.id, tag_ids, current_user.id)
 
             db.session.commit()
             flash("Daily updated successfully!", "success")
