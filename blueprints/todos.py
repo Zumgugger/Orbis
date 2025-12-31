@@ -333,7 +333,7 @@ def toggle_todo(todo_id):
 
 
 def _sync_calendar_events_to_todos() -> None:
-    """Sync Google Calendar events to todos - create todos for new events."""
+    """Sync Google Calendar events to todos - create, update, and handle deletions."""
     from time_utils import today_local
 
     today = today_local()
@@ -358,16 +358,34 @@ def _sync_calendar_events_to_todos() -> None:
             oauth.google,
         )
 
-        # Get existing todos linked to calendar events
-        existing_event_ids = {
-            t.google_event_id
-            for t in Todo.query.filter(
-                Todo.user_id == current_user.id,
-                Todo.google_event_id.isnot(None),
-            ).all()
-        }
+        # Build a map of event_id -> event data
+        events_by_id = {ev.get("id"): ev for ev in calendar_events if ev.get("id")}
 
-        # Create todos for events that don't have one yet
+        # Get existing todos linked to calendar events
+        linked_todos = Todo.query.filter(
+            Todo.user_id == current_user.id,
+            Todo.google_event_id.isnot(None),
+        ).all()
+
+        existing_event_ids = set()
+        for todo in linked_todos:
+            existing_event_ids.add(todo.google_event_id)
+
+            # Check if this event still exists in calendar (within our fetch window)
+            if todo.google_event_id in events_by_id:
+                # Event exists - update todo from calendar if changed
+                event = events_by_id[todo.google_event_id]
+                _update_todo_from_event(todo, event, today)
+            else:
+                # Event might be deleted OR outside our fetch window
+                # Only delete if the todo's due_date is within our fetch window
+                if todo.due_date and today <= todo.due_date <= today + timedelta(
+                    days=1
+                ):
+                    # Event was in our window but not found - likely deleted
+                    db.session.delete(todo)
+
+        # Create todos for new events
         for event in calendar_events:
             event_id = event.get("id")
             if not event_id or event_id in existing_event_ids:
@@ -406,6 +424,47 @@ def _sync_calendar_events_to_todos() -> None:
     except Exception as e:
         db.session.rollback()
         log_warning(f"Failed to sync calendar events to todos: {e}")
+
+
+def _update_todo_from_event(todo: Todo, event: dict, today) -> None:
+    """Update a todo's fields from a calendar event if changed."""
+    # Update title if changed (but not if user customized it)
+    event_title = event.get("title", "Calendar Event")
+    if todo.title != event_title:
+        todo.title = event_title
+
+    # Update description from calendar
+    event_desc = event.get("description", "") or ""
+    if todo.description != event_desc:
+        todo.description = event_desc
+
+    # Update times from calendar
+    start_dt = event.get("start_dt")
+    end_dt = event.get("end_dt")
+    is_all_day = event.get("all_day", False)
+
+    if start_dt and not is_all_day:
+        new_due_date = start_dt.date()
+        new_due_time = start_dt.time()
+        if todo.due_date != new_due_date:
+            todo.due_date = new_due_date
+        if todo.due_time != new_due_time:
+            todo.due_time = new_due_time
+
+        if end_dt:
+            new_end_time = end_dt.time()
+            if todo.end_time != new_end_time:
+                todo.end_time = new_end_time
+            # Recalculate duration
+            new_duration = int((end_dt - start_dt).total_seconds() / 60)
+            if todo.duration_minutes != new_duration:
+                todo.duration_minutes = new_duration
+    elif start_dt and is_all_day:
+        new_due_date = start_dt.date()
+        if todo.due_date != new_due_date:
+            todo.due_date = new_due_date
+        todo.due_time = None
+        todo.end_time = None
 
 
 def _sync_calendar_completion(todo: Todo, mark_completed: bool) -> None:
