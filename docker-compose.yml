@@ -15,6 +15,7 @@ services:
       - .env.production
     environment:
       - ORBIS_CONFIG=production
+      - DATABASE_URL=sqlite:////app/instance/orbis.db  # Absolute path for Docker
     networks:
       - orbis_network
     healthcheck:
