@@ -80,15 +80,61 @@ def get_google_token_for_user(user, logger=None):
 
         # If token is expired or expiring within 60s, try to refresh
         if expires_at and expires_at - now <= 60 and refresh_token:
-            # Get token endpoint from well-known config
-            token_endpoint = "https://oauth2.googleapis.com/token"
-            new_token = oauth.google.fetch_access_token(
-                grant_type="refresh_token",
-                refresh_token=refresh_token,
+            import requests
+
+            # Get client credentials
+            client_id = os.getenv("GOOGLE_CLIENT_ID")
+            client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+
+            # Try to load from secrets file if available
+            secrets_path = os.getenv("GOOGLE_CLIENT_SECRETS_FILE")
+            if secrets_path and os.path.exists(secrets_path):
+                try:
+                    with open(secrets_path, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                    config = data.get("web") or data.get("installed") or {}
+                    client_id = config.get("client_id", client_id)
+                    client_secret = config.get("client_secret", client_secret)
+                except Exception:
+                    pass
+
+            # Refresh the token directly via Google's token endpoint
+            resp = requests.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "refresh_token": refresh_token,
+                    "grant_type": "refresh_token",
+                },
+                timeout=10,
             )
-            # Persist refreshed token
-            user.set_oauth_token(new_token)
-            token = new_token
+
+            if resp.status_code == 200:
+                new_token_data = resp.json()
+                # Merge with existing token (keep refresh_token if not returned)
+                new_token = {
+                    **token,
+                    "access_token": new_token_data.get("access_token"),
+                    "expires_at": time.time() + new_token_data.get("expires_in", 3600),
+                    "token_type": new_token_data.get("token_type", "Bearer"),
+                }
+                if new_token_data.get("refresh_token"):
+                    new_token["refresh_token"] = new_token_data["refresh_token"]
+
+                # Persist refreshed token
+                user.set_oauth_token(new_token)
+                db.session.commit()
+                token = new_token
+
+                log = logger or current_app.logger
+                log.info(f"Successfully refreshed Google token for user {user.id}")
+            else:
+                log = logger or current_app.logger
+                log.warning(
+                    f"Token refresh failed with status {resp.status_code}: {resp.text}"
+                )
+                return None
 
     except Exception as exc:
         log = logger or current_app.logger
