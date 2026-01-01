@@ -518,6 +518,103 @@
         </script>
     {% block extra_js %}{% endblock %}
 
+    <!-- Mobile Swipe Navigation -->
+    <script>
+        (function() {
+            // Module navigation order (circular)
+            const modules = [
+                '/',
+                '/tomorrow',
+                '/todos/',
+                '/dailies/',
+                '/habits/',
+                '/goals/',
+                '/shopping/',
+                '/masterprompts/',
+                '/ideas/',
+                '/notes/',
+                '/tags/'
+            ];
+
+            // Only enable on touch devices
+            if (!('ontouchstart' in window)) return;
+
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchEndX = 0;
+            let touchEndY = 0;
+            const minSwipeDistance = 80;
+            const maxVerticalDistance = 100;
+
+            // Find current module index
+            function getCurrentModuleIndex() {
+                const path = window.location.pathname;
+                // Exact match first
+                let idx = modules.indexOf(path);
+                if (idx !== -1) return idx;
+
+                // Try matching with trailing slash variations
+                idx = modules.indexOf(path + '/');
+                if (idx !== -1) return idx;
+                idx = modules.indexOf(path.replace(/\/$/, ''));
+                if (idx !== -1) return idx;
+
+                // Try prefix match for sub-pages
+                for (let i = 0; i < modules.length; i++) {
+                    if (modules[i] !== '/' && path.startsWith(modules[i].replace(/\/$/, ''))) {
+                        return i;
+                    }
+                }
+                return 0;
+            }
+
+            function handleSwipe() {
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = Math.abs(touchEndY - touchStartY);
+
+                // Ignore if vertical movement is too large (scrolling)
+                if (deltaY > maxVerticalDistance) return;
+
+                // Ignore if horizontal movement is too small
+                if (Math.abs(deltaX) < minSwipeDistance) return;
+
+                const currentIdx = getCurrentModuleIndex();
+                let nextIdx;
+
+                if (deltaX < 0) {
+                    // Swipe left -> next module
+                    nextIdx = (currentIdx + 1) % modules.length;
+                } else {
+                    // Swipe right -> previous module
+                    nextIdx = (currentIdx - 1 + modules.length) % modules.length;
+                }
+
+                window.location.href = modules[nextIdx];
+            }
+
+            document.addEventListener('touchstart', function(e) {
+                const tag = e.target.tagName.toLowerCase();
+                if (tag === 'input' || tag === 'textarea' || tag === 'select' ||
+                    e.target.closest('.carousel') || e.target.closest('[data-no-swipe]')) {
+                    return;
+                }
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const tag = e.target.tagName.toLowerCase();
+                if (tag === 'input' || tag === 'textarea' || tag === 'select' ||
+                    e.target.closest('.carousel') || e.target.closest('[data-no-swipe]')) {
+                    return;
+                }
+                touchEndX = e.changedTouches[0].screenX;
+                touchEndY = e.changedTouches[0].screenY;
+                handleSwipe();
+            }, { passive: true });
+        })();
+    </script>
+
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
