@@ -426,11 +426,12 @@ def create_app(config_name=None):
         today = today_local()
         target_date = today
         # Include todos with due_date=today OR todos with due_time but no due_date (implicit today)
+        # Include pending, in_progress AND completed todos so progress shows correctly
         from sqlalchemy import and_, or_
 
         todos_today = Todo.query.filter(
             Todo.user_id == current_user.id,
-            Todo.status.in_(["pending", "in_progress"]),
+            Todo.status.in_(["pending", "in_progress", "completed"]),
             or_(
                 Todo.due_date == today,
                 and_(Todo.due_date.is_(None), Todo.due_time.isnot(None)),
