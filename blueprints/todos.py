@@ -897,6 +897,29 @@ def delete_todo(todo_id):
     # Capture info for shared calendar sync before deletion
     sync_to_shared = todo.sync_to_shared
     due_date = todo.due_date
+    google_event_id = todo.google_event_id
+
+    # Delete Google Calendar event if linked
+    if google_event_id:
+        try:
+            from flask import current_app
+
+            from blueprints.auth import get_google_token_for_user, oauth
+            from services import CalendarService
+
+            token = get_google_token_for_user(current_user)
+            if token:
+                calendar_service = CalendarService(current_app.logger)
+                calendar_service.delete_event(
+                    oauth.google,
+                    token,
+                    google_event_id,
+                )
+        except Exception as e:
+            log_warning(
+                f"Failed to delete calendar event on todo deletion: {e}",
+                extra={"todo_id": todo.id, "event_id": google_event_id},
+            )
 
     db.session.delete(todo)
     db.session.commit()
