@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  orbis:
+    build: .
+    container_name: orbis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5001:5000"  # Only expose to localhost for Apache proxy
+    volumes:
+      - orbis_data:/app/instance          # SQLite DB persistence
+      - orbis_uploads:/app/uploads        # File uploads
+      - orbis_backups:/app/db_backups     # Backups
+    env_file:
+      - .env.production
+    environment:
+      - ORBIS_CONFIG=production
+    networks:
+      - orbis_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  orbis_data:
+    driver: local
+  orbis_uploads:
+    driver: local
+  orbis_backups:
+    driver: local
+
+networks:
+  orbis_network:
+    driver: bridge
