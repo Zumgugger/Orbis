@@ -17,7 +17,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import SharedTitle, Todo
+from models import SharedTitle, Todo, sync_entity_tags
 from time_utils import get_local_tz, now_local, today_local, tomorrow_local
 from utilities import get_next_url, log_error, log_exception, log_warning
 from validation import (
@@ -63,6 +63,16 @@ def _parse_time_fields(form: dict) -> dict:
         "end_time": end_time,
         "duration_minutes": duration_minutes,
     }
+
+
+def _parse_tag_ids(form_data: str) -> list[int]:
+    """Parse tag IDs from form data (comma-separated string)."""
+    if not form_data:
+        return []
+    try:
+        return [int(tid.strip()) for tid in form_data.split(",") if tid.strip()]
+    except ValueError:
+        return []
 
 
 def _parse_shared_calendar_fields(form: dict, due_time: time | None) -> dict:
@@ -311,6 +321,13 @@ def create_todo():
                 user_id=current_user.id,
             )
             db.session.add(todo)
+            db.session.flush()  # Get todo.id for tags
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            if tag_ids:
+                sync_entity_tags(current_user.id, "todo", todo.id, tag_ids)
+
             db.session.commit()
 
             # Sync shared calendar blocks if needed
@@ -365,6 +382,13 @@ def create_todo_today():
                 user_id=current_user.id,
             )
             db.session.add(todo)
+            db.session.flush()  # Get todo.id for tags
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            if tag_ids:
+                sync_entity_tags(current_user.id, "todo", todo.id, tag_ids)
+
             db.session.commit()
 
             # Sync shared calendar blocks if needed
@@ -419,6 +443,13 @@ def create_todo_tomorrow():
                 user_id=current_user.id,
             )
             db.session.add(todo)
+            db.session.flush()  # Get todo.id for tags
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            if tag_ids:
+                sync_entity_tags(current_user.id, "todo", todo.id, tag_ids)
+
             db.session.commit()
 
             # Sync shared calendar blocks if needed
@@ -479,6 +510,11 @@ def edit_todo(todo_id):
             # Mark as in progress when edited (per tests expectation)
             if todo.status == "pending":
                 todo.status = "in_progress"
+
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            sync_entity_tags(current_user.id, "todo", todo.id, tag_ids)
+
             db.session.commit()
 
             # Sync with Google Calendar if linked
