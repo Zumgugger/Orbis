@@ -409,6 +409,11 @@ def create_app(config_name=None):
         """Shift unfinished items forward once per day and break missed streaks."""
         return rollover_service.process_rollover(user)
 
+    @app.route("/favicon.ico")
+    def favicon():
+        """Serve favicon from static folder."""
+        return app.send_static_file("favicon.png")
+
     @app.route("/")
     @login_required
     def index():
