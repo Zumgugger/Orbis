@@ -153,8 +153,19 @@
                         <h5 class="mb-0">{{ todo.title }}</h5>
                         <small style="color: var(--bs-danger-text-emphasis);"><i class="bi bi-calendar-x"></i> Due {{ todo.due_date.strftime('%b %d') }}</small>
                     </div>
+                    {% if todo.google_event_id %}
+                    <button type="button" class="btn btn-success btn-sm" title="Linked to Google Calendar">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </button>
+                    {% else %}
+                    <form action="{{ url_for('todos.quick_schedule', todo_id=todo.id) }}?next=/" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-info btn-sm" title="Add to Google Calendar">
+                            <i class="bi bi-calendar-plus"></i>
+                        </button>
+                    </form>
+                    {% endif %}
                     <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}?next=/" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Reschedule to today">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reschedule to today">
                             <i class="bi bi-calendar-check"></i>
                         </button>
                     </form>
