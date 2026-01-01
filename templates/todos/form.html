@@ -40,8 +40,10 @@
 
                     {% if show_due_date %}
                     <input type="hidden" id="due_date" name="due_date" value="{{ preset_due_date }}">
+                    {% elif todo and todo.due_date %}
+                    <input type="hidden" id="due_date" name="due_date" value="{{ todo.due_date.isoformat() }}">
                     {% else %}
-                    <input type="hidden" id="due_date" name="due_date" value="{{ preset_due_date }}">
+                    <input type="hidden" id="due_date" name="due_date" value="{{ preset_due_date or '' }}">
                     {% endif %}
 
                     <!-- Scheduling Section -->
@@ -100,6 +102,50 @@
                         <div>
                             <strong>Linked to Google Calendar</strong>
                             <small class="d-block text-muted">Completing this todo will mark the calendar event as done.</small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {# Shared Calendar Section - only show if user has configured a shared calendar #}
+                    {% if has_shared_calendar %}
+                    <div class="card mb-3">
+                        <div class="card-header py-2">
+                            <a class="text-decoration-none" data-bs-toggle="collapse" href="#sharedCalendarSection" role="button" aria-expanded="{{ 'true' if (todo and todo.sync_to_shared) else 'false' }}">
+                                <i class="bi bi-calendar-heart"></i> Family Calendar <small class="text-muted">(shared visibility)</small>
+                            </a>
+                        </div>
+                        <div class="collapse {% if todo and todo.sync_to_shared %}show{% endif %}" id="sharedCalendarSection">
+                            <div class="card-body">
+                                <div class="form-check mb-3">
+                                    <input type="checkbox" class="form-check-input" id="sync_to_shared" name="sync_to_shared"
+                                           {% if todo and todo.sync_to_shared %}checked{% endif %}>
+                                    <label class="form-check-label" for="sync_to_shared">
+                                        Show on shared family calendar
+                                    </label>
+                                    <small class="d-block text-muted mt-1">
+                                        A simplified "block" will appear on your family's calendar with only the title you choose below.
+                                    </small>
+                                </div>
+
+                                <div class="mb-2" id="sharedTitleSection">
+                                    <label for="shared_title" class="form-label">Block Title</label>
+                                    <select class="form-select" id="shared_title" name="shared_title">
+                                        {% for title in shared_titles %}
+                                        <option value="{{ title.title }}"
+                                                {% if todo and todo.shared_title == title.title %}selected{% elif title.is_default and not todo %}selected{% endif %}
+                                                data-is-default="{{ 'true' if title.is_default else 'false' }}">
+                                            {{ title.title }}
+                                        </option>
+                                        {% endfor %}
+                                        <option value="_custom">+ Custom title...</option>
+                                    </select>
+                                    <input type="text" class="form-control mt-2 d-none" id="custom_shared_title"
+                                           placeholder="Enter custom title" maxlength="50">
+                                    <small class="text-muted">
+                                        Select a preset title or create a custom one. Similar activities in the same time range will be combined into one block.
+                                    </small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     {% endif %}
@@ -215,6 +261,72 @@ function setQuickDuration(minutes) {
             dueInput.value = schedulingDateInput.value;
         });
     }
+})();
+
+// Shared Calendar - Custom title handling
+(function() {
+    const sharedTitleSelect = document.getElementById('shared_title');
+    const customTitleInput = document.getElementById('custom_shared_title');
+    const syncCheckbox = document.getElementById('sync_to_shared');
+
+    if (!sharedTitleSelect || !customTitleInput) return;
+
+    // Check if we should show custom input (if current value doesn't match any option)
+    function initCustomTitle() {
+        const currentValue = sharedTitleSelect.value;
+        const options = Array.from(sharedTitleSelect.options);
+        const matchesPreset = options.some(opt => opt.value === currentValue && opt.value !== '_custom');
+
+        // If todo has a shared_title that's not in the presets, treat as custom
+        {% if todo and todo.shared_title %}
+        const todoTitle = '{{ todo.shared_title|e }}';
+        const isPreset = options.some(opt => opt.value === todoTitle && opt.value !== '_custom');
+        if (!isPreset && todoTitle) {
+            sharedTitleSelect.value = '_custom';
+            customTitleInput.value = todoTitle;
+            customTitleInput.classList.remove('d-none');
+        }
+        {% endif %}
+    }
+
+    // Handle select changes
+    sharedTitleSelect.addEventListener('change', function() {
+        if (this.value === '_custom') {
+            customTitleInput.classList.remove('d-none');
+            customTitleInput.focus();
+        } else {
+            customTitleInput.classList.add('d-none');
+            customTitleInput.value = '';
+        }
+    });
+
+    // Before form submission, ensure custom title is in the select
+    const form = sharedTitleSelect.closest('form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            if (sharedTitleSelect.value === '_custom' && customTitleInput.value.trim()) {
+                // Create a new option with the custom value
+                const newOption = document.createElement('option');
+                newOption.value = customTitleInput.value.trim();
+                newOption.text = customTitleInput.value.trim();
+                newOption.selected = true;
+                sharedTitleSelect.add(newOption);
+            }
+        });
+    }
+
+    // Auto-expand the shared calendar section if checkbox gets checked
+    if (syncCheckbox) {
+        syncCheckbox.addEventListener('change', function() {
+            const section = document.getElementById('sharedCalendarSection');
+            if (section && this.checked) {
+                const bsCollapse = bootstrap.Collapse.getOrCreateInstance(section);
+                bsCollapse.show();
+            }
+        });
+    }
+
+    initCustomTitle();
 })();
 </script>
 {% endblock %}

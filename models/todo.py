@@ -31,6 +31,15 @@ class Todo(db.Model):
     completed_at = db.Column(db.DateTime, nullable=True)
     position = db.Column(db.Integer, default=0)
 
+    # Shared calendar fields
+    sync_to_shared = db.Column(db.Boolean, default=False)  # Show in shared calendar
+    shared_title = db.Column(
+        db.String(50), nullable=True
+    )  # Block title (Work, Konzert, etc.)
+    shared_event_id = db.Column(
+        db.String(255), nullable=True
+    )  # Linked shared calendar event
+
     def __repr__(self) -> str:
         return f"<Todo {self.id}: {self.title}>"
 
@@ -85,4 +94,7 @@ class Todo(db.Model):
             "completed_at": self.completed_at.isoformat()
             if self.completed_at
             else None,
+            "sync_to_shared": self.sync_to_shared,
+            "shared_title": self.shared_title,
+            "shared_event_id": self.shared_event_id,
         }

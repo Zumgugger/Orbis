@@ -76,20 +76,8 @@
 - Streak achievements
 - Time spent on categories (if time tracking added)
 
-### Priority 2: Recurring Todos (Beyond Dailies)
-**Description:** Todos that repeat on custom schedules
-- Weekly recurring todos (e.g., "Review budget every Sunday")
-- Monthly recurring (e.g., "Pay rent on 1st")
-- Custom intervals (every 2 weeks, quarterly)
-- Different from dailies: has due date that advances
 
-### Priority 3: Project/Workspace Module
-**Description:** Group related items together
-- Create projects that contain todos, goals, ideas, notes
-- Project-level progress tracking
-- Archive completed projects
-- Project templates for common workflows
-- Kanban board view for project tasks
+
 
 ### Priority 4: Time Tracking Integration
 **Description:** Track time spent on todos and habits
@@ -115,13 +103,7 @@
 - Quick add from calendar cells
 - Export/print calendar views
 
-### Priority 8: Templates System
-**Description:** Reusable templates for common workflows
-- Todo templates (with subtasks)
-- Daily routine templates
-- Goal templates with pre-defined milestones
-- Project templates
-- Import/export templates
+
 
 ### Priority 10: Subtasks for Todos
 **Description:** Break todos into smaller steps

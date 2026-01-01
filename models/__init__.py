@@ -8,6 +8,7 @@ from models.habit import Habit, HabitLog
 from models.idea import Idea, IdeaFile
 from models.masterprompt import MasterCategory, MasterSection
 from models.note import Note, NoteCategory
+from models.shared_title import SharedTitle
 from models.shopping import ShoppingList
 from models.tag import (
     SMART_TAG_KEYWORDS,
@@ -40,6 +41,7 @@ __all__ = [
     "MasterSection",
     "Note",
     "NoteCategory",
+    "SharedTitle",
     "Tag",
     "EntityTag",
     "TAG_COLORS",

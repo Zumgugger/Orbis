@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Orbis{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8">
+        <h2 class="mb-4"><i class="bi bi-gear"></i> Settings</h2>
+
+        <!-- Shared Calendar Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-heart"></i> Family Calendar</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Configure a shared calendar to show simplified "blocks" of your activities to family members.
+                    They'll see when you're busy without seeing the details of your tasks.
+                </p>
+
+                <form method="POST" action="{{ url_for('auth.settings') }}">
+                    <div class="mb-3">
+                        <label for="shared_calendar_id" class="form-label">Shared Calendar ID</label>
+                        <input type="text" class="form-control" id="shared_calendar_id" name="shared_calendar_id"
+                               value="{{ shared_calendar_id }}"
+                               placeholder="e.g., abc123...@group.calendar.google.com">
+                        <div class="form-text">
+                            <p class="mb-2">To find your calendar ID:</p>
+                            <ol class="small mb-0">
+                                <li>Go to <a href="https://calendar.google.com" target="_blank">Google Calendar</a></li>
+                                <li>Click on the three dots next to your shared calendar</li>
+                                <li>Select "Settings and sharing"</li>
+                                <li>Scroll down to "Integrate calendar"</li>
+                                <li>Copy the "Calendar ID" (ends with @group.calendar.google.com)</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Calendar Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Shared Titles Management -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-tag"></i> Block Titles</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Manage the titles that appear on your shared calendar blocks.
+                    Titles marked as "work hours default" will be automatically selected for todos during 7:00-17:30.
+                </p>
+
+                <!-- Existing Titles -->
+                <div class="list-group mb-3">
+                    {% for title in shared_titles %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-medium">{{ title.title }}</span>
+                            {% if title.is_default_work_hours %}
+                            <span class="badge bg-info ms-2" title="Default for work hours">
+                                <i class="bi bi-briefcase"></i> Work Hours Default
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <form method="POST" action="{{ url_for('auth.update_shared_titles') }}" class="d-inline">
+                                <input type="hidden" name="action" value="toggle_default">
+                                <input type="hidden" name="title_id" value="{{ title.id }}">
+                                <button type="submit" class="btn btn-outline-info" title="Toggle work hours default">
+                                    <i class="bi bi-briefcase{% if not title.is_default_work_hours %}-fill{% endif %}"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('auth.update_shared_titles') }}" class="d-inline"
+                                  onsubmit="return confirm('Delete this title?');">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="title_id" value="{{ title.id }}">
+                                <button type="submit" class="btn btn-outline-danger" title="Delete title">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="list-group-item text-muted">
+                        No titles configured. Add some below.
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Add New Title -->
+                <form method="POST" action="{{ url_for('auth.update_shared_titles') }}" class="d-flex gap-2">
+                    <input type="hidden" name="action" value="add">
+                    <input type="text" class="form-control" name="title" placeholder="New title (e.g., Meeting, Termin)"
+                           maxlength="50" required>
+                    <button type="submit" class="btn btn-outline-success">
+                        <i class="bi bi-plus-lg"></i> Add
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Back Link -->
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

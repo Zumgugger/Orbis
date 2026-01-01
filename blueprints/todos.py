@@ -1,7 +1,8 @@
 """
 Todos Blueprint - handles all todo/task related routes
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
+from typing import Any
 
 from flask import (
     Blueprint,
@@ -16,7 +17,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Todo
+from models import SharedTitle, Todo
 from time_utils import get_local_tz, now_local, today_local, tomorrow_local
 from utilities import get_next_url, log_error, log_exception, log_warning
 from validation import (
@@ -31,6 +32,10 @@ from validation import (
 )
 
 todos_bp = Blueprint("todos", __name__, url_prefix="/todos")
+
+# Work hours for default shared calendar behavior
+WORK_HOURS_START = time(7, 0)
+WORK_HOURS_END = time(17, 30)
 
 
 def _parse_time_fields(form: dict) -> dict:
@@ -58,6 +63,117 @@ def _parse_time_fields(form: dict) -> dict:
         "end_time": end_time,
         "duration_minutes": duration_minutes,
     }
+
+
+def _parse_shared_calendar_fields(form: dict, due_time: time | None) -> dict:
+    """
+    Parse shared calendar fields from form data.
+
+    Args:
+        form: Form data dict
+        due_time: The todo's scheduled time (for work hours default)
+
+    Returns:
+        Dict with sync_to_shared, shared_title
+    """
+    # Check if user explicitly set sync_to_shared
+    sync_to_shared = form.get("sync_to_shared") == "on"
+
+    # Get shared title (from dropdown or custom input)
+    shared_title = form.get("shared_title", "").strip()
+    custom_title = form.get("shared_title_custom", "").strip()
+
+    if custom_title:
+        shared_title = custom_title
+
+    # If no title but sync is enabled, default based on time
+    if sync_to_shared and not shared_title:
+        if due_time and WORK_HOURS_START <= due_time <= WORK_HOURS_END:
+            shared_title = "Work"
+        else:
+            shared_title = "Busy"
+
+    return {
+        "sync_to_shared": sync_to_shared,
+        "shared_title": shared_title if sync_to_shared else None,
+    }
+
+
+def _sync_shared_blocks_for_todo(todo: Todo) -> dict[str, Any] | None:
+    """
+    Sync shared calendar blocks for the date of a todo.
+
+    This should be called after any todo operation that affects shared blocks:
+    - Create todo with sync_to_shared=True
+    - Update todo (time, shared settings, or completion)
+    - Delete todo with sync_to_shared=True
+
+    Returns:
+        Sync results dict or None if user has no shared calendar configured
+    """
+    if not todo.due_date:
+        return None
+
+    return _sync_shared_blocks_for_date(todo.due_date)
+
+
+def _sync_shared_blocks_for_date(sync_date) -> dict[str, Any] | None:
+    """
+    Sync shared calendar blocks for a specific date.
+
+    Args:
+        sync_date: The date to sync blocks for
+
+    Returns:
+        Sync results dict or None if user has no shared calendar configured
+    """
+    if not current_user.shared_calendar_id:
+        return None
+
+    try:
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService, SharedBlockService
+
+        token = get_google_token_for_user(current_user)
+        if not token:
+            return {"errors": ["No OAuth token available"]}
+
+        calendar_service = CalendarService(current_app.logger)
+        block_service = SharedBlockService(calendar_service, current_app.logger)
+
+        results = block_service.sync_blocks_for_day(
+            current_user,
+            sync_date,
+            oauth.google,
+            token,
+        )
+
+        # Flash appropriate messages
+        if results["errors"]:
+            for error in results["errors"]:
+                flash(f"Shared calendar sync error: {error}", "warning")
+        elif results["created"] > 0 or results["deleted"] > 0:
+            flash("Shared calendar updated", "info")
+
+        return results
+    except Exception as e:
+        log_exception(e, message="Failed to sync shared blocks")
+        return {"errors": [str(e)]}
+
+
+def _get_shared_titles_for_user() -> list[dict]:
+    """Get shared titles for current user, ordered by position."""
+    titles = (
+        SharedTitle.query.filter_by(user_id=current_user.id)
+        .order_by(SharedTitle.position)
+        .all()
+    )
+    return [
+        {"id": t.id, "title": t.title, "is_default": t.is_default_work_hours}
+        for t in titles
+    ]
 
 
 @todos_bp.route("/quick_create", methods=["POST"])
@@ -178,6 +294,9 @@ def create_todo():
             priority = validate_priority(request.form.get("priority"))
             due_date = validate_date(request.form.get("due_date"))
             time_fields = _parse_time_fields(request.form)
+            shared_fields = _parse_shared_calendar_fields(
+                request.form, time_fields["due_time"]
+            )
 
             todo = Todo(
                 title=title,
@@ -187,10 +306,16 @@ def create_todo():
                 due_time=time_fields["due_time"],
                 end_time=time_fields["end_time"],
                 duration_minutes=time_fields["duration_minutes"],
+                sync_to_shared=shared_fields["sync_to_shared"],
+                shared_title=shared_fields["shared_title"],
                 user_id=current_user.id,
             )
             db.session.add(todo)
             db.session.commit()
+
+            # Sync shared calendar blocks if needed
+            if todo.sync_to_shared and todo.due_date:
+                _sync_shared_blocks_for_todo(todo)
 
             flash("Todo created successfully!", "success")
             return redirect(url_for("todos.list_todos"))
@@ -205,6 +330,8 @@ def create_todo():
         action="Create",
         show_due_date=True,
         preset_due_date="",
+        shared_titles=_get_shared_titles_for_user(),
+        has_shared_calendar=bool(current_user.shared_calendar_id),
     )
 
 
@@ -221,6 +348,9 @@ def create_todo_today():
             )
             priority = validate_priority(request.form.get("priority"))
             time_fields = _parse_time_fields(request.form)
+            shared_fields = _parse_shared_calendar_fields(
+                request.form, time_fields["due_time"]
+            )
 
             todo = Todo(
                 title=title,
@@ -230,10 +360,16 @@ def create_todo_today():
                 due_time=time_fields["due_time"],
                 end_time=time_fields["end_time"],
                 duration_minutes=time_fields["duration_minutes"],
+                sync_to_shared=shared_fields["sync_to_shared"],
+                shared_title=shared_fields["shared_title"],
                 user_id=current_user.id,
             )
             db.session.add(todo)
             db.session.commit()
+
+            # Sync shared calendar blocks if needed
+            if todo.sync_to_shared:
+                _sync_shared_blocks_for_todo(todo)
 
             flash("Todo for today created!", "success")
             return redirect(url_for("index"))
@@ -248,6 +384,8 @@ def create_todo_today():
         action="Create",
         show_due_date=False,
         preset_due_date=preset_date.isoformat(),
+        shared_titles=_get_shared_titles_for_user(),
+        has_shared_calendar=bool(current_user.shared_calendar_id),
     )
 
 
@@ -264,6 +402,9 @@ def create_todo_tomorrow():
             )
             priority = validate_priority(request.form.get("priority"))
             time_fields = _parse_time_fields(request.form)
+            shared_fields = _parse_shared_calendar_fields(
+                request.form, time_fields["due_time"]
+            )
 
             todo = Todo(
                 title=title,
@@ -273,10 +414,16 @@ def create_todo_tomorrow():
                 due_time=time_fields["due_time"],
                 end_time=time_fields["end_time"],
                 duration_minutes=time_fields["duration_minutes"],
+                sync_to_shared=shared_fields["sync_to_shared"],
+                shared_title=shared_fields["shared_title"],
                 user_id=current_user.id,
             )
             db.session.add(todo)
             db.session.commit()
+
+            # Sync shared calendar blocks if needed
+            if todo.sync_to_shared:
+                _sync_shared_blocks_for_todo(todo)
 
             flash("Todo for tomorrow created!", "success")
             return redirect(url_for("tomorrow"))
@@ -293,6 +440,8 @@ def create_todo_tomorrow():
         action="Create",
         show_due_date=False,
         preset_due_date=preset_date.isoformat(),
+        shared_titles=_get_shared_titles_for_user(),
+        has_shared_calendar=bool(current_user.shared_calendar_id),
     )
 
 
@@ -301,6 +450,10 @@ def create_todo_tomorrow():
 def edit_todo(todo_id):
     """Edit an existing todo"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    # Track if we need to update shared calendar (date or sync status changed)
+    old_due_date = todo.due_date
+    old_sync_to_shared = todo.sync_to_shared
 
     if request.method == "POST":
         try:
@@ -316,6 +469,13 @@ def edit_todo(todo_id):
             todo.end_time = time_fields["end_time"]
             todo.duration_minutes = time_fields["duration_minutes"]
 
+            # Handle shared calendar fields
+            shared_fields = _parse_shared_calendar_fields(
+                request.form, time_fields["due_time"]
+            )
+            todo.sync_to_shared = shared_fields["sync_to_shared"]
+            todo.shared_title = shared_fields["shared_title"]
+
             # Mark as in progress when edited (per tests expectation)
             if todo.status == "pending":
                 todo.status = "in_progress"
@@ -325,6 +485,22 @@ def edit_todo(todo_id):
             if todo.google_event_id:
                 _sync_todo_to_calendar(todo)
 
+            # Handle shared calendar sync
+            dates_to_sync = set()
+
+            # If was synced but now isn't, or date changed, need to update old date
+            if old_sync_to_shared and old_due_date:
+                if not todo.sync_to_shared or todo.due_date != old_due_date:
+                    dates_to_sync.add(old_due_date)
+
+            # If currently synced, always update that date (time/title changes affect blocks)
+            if todo.sync_to_shared and todo.due_date:
+                dates_to_sync.add(todo.due_date)
+
+            # Sync all affected dates
+            for sync_date in dates_to_sync:
+                _sync_shared_blocks_for_date(sync_date)
+
             flash("Todo updated successfully!", "success")
             return redirect(url_for("todos.list_todos"))
         except ValidationError as e:
@@ -333,9 +509,21 @@ def edit_todo(todo_id):
                 "Validation error editing todo",
                 extra={"todo_id": todo_id, "error": str(e)},
             )
-            return render_template("todos/form.html", todo=todo, action="Edit")
+            return render_template(
+                "todos/form.html",
+                todo=todo,
+                action="Edit",
+                shared_titles=_get_shared_titles_for_user(),
+                has_shared_calendar=bool(current_user.shared_calendar_id),
+            )
 
-    return render_template("todos/form.html", todo=todo, action="Edit")
+    return render_template(
+        "todos/form.html",
+        todo=todo,
+        action="Edit",
+        shared_titles=_get_shared_titles_for_user(),
+        has_shared_calendar=bool(current_user.shared_calendar_id),
+    )
 
 
 @todos_bp.route("/<int:todo_id>/toggle", methods=["POST"])
@@ -360,6 +548,12 @@ def toggle_todo(todo_id):
             _sync_calendar_completion(todo, mark_completed=False)
 
     db.session.commit()
+
+    # Recalculate shared blocks if todo affects shared calendar
+    # (completed todos may be removed from future blocks)
+    if todo.sync_to_shared and todo.due_date:
+        _sync_shared_blocks_for_todo(todo)
+
     next_page = request.args.get("next")
     if next_page:
         return redirect(next_page)
@@ -629,8 +823,18 @@ def _sync_todo_to_calendar(todo: Todo) -> None:
 def delete_todo(todo_id):
     """Delete a todo"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    # Capture info for shared calendar sync before deletion
+    sync_to_shared = todo.sync_to_shared
+    due_date = todo.due_date
+
     db.session.delete(todo)
     db.session.commit()
+
+    # Recalculate shared blocks after deletion
+    if sync_to_shared and due_date:
+        _sync_shared_blocks_for_date(due_date)
+
     flash("Todo deleted successfully!", "success")
     return redirect(url_for("todos.list_todos"))
 
@@ -640,8 +844,21 @@ def delete_todo(todo_id):
 def set_due_today(todo_id):
     """Set todo due date to today"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    # Track old date for shared calendar sync
+    old_due_date = todo.due_date
+
     todo.due_date = date.today()
     db.session.commit()
+
+    # Handle shared calendar sync if needed
+    if todo.sync_to_shared:
+        dates_to_sync = {todo.due_date}
+        if old_due_date and old_due_date != todo.due_date:
+            dates_to_sync.add(old_due_date)
+        for sync_date in dates_to_sync:
+            _sync_shared_blocks_for_date(sync_date)
+
     next_page = request.args.get("next")
     if next_page:
         return redirect(next_page)
@@ -653,8 +870,21 @@ def set_due_today(todo_id):
 def set_due_tomorrow(todo_id):
     """Set todo due date to tomorrow"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    # Track old date for shared calendar sync
+    old_due_date = todo.due_date
+
     todo.due_date = date.today() + timedelta(days=1)
     db.session.commit()
+
+    # Handle shared calendar sync if needed
+    if todo.sync_to_shared:
+        dates_to_sync = {todo.due_date}
+        if old_due_date and old_due_date != todo.due_date:
+            dates_to_sync.add(old_due_date)
+        for sync_date in dates_to_sync:
+            _sync_shared_blocks_for_date(sync_date)
+
     next_page = request.args.get("next")
     if next_page:
         return redirect(next_page)

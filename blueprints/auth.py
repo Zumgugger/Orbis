@@ -11,7 +11,7 @@ from flask import Blueprint, current_app, flash, redirect, request, session, url
 from flask_login import current_user, login_required, login_user, logout_user
 
 from extensions import db
-from models import User
+from models import SharedTitle, User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -146,6 +146,10 @@ def callback():
                 oauth_token=json.dumps(token),
             )
             db.session.add(user)
+            db.session.commit()
+
+            # Seed default shared titles for new user
+            SharedTitle.seed_for_user(user.id)
         else:
             # Update existing user with OAuth info
             user.google_id = user_info["sub"]
@@ -182,6 +186,100 @@ def logout():
     logout_user()
     flash("You have been logged out.", "success")
     return redirect(url_for("index"))
+
+
+@auth_bp.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    """User settings page - configure calendar options"""
+    from flask import render_template
+
+    if request.method == "POST":
+        # Update shared calendar ID
+        shared_calendar_id = request.form.get("shared_calendar_id", "").strip()
+
+        # Basic validation - should look like an email or calendar ID
+        if shared_calendar_id and "@" not in shared_calendar_id:
+            flash(
+                "Invalid calendar ID format. Should be an email-like address.", "error"
+            )
+            return redirect(url_for("auth.settings"))
+
+        current_user.shared_calendar_id = (
+            shared_calendar_id if shared_calendar_id else None
+        )
+        db.session.commit()
+
+        flash("Settings saved successfully!", "success")
+        return redirect(url_for("auth.settings"))
+
+    # Get user's shared titles for display/management
+    shared_titles = (
+        SharedTitle.query.filter_by(user_id=current_user.id)
+        .order_by(SharedTitle.position)
+        .all()
+    )
+
+    return render_template(
+        "auth/settings.html",
+        shared_calendar_id=current_user.shared_calendar_id or "",
+        shared_titles=shared_titles,
+    )
+
+
+@auth_bp.route("/settings/titles", methods=["POST"])
+@login_required
+def update_shared_titles():
+    """Update user's shared calendar titles"""
+    action = request.form.get("action")
+
+    if action == "add":
+        title = request.form.get("title", "").strip()
+        if title:
+            # Get max position
+            max_pos = (
+                db.session.query(db.func.max(SharedTitle.position))
+                .filter_by(user_id=current_user.id)
+                .scalar()
+                or 0
+            )
+
+            new_title = SharedTitle(
+                user_id=current_user.id,
+                title=title,
+                is_default_work_hours=False,
+                position=max_pos + 1,
+            )
+            db.session.add(new_title)
+            db.session.commit()
+            flash(f"Added title: {title}", "success")
+        else:
+            flash("Title cannot be empty", "error")
+
+    elif action == "delete":
+        title_id = request.form.get("title_id")
+        if title_id:
+            title_obj = SharedTitle.query.filter_by(
+                id=title_id, user_id=current_user.id
+            ).first()
+            if title_obj:
+                db.session.delete(title_obj)
+                db.session.commit()
+                flash(f"Deleted title: {title_obj.title}", "success")
+
+    elif action == "toggle_default":
+        title_id = request.form.get("title_id")
+        if title_id:
+            title_obj = SharedTitle.query.filter_by(
+                id=title_id, user_id=current_user.id
+            ).first()
+            if title_obj:
+                title_obj.is_default_work_hours = not title_obj.is_default_work_hours
+                db.session.commit()
+                status = "default" if title_obj.is_default_work_hours else "not default"
+                flash(f"'{title_obj.title}' is now {status} for work hours", "info")
+
+    return redirect(url_for("auth.settings"))
 
 
 # Development Mode Routes

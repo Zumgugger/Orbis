@@ -25,6 +25,9 @@ class User(UserMixin, db.Model):
     oauth_token = db.Column(
         db.Text, nullable=True
     )  # Store OAuth token JSON (access+refresh)
+    shared_calendar_id = db.Column(
+        db.String(255), nullable=True
+    )  # Secondary calendar for family blocks
 
     def __repr__(self) -> str:
         return f"<User {self.id}: {self.email}>"
@@ -61,6 +64,7 @@ class User(UserMixin, db.Model):
             "role": self.role,
             "created_at": self.created_at.isoformat(),
             "last_login": self.last_login.isoformat() if self.last_login else None,
+            "shared_calendar_id": self.shared_calendar_id,
         }
 
 

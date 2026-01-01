@@ -68,6 +68,7 @@ class CalendarService:
         token: dict[str, Any],
         start_date: date,
         end_date: date,
+        calendar_id: str = "primary",
     ) -> list[dict[str, Any]]:
         """
         Fetch calendar events from Google Calendar API.
@@ -77,6 +78,7 @@ class CalendarService:
             token: OAuth token dict for authentication
             start_date: Start date (inclusive)
             end_date: End date (exclusive)
+            calendar_id: Calendar ID to fetch from (default: primary)
 
         Returns:
             List of event dictionaries
@@ -86,7 +88,7 @@ class CalendarService:
 
         try:
             resp = oauth_client.get(
-                "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events",
                 params={
                     "timeMin": time_min,
                     "timeMax": time_max,
@@ -177,6 +179,7 @@ class CalendarService:
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         duration_minutes: int = 60,
+        calendar_id: str = "primary",
     ) -> dict[str, Any] | None:
         """
         Create a new calendar event.
@@ -190,6 +193,7 @@ class CalendarService:
             start_time: Start datetime (timezone-aware)
             end_time: End datetime (timezone-aware, optional)
             duration_minutes: Duration in minutes if no end_time
+            calendar_id: Calendar ID to create event in (default: primary)
 
         Returns:
             Created event dict with 'id' and 'htmlLink', or None on failure
@@ -218,7 +222,7 @@ class CalendarService:
 
         try:
             resp = oauth_client.post(
-                "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events",
                 json=event,
                 token=token,
             )
@@ -265,6 +269,7 @@ class CalendarService:
         end_time: datetime | None = None,
         event_date: date | None = None,
         mark_completed: bool = False,
+        calendar_id: str = "primary",
     ) -> bool:
         """
         Update an existing calendar event.
@@ -279,6 +284,7 @@ class CalendarService:
             end_time: New end datetime (optional)
             event_date: New date for all-day event (optional)
             mark_completed: If True, prefix title with checkmark
+            calendar_id: Calendar ID where event exists (default: primary)
 
         Returns:
             True if successful, False otherwise
@@ -288,7 +294,7 @@ class CalendarService:
         # First, get the current event
         try:
             get_resp = oauth_client.get(
-                f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events/{event_id}",
                 token=token,
             )
             if get_resp.status_code != 200:
@@ -331,7 +337,7 @@ class CalendarService:
 
         try:
             resp = oauth_client.patch(
-                f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events/{event_id}",
                 json=update_data,
                 token=token,
             )
@@ -359,6 +365,7 @@ class CalendarService:
         oauth_client: Any,
         token: dict[str, Any],
         event_id: str,
+        calendar_id: str = "primary",
     ) -> bool:
         """
         Delete a calendar event.
@@ -367,13 +374,14 @@ class CalendarService:
             oauth_client: OAuth client for API calls
             token: OAuth token dict for authentication
             event_id: Google Calendar event ID
+            calendar_id: Calendar ID where event exists (default: primary)
 
         Returns:
             True if successful, False otherwise
         """
         try:
             resp = oauth_client.delete(
-                f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events/{event_id}",
                 token=token,
             )
 
@@ -401,6 +409,7 @@ class CalendarService:
         oauth_client: Any,
         token: dict[str, Any],
         event_id: str,
+        calendar_id: str = "primary",
     ) -> dict[str, Any] | None:
         """
         Get a calendar event by ID.
@@ -409,13 +418,14 @@ class CalendarService:
             oauth_client: OAuth client for API calls
             token: OAuth token dict for authentication
             event_id: Google Calendar event ID
+            calendar_id: Calendar ID where event exists (default: primary)
 
         Returns:
             Event data dict if successful, None otherwise
         """
         try:
             resp = oauth_client.get(
-                f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events/{event_id}",
                 token=token,
             )
 
@@ -437,6 +447,7 @@ class CalendarService:
         oauth_client: Any,
         token: dict[str, Any],
         event_id: str,
+        calendar_id: str = "primary",
     ) -> bool:
         """
         Remove the completion mark from an event title.
@@ -445,13 +456,14 @@ class CalendarService:
             oauth_client: OAuth client for API calls
             token: OAuth token dict for authentication
             event_id: Google Calendar event ID
+            calendar_id: Calendar ID where event exists (default: primary)
 
         Returns:
             True if successful, False otherwise
         """
         try:
             get_resp = oauth_client.get(
-                f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events/{event_id}",
                 token=token,
             )
             if get_resp.status_code != 200:
@@ -469,7 +481,7 @@ class CalendarService:
                 return True  # No mark to remove
 
             resp = oauth_client.patch(
-                f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events/{event_id}",
                 json={"summary": new_title},
                 token=token,
             )
@@ -479,3 +491,66 @@ class CalendarService:
             if self.logger:
                 self.logger.exception(f"Exception unmarking event {event_id}: {exc}")
             return False
+
+    def create_multiday_event(
+        self,
+        oauth_client: Any,
+        token: dict[str, Any],
+        title: str,
+        start_date: date,
+        end_date: date,
+        description: str | None = None,
+        calendar_id: str = "primary",
+    ) -> dict[str, Any] | None:
+        """
+        Create a multi-day all-day event (e.g., vacations, holidays).
+
+        Args:
+            oauth_client: OAuth client for API calls
+            token: OAuth token dict for authentication
+            title: Event title/summary
+            start_date: First day of the event (inclusive)
+            end_date: Last day of the event (inclusive)
+            description: Event description (optional)
+            calendar_id: Calendar ID to create event in (default: primary)
+
+        Returns:
+            Created event dict with 'id' and 'htmlLink', or None on failure
+        """
+        # Google Calendar API expects end date to be exclusive (day after last day)
+        end_date_exclusive = end_date + timedelta(days=1)
+
+        event: dict[str, Any] = {
+            "summary": title,
+            "description": description or "",
+            "start": {"date": start_date.isoformat()},
+            "end": {"date": end_date_exclusive.isoformat()},
+        }
+
+        try:
+            resp = oauth_client.post(
+                f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events",
+                json=event,
+                token=token,
+            )
+
+            if resp.status_code in (200, 201):
+                data = resp.json()
+                if self.logger:
+                    self.logger.info(f"Created multi-day event: {data.get('id')}")
+                return {
+                    "id": data.get("id"),
+                    "htmlLink": data.get("htmlLink"),
+                }
+            else:
+                if self.logger:
+                    self.logger.error(
+                        f"Failed to create multi-day event: {resp.status_code} - {resp.text}"
+                    )
+                if resp.status_code in (401, 403):
+                    return {"error": "token_invalid"}
+                return None
+        except Exception as exc:
+            if self.logger:
+                self.logger.exception(f"Exception creating multi-day event: {exc}")
+            return None
