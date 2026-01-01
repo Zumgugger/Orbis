@@ -184,6 +184,9 @@
             const source = this.dataset.source;
             const listTitle = document.getElementById('title').value || 'Shopping list';
 
+            // Get entity's tag IDs to inherit
+            const entityTagIds = [{% for tag in entity_tags %}{{ tag.id }}{% if not loop.last %}, {% endif %}{% endfor %}];
+
             try {
                 const response = await fetch('/todos/quick_create', {
                     method: 'POST',
@@ -193,7 +196,8 @@
                     },
                     body: JSON.stringify({
                         title: selectedText,
-                        description: 'From shopping: ' + listTitle
+                        description: 'From shopping: ' + listTitle,
+                        tag_ids: entityTagIds
                     })
                 });
 

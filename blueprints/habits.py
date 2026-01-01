@@ -62,7 +62,7 @@ def create_habit():
 
             # Sync tags
             tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
-            sync_entity_tags("habit", habit.id, tag_ids, current_user.id)
+            sync_entity_tags(current_user.id, "habit", habit.id, tag_ids)
 
             db.session.commit()
 
@@ -91,7 +91,7 @@ def edit_habit(habit_id):
 
             # Sync tags
             tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
-            sync_entity_tags("habit", habit.id, tag_ids, current_user.id)
+            sync_entity_tags(current_user.id, "habit", habit.id, tag_ids)
 
             db.session.commit()
             flash("Habit updated successfully!", "success")

@@ -50,7 +50,7 @@ def create():
 
             # Sync tags
             tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
-            sync_entity_tags("goal", goal.id, tag_ids, current_user.id)
+            sync_entity_tags(current_user.id, "goal", goal.id, tag_ids)
 
             db.session.commit()
 
@@ -82,7 +82,7 @@ def edit(id):
 
             # Sync tags
             tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
-            sync_entity_tags("goal", goal.id, tag_ids, current_user.id)
+            sync_entity_tags(current_user.id, "goal", goal.id, tag_ids)
 
             db.session.commit()
             flash("Goal updated successfully!", "success")

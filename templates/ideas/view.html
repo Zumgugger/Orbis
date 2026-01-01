@@ -132,6 +132,11 @@
                         <input type="text" class="form-control" id="title" name="title"
                                value="{{ idea.title }}" required>
                     </div>
+
+                    {# Tag Input Component #}
+                    {% set entity_type = 'idea' %}
+                    {% set entity_id = idea.id %}
+                    {% include 'tags/_tag_input.html' %}
                 </form>
             </div>
             <div class="card-footer d-flex justify-content-between">
@@ -355,6 +360,9 @@
 
             if (!selectedText) return;
 
+            // Get idea's tag IDs to inherit
+            const ideaTagIds = [{% for tag in idea_tags %}{{ tag.id }}{% if not loop.last %}, {% endif %}{% endfor %}];
+
             try {
                 const response = await fetch('/todos/quick_create', {
                     method: 'POST',
@@ -364,7 +372,8 @@
                     },
                     body: JSON.stringify({
                         title: selectedText,
-                        description: 'From idea: ' + '{{ idea.title }}'
+                        description: 'From idea: ' + '{{ idea.title }}',
+                        tag_ids: ideaTagIds
                     })
                 });
 

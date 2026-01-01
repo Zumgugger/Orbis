@@ -17,7 +17,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import SharedTitle, Todo, sync_entity_tags
+from models import EntityTag, SharedTitle, Tag, Todo, sync_entity_tags
 from time_utils import get_local_tz, now_local, today_local, tomorrow_local
 from utilities import get_next_url, log_error, log_exception, log_warning
 from validation import (
@@ -202,6 +202,18 @@ def quick_create():
             user_id=current_user.id,
         )
         db.session.add(todo)
+        db.session.flush()  # Get todo.id for tags
+
+        # Sync tags if provided
+        tag_ids = data.get("tag_ids", [])
+        if tag_ids:
+            # Validate tag_ids are integers
+            try:
+                tag_ids = [int(tid) for tid in tag_ids if tid]
+                sync_entity_tags(current_user.id, "todo", todo.id, tag_ids)
+            except (ValueError, TypeError):
+                pass  # Ignore invalid tag_ids
+
         db.session.commit()
 
         return jsonify(
@@ -231,12 +243,32 @@ def list_todos():
 
     today = today_local()
 
-    # Get all todos for the user
-    todos = (
-        Todo.query.filter_by(user_id=current_user.id)
-        .order_by(Todo.position.asc(), Todo.created_at.desc())
-        .all()
+    # Get tag filter from query param
+    filter_tag_id = request.args.get("tag", type=int)
+
+    # Get all tags for the filter dropdown
+    all_tags = (
+        Tag.query.filter_by(user_id=current_user.id).order_by(Tag.name.asc()).all()
     )
+
+    # Get the selected tag for display
+    selected_tag = None
+    if filter_tag_id:
+        selected_tag = Tag.query.filter_by(
+            id=filter_tag_id, user_id=current_user.id
+        ).first()
+
+    # Get all todos for the user
+    query = Todo.query.filter_by(user_id=current_user.id)
+
+    # If filtering by tag, join with entity_tags
+    if filter_tag_id:
+        query = query.join(
+            EntityTag,
+            (EntityTag.entity_type == "todo") & (EntityTag.entity_id == Todo.id),
+        ).filter(EntityTag.tag_id == filter_tag_id)
+
+    todos = query.order_by(Todo.position.asc(), Todo.created_at.desc()).all()
 
     # Separate into categories:
     # - Overdue: pending todos with due_date before today
@@ -267,6 +299,8 @@ def list_todos():
         overdue=overdue,
         pending=pending,
         completed=completed,
+        all_tags=all_tags,
+        selected_tag=selected_tag,
     )
 
 

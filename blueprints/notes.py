@@ -171,7 +171,7 @@ def edit_note(note_id):
 
             # Sync tags
             tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
-            sync_entity_tags("note", note.id, tag_ids, current_user.id)
+            sync_entity_tags(current_user.id, "note", note.id, tag_ids)
 
             db.session.commit()
             flash("Note updated successfully!", "success")

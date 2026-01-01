@@ -127,7 +127,12 @@ def view_idea(idea_id):
         except ValidationError as e:
             flash(str(e), "error")
 
-    return render_template("ideas/view.html", idea=idea)
+    # Get idea's tags for passing to template
+    from models import get_tags_for_entity
+
+    idea_tags = get_tags_for_entity(current_user.id, "idea", idea.id)
+
+    return render_template("ideas/view.html", idea=idea, idea_tags=idea_tags)
 
 
 @ideas_bp.route("/<int:idea_id>/edit", methods=["GET", "POST"])

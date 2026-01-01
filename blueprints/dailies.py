@@ -130,7 +130,7 @@ def edit_daily(daily_id):
 
             # Sync tags
             tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
-            sync_entity_tags("daily", daily.id, tag_ids, current_user.id)
+            sync_entity_tags(current_user.id, "daily", daily.id, tag_ids)
 
             db.session.commit()
             flash("Daily updated successfully!", "success")

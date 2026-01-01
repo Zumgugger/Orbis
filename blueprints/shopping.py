@@ -48,7 +48,7 @@ def create():
 
             # Sync tags
             tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
-            sync_entity_tags("shopping", shopping_list.id, tag_ids, current_user.id)
+            sync_entity_tags(current_user.id, "shopping", shopping_list.id, tag_ids)
 
             db.session.commit()
 
@@ -80,16 +80,32 @@ def edit(id):
 
             # Sync tags
             tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
-            sync_entity_tags("shopping", shopping_list.id, tag_ids, current_user.id)
+            sync_entity_tags(current_user.id, "shopping", shopping_list.id, tag_ids)
 
             db.session.commit()
             flash("Shopping list updated!", "success")
             return redirect(url_for("shopping.list"))
         except ValidationError as e:
             flash(str(e), "error")
-            return render_template("shopping/form.html", shopping_list=shopping_list)
+            # Get tags for re-rendering form
+            from models import get_tags_for_entity
 
-    return render_template("shopping/form.html", shopping_list=shopping_list)
+            entity_tags = get_tags_for_entity(
+                current_user.id, "shopping", shopping_list.id
+            )
+            return render_template(
+                "shopping/form.html",
+                shopping_list=shopping_list,
+                entity_tags=entity_tags,
+            )
+
+    # Get shopping list's tags
+    from models import get_tags_for_entity
+
+    entity_tags = get_tags_for_entity(current_user.id, "shopping", shopping_list.id)
+    return render_template(
+        "shopping/form.html", shopping_list=shopping_list, entity_tags=entity_tags
+    )
 
 
 @shopping_bp.route("/<int:id>/delete", methods=["POST"])
