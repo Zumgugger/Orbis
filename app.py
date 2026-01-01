@@ -414,6 +414,20 @@ def create_app(config_name=None):
         """Serve favicon from static folder."""
         return app.send_static_file("favicon.png")
 
+    @app.route("/sw.js")
+    def service_worker():
+        """Serve service worker from root path for proper scope."""
+        return (
+            app.send_static_file("sw.js"),
+            200,
+            {"Content-Type": "application/javascript"},
+        )
+
+    @app.route("/offline")
+    def offline():
+        """Offline fallback page for PWA."""
+        return render_template("offline.html")
+
     @app.route("/")
     @login_required
     def index():
