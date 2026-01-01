@@ -77,36 +77,6 @@
 </div>
 {% endif %}
 
-{% if overdue_todos and overdue_todos|length > 0 %}
-<!-- Overdue Todos -->
-<div class="alert alert-danger mb-4">
-    <div class="d-flex justify-content-between align-items-start">
-        <div class="flex-grow-1">
-            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Overdue Todos</h5>
-            <p class="mb-2">You have {{ overdue_todos|length }} overdue todo{% if overdue_todos|length != 1 %}s{% endif %} that need attention:</p>
-            <ul class="list-unstyled mb-0">
-                {% for todo in overdue_todos %}
-                <li class="d-flex align-items-center gap-2 mb-2 py-1">
-                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-sm btn-outline-success" title="Mark complete">
-                            <i class="bi bi-check"></i>
-                        </button>
-                    </form>
-                    <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}?next=/" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Reschedule to today">
-                            <i class="bi bi-calendar-check"></i>
-                        </button>
-                    </form>
-                    <span class="flex-grow-1">{{ todo.title }}</span>
-                    <small class="text-muted">Due {{ todo.due_date.strftime('%b %d') }}</small>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
-</div>
-{% endif %}
-
 {% if everything_done %}
     <div class="alert alert-success alert-lg py-5 text-center mb-4">
         <h2 class="mb-3">
@@ -116,7 +86,7 @@
     </div>
 {% endif %}
 
-{% if dailies or combined_todos or focused_habits %}
+{% if dailies or combined_todos or focused_habits or overdue_todos %}
     {% if focused_habits %}
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -131,7 +101,7 @@
                         <i class="bi bi-circle"></i>
                     </button>
                 </form>
-                <div class="flex-grow-1">
+                <div class="flex-grow-1" onclick="window.location='{{ url_for('habits.edit_habit', habit_id=habit.id) }}'" style="cursor: pointer;">
                     <div class="d-flex align-items-center gap-2">
                         <h5 class="mb-0 {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</h5>
                         <span class="badge bg-warning text-dark">Focus</span>
@@ -158,7 +128,7 @@
                             <i class="bi bi-{% if daily.is_completed_today() %}check-circle-fill{% else %}circle{% endif %}"></i>
                         </button>
                     </form>
-                    <div class="flex-grow-1">
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('dailies.edit_daily', daily_id=daily.id) }}'" style="cursor: pointer;">
                         <div class="d-flex align-items-center gap-2">
                             <h5 class="mb-0 {% if daily.is_completed_today() %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</h5>
                             {% if daily.streak_count > 0 %}
@@ -166,6 +136,28 @@
                             {% endif %}
                         </div>
                     </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Overdue todos -->
+            {% for todo in overdue_todos %}
+            <div class="list-group-item list-group-item-danger">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-outline-danger" title="Mark complete">
+                            <i class="bi bi-circle"></i>
+                        </button>
+                    </form>
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
+                        <h5 class="mb-0">{{ todo.title }}</h5>
+                        <small style="color: var(--bs-danger-text-emphasis);"><i class="bi bi-calendar-x"></i> Due {{ todo.due_date.strftime('%b %d') }}</small>
+                    </div>
+                    <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}?next=/" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Reschedule to today">
+                            <i class="bi bi-calendar-check"></i>
+                        </button>
+                    </form>
                 </div>
             </div>
             {% endfor %}

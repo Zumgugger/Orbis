@@ -170,14 +170,18 @@ def combine_todos_and_calendar(
         combined.append({"kind": "calendar", "event": event, "_sort_key": sort_key})
 
     # Add todos with sort keys
+    # Priority order: high=0, medium=1, low=2 (for descending importance)
+    priority_order = {"high": 0, "medium": 1, "low": 2}
+
     for todo in todos:
         if todo.due_time:
             # Todos with time sort by their time
-            sort_key = (1, todo.due_time)
+            sort_key = (1, todo.due_time, 0)  # 0 for priority doesn't matter here
             time_label = todo.get_time_label()
         else:
-            # Todos without time sort at the end, by position
-            sort_key = (3, time_type(23, 59, 59))
+            # Todos without time sort at the end, by priority (high first)
+            priority_val = priority_order.get(todo.priority, 1)
+            sort_key = (3, time_type(23, 59, 59), priority_val)
             time_label = ""
         combined.append(
             {
@@ -188,11 +192,12 @@ def combine_todos_and_calendar(
             }
         )
 
-    # Sort by sort key (timed items first, then by time, then unscheduled)
+    # Sort by sort key (timed items first, then by time, then unscheduled by priority)
     combined.sort(
         key=lambda x: (
             x["_sort_key"][0],
             x["_sort_key"][1],
+            x["_sort_key"][2] if len(x["_sort_key"]) > 2 else 0,
             getattr(x.get("todo"), "position", 0) if x.get("todo") else 0,
         )
     )

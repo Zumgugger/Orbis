@@ -65,7 +65,7 @@
                 <button class="btn btn-outline-success" disabled title="Not available yet">
                     <i class="bi bi-circle"></i>
                 </button>
-                <div class="flex-grow-1">
+                <div class="flex-grow-1" onclick="window.location='{{ url_for('habits.edit_habit', habit_id=habit.id) }}'" style="cursor: pointer;">
                     <div class="d-flex align-items-center gap-2">
                         <h5 class="mb-0 {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</h5>
                         <span class="badge bg-warning text-dark">Focus</span>
@@ -93,7 +93,7 @@
                             <i class="bi bi-{% if daily.is_completed_on(target_date) %}check-circle-fill{% else %}circle{% endif %}"></i>
                         </button>
                     </form>
-                    <div class="flex-grow-1">
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('dailies.edit_daily', daily_id=daily.id) }}'" style="cursor: pointer;">
                         <div class="d-flex align-items-center gap-2">
                             <h5 class="mb-0 {% if daily.is_completed_on(target_date) %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</h5>
                             {% if daily.id not in carryover_ids %}
@@ -160,7 +160,7 @@
                             </button>
                         </form>
                     </div>
-                    <div class="col" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}" style="cursor: pointer;">
+                    <div class="col" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
                         <h5 class="mb-1 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</h5>
                         {% if item.time_label %}
                         <small class="text-muted"><i class="bi bi-clock"></i> {{ item.time_label }}</small>
