@@ -6,6 +6,7 @@ Create Date: 2025-12-27
 """
 
 from alembic import op
+from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision = "20251227_backfill_idea_file_fields"
@@ -15,17 +16,23 @@ depends_on = None
 
 
 def upgrade():
-    # Populate normalized columns from legacy ones where missing
-    op.execute(
-        """
-        UPDATE idea_files
-        SET original_filename = COALESCE(original_filename, filename),
-            stored_filename   = COALESCE(stored_filename, filename),
-            file_path         = COALESCE(file_path, filepath),
-            file_size         = COALESCE(file_size, filesize),
-            mime_type         = mime_type
-        """
-    )
+    # Check if legacy columns exist (they won't on fresh installs)
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = [col["name"] for col in inspector.get_columns("idea_files")]
+
+    # Only run backfill if legacy columns exist
+    if "filename" in columns:
+        op.execute(
+            """
+            UPDATE idea_files
+            SET original_filename = COALESCE(original_filename, filename),
+                stored_filename   = COALESCE(stored_filename, filename),
+                file_path         = COALESCE(file_path, filepath),
+                file_size         = COALESCE(file_size, filesize),
+                mime_type         = mime_type
+            """
+        )
 
 
 def downgrade():
