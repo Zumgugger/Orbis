@@ -45,3 +45,6 @@ db_backups/
 *.log
 client_secret_*.json
 credentials.json
+
+# Deployment docs with server details
+ai plans/deploy.md
