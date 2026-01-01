@@ -12,6 +12,7 @@ from flask_login import current_user, login_required
 from markdown import markdown as md_to_html
 from markupsafe import Markup
 from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import DevConfig, ProdConfig, TestConfig
 from database import Daily, Habit, Todo, User, init_db
@@ -96,6 +97,10 @@ def create_app(config_name=None):
             frame_options="DENY",
             content_security_policy_nonce_in=["script-src"],
         )
+
+        # Trust proxy headers (X-Forwarded-For, X-Forwarded-Proto, etc.)
+        # This is required when running behind Apache/nginx reverse proxy
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     # Initialize database
     init_db(app)
