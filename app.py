@@ -91,11 +91,10 @@ def create_app(config_name=None):
         Talisman(
             app,
             content_security_policy=csp,
-            force_https=True,
+            force_https=False,  # Apache handles HTTPS redirect
             strict_transport_security=True,
             strict_transport_security_max_age=31536000,
             frame_options="DENY",
-            content_security_policy_nonce_in=["script-src"],
         )
 
         # Trust proxy headers (X-Forwarded-For, X-Forwarded-Proto, etc.)
