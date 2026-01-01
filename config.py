@@ -35,6 +35,12 @@ class ProdConfig(BaseConfig):
     LOG_LEVEL = "INFO"
     LOG_FILE = os.getenv("LOG_FILE")  # Optional file logging in production
 
+    # Secure cookie settings for HTTPS
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    WTF_CSRF_SSL_STRICT = False  # Allow CSRF to work behind reverse proxy
+
 
 class TestConfig(BaseConfig):
     TESTING = True
