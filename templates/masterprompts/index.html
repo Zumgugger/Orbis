@@ -14,21 +14,19 @@
                 <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus"></i></button>
             </form>
         </div>
-        <div class="list-group">
+        <div class="list-group" id="categoriesList">
             {% for cat in categories %}
-            <div class="list-group-item d-flex align-items-center justify-content-between {% if cat.id == selected_id %}active{% endif %}">
-                <div class="flex-grow-1">
-                    <a class="stretched-link text-reset text-decoration-none {% if cat.id == selected_id %}text-white{% endif %}"
-                       href="{{ url_for('masterprompts.index', category_id=cat.id) }}">{{ cat.name }}</a>
-                </div>
-                <div class="d-flex gap-2" aria-label="Category actions">
-                    <form method="POST" action="{{ url_for('masterprompts.move_category', cat_id=cat.id, direction='up') }}">
-                        <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
-                    </form>
-                    <form method="POST" action="{{ url_for('masterprompts.move_category', cat_id=cat.id, direction='down') }}">
-                        <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
-                    </form>
-                    <form method="POST" action="{{ url_for('masterprompts.delete_category', cat_id=cat.id) }}" onsubmit="return confirm('Delete category and its sections?');">
+            <div class="list-group-item d-flex align-items-center justify-content-between {% if cat.id == selected_id %}active{% endif %} draggable-item"
+                 data-id="{{ cat.id }}" data-href="{{ url_for('masterprompts.index', category_id=cat.id) }}">
+                <span class="flex-grow-1 category-name" data-id="{{ cat.id }}" data-name="{{ cat.name }}">{{ cat.name }}</span>
+                <input type="text" class="form-control form-control-sm category-edit d-none"
+                       data-id="{{ cat.id }}" value="{{ cat.name }}" style="max-width: 120px;">
+                <div class="d-flex gap-1 action-buttons" aria-label="Category actions">
+                    <button class="btn btn-sm btn-outline-secondary edit-category-btn" data-id="{{ cat.id }}" title="Edit name">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <form method="POST" action="{{ url_for('masterprompts.delete_category', cat_id=cat.id) }}"
+                          onsubmit="return confirm('Delete category and its sections?');" class="delete-category-form d-none" data-id="{{ cat.id }}">
                         <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
                     </form>
                 </div>
@@ -74,58 +72,18 @@
         </div>
         {% endif %}
 
+        <div id="sectionsList" data-category-id="{{ selected_id }}">
         {% if sections %}
             {% for sec in sections %}
-            <div class="card mb-2">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="mb-1">{{ sec.title }}</h6>
-                            <div class="text-muted small mb-2">Created {{ sec.created_at.strftime('%Y-%m-%d') }}</div>
-                        </div>
-                        <div class="d-flex gap-2" aria-label="Section actions">
-                            <form method="POST" action="{{ url_for('masterprompts.move_section', sec_id=sec.id, direction='up') }}">
-                                <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
-                            </form>
-                            <form method="POST" action="{{ url_for('masterprompts.move_section', sec_id=sec.id, direction='down') }}">
-                                <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
-                            </form>
-                            <form method="POST" action="{{ url_for('masterprompts.delete_section', sec_id=sec.id) }}" onsubmit="return confirm('Delete this section?');">
-                                <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="mt-2">{{ sec.body | markdown }}</div>
-                    <div class="mt-3 d-flex gap-2 flex-wrap">
-                        <button class="btn btn-outline-secondary btn-sm copy-section" data-section-text="{{ sec.body | e }}">
-                            <i class="bi bi-clipboard"></i> Copy section
-                        </button>
+            <div class="card mb-2 section-card draggable-item" data-id="{{ sec.id }}" data-href="{{ url_for('masterprompts.view_section', sec_id=sec.id) }}">
+                <div class="card-body d-flex justify-content-between align-items-center py-2">
+                    <span class="section-link flex-grow-1">{{ sec.title }}</span>
+                    <div class="d-flex gap-1 action-buttons">
                         <form method="POST" action="{{ url_for('masterprompts.builder_add', sec_id=sec.id) }}">
-                            <button class="btn btn-outline-primary btn-sm" type="submit">
-                                <i class="bi bi-plus-square"></i> Add to builder
+                            <button class="btn btn-sm btn-outline-primary" type="submit" title="Add to builder">
+                                <i class="bi bi-plus-square"></i>
                             </button>
                         </form>
-                        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#editSection{{ sec.id }}">
-                            <i class="bi bi-pencil"></i> Edit
-                        </button>
-                    </div>
-                    <div class="collapse mt-3" id="editSection{{ sec.id }}">
-                        <div class="card card-body">
-                            <form method="POST" action="{{ url_for('masterprompts.edit_section', sec_id=sec.id) }}">
-                                <div class="mb-2">
-                                    <label class="form-label">Title</label>
-                                    <input type="text" name="title" class="form-control" value="{{ sec.title }}" required>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Body (Markdown supported)</label>
-                                    <textarea name="body" class="form-control" rows="4" required>{{ sec.body }}</textarea>
-                                </div>
-                                <div class="d-flex justify-content-end gap-2">
-                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#editSection{{ sec.id }}">Cancel</button>
-                                    <button type="submit" class="btn btn-primary">Save</button>
-                                </div>
-                            </form>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -133,6 +91,7 @@
         {% else %}
             <div class="alert alert-info">No sections yet in this category.</div>
         {% endif %}
+        </div>
     </div>
 
     <!-- Builder -->
@@ -143,31 +102,23 @@
                 <button class="btn btn-sm btn-outline-danger" type="submit" {% if not builder_sections %}disabled{% endif %}>Clear</button>
             </form>
         </div>
-        <div class="list-group mb-3">
+        <div class="list-group mb-3" id="builderList">
             {% for sec in builder_sections %}
-            <div class="list-group-item">
+            <div class="list-group-item draggable-item" data-id="{{ sec.id }}">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <strong>{{ sec.title }}</strong>
                         <div class="text-muted small">From {{ sec.category.name if sec.category else 'Unknown' }}</div>
                     </div>
-                    <div class="d-flex gap-2">
-                        <form method="POST" action="{{ url_for('masterprompts.builder_move', sec_id=sec.id, direction='up') }}">
-                            <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move up"><i class="bi bi-arrow-up"></i></button>
-                        </form>
-                        <form method="POST" action="{{ url_for('masterprompts.builder_move', sec_id=sec.id, direction='down') }}">
-                            <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move down"><i class="bi bi-arrow-down"></i></button>
-                        </form>
-                        <form method="POST" action="{{ url_for('masterprompts.builder_remove', sec_id=sec.id) }}">
-                            <button class="btn btn-sm btn-outline-danger" type="submit" title="Remove"><i class="bi bi-x-lg"></i></button>
-                        </form>
-                    </div>
+                    <form method="POST" action="{{ url_for('masterprompts.builder_remove', sec_id=sec.id) }}">
+                        <button class="btn btn-sm btn-outline-danger" type="submit" title="Remove"><i class="bi bi-x-lg"></i></button>
+                    </form>
                 </div>
                 <div class="mt-2 text-muted small">{{ sec.body[:140] }}{% if sec.body|length > 140 %}…{% endif %}</div>
             </div>
             {% endfor %}
             {% if not builder_sections %}
-            <div class="list-group-item text-muted">Builder is empty</div>
+            <div class="list-group-item text-muted" id="builderEmpty">Builder is empty</div>
             {% endif %}
         </div>
 
@@ -176,42 +127,135 @@
                 <i class="bi bi-clipboard-check"></i> Copy Combined
             </button>
         </div>
-        <div class="mb-2">
-            <label class="form-label">Preview (combined)</label>
-            <textarea class="form-control" id="combinedPreview" rows="8" readonly>{{ combined_text }}</textarea>
+        <div class="mb-2 d-flex gap-2">
+            <button class="btn btn-outline-primary w-100" id="copyPreview">
+                <i class="bi bi-clipboard"></i> Copy Preview
+            </button>
+            <button class="btn btn-outline-danger" id="clearPreview" title="Clear preview">
+                <i class="bi bi-trash"></i>
+            </button>
         </div>
-        <div id="copyStatus" class="text-muted small">Last copied will appear here.</div>
+        <div class="mb-2">
+            <label class="form-label">Preview (editable - saved locally)</label>
+            <textarea class="form-control" id="combinedPreview" rows="8" placeholder="Edit your combined prompt here...">{{ combined_text }}</textarea>
+        </div>
+        <div id="copyStatus" class="text-muted small">Preview is auto-saved locally.</div>
     </div>
 </div>
+
+<style>
+.draggable-item {
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+}
+.draggable-item:hover {
+    background-color: var(--bs-light);
+}
+.draggable-item.active:hover {
+    background-color: var(--bs-primary);
+}
+.draggable-item.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+    cursor: grabbing;
+}
+.draggable-item.drag-over {
+    border-top: 3px solid var(--bs-primary) !important;
+}
+.action-buttons {
+    position: relative;
+    z-index: 10;
+}
+.action-buttons form,
+.action-buttons button {
+    pointer-events: auto;
+}
+.category-name {
+    cursor: pointer;
+}
+.category-edit {
+    font-size: 0.875rem;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 (function() {
-  // Copy a single section body
-  document.querySelectorAll('.copy-section').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const text = btn.getAttribute('data-section-text');
-      await copyText(text, 'Section copied');
-    });
-  });
+  const STORAGE_KEY = 'masterprompts_preview';
+  const preview = document.getElementById('combinedPreview');
+  const status = document.getElementById('copyStatus');
+  const DRAG_DELAY = 150;
 
-  // Copy combined
+  // Get CSRF token
+  const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  // Load preview from localStorage
+  function loadPreview() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved && preview && !preview.value.trim()) {
+      preview.value = saved;
+    } else if (preview && preview.value.trim()) {
+      localStorage.setItem(STORAGE_KEY, preview.value);
+    }
+  }
+
+  function savePreview() {
+    if (preview) {
+      localStorage.setItem(STORAGE_KEY, preview.value);
+    }
+  }
+
+  loadPreview();
+
+  if (preview) {
+    preview.addEventListener('input', savePreview);
+  }
+
+  // Copy buttons
   const copyCombinedBtn = document.getElementById('copyCombined');
   if (copyCombinedBtn) {
     copyCombinedBtn.addEventListener('click', async () => {
-      const text = document.getElementById('combinedPreview').value || '';
-      await copyText(text, 'Combined masterprompt copied');
+      const text = preview ? preview.value : '';
+      if (!text.trim()) {
+        if (status) status.textContent = 'Nothing to copy - add sections to builder first';
+        return;
+      }
+      await copyToClipboard(text);
+      if (status) status.textContent = 'Combined builder copied (' + text.length + ' chars)';
     });
   }
 
-  async function copyText(text, label) {
-    const status = document.getElementById('copyStatus');
+  const copyPreviewBtn = document.getElementById('copyPreview');
+  if (copyPreviewBtn) {
+    copyPreviewBtn.addEventListener('click', async () => {
+      const text = preview ? preview.value : '';
+      if (!text.trim()) {
+        if (status) status.textContent = 'Preview is empty';
+        return;
+      }
+      await copyToClipboard(text);
+      if (status) status.textContent = 'Preview copied (' + text.length + ' chars)';
+    });
+  }
+
+  const clearPreviewBtn = document.getElementById('clearPreview');
+  if (clearPreviewBtn) {
+    clearPreviewBtn.addEventListener('click', () => {
+      if (preview) {
+        preview.value = '';
+        savePreview();
+      }
+      if (status) status.textContent = 'Preview cleared';
+    });
+  }
+
+  async function copyToClipboard(text) {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
-        // Fallback
         const ta = document.createElement('textarea');
         ta.value = text;
         ta.setAttribute('readonly', '');
@@ -222,23 +266,265 @@
         document.execCommand('copy');
         document.body.removeChild(ta);
       }
-      if (status) status.textContent = `${label}. Last copied (${text.length} chars):`;
-      showLastCopied(text);
     } catch (err) {
       if (status) status.textContent = 'Copy failed: ' + err;
     }
   }
 
-  function showLastCopied(text) {
-    let preview = document.getElementById('lastCopiedPreview');
-    if (!preview) {
-      preview = document.createElement('div');
-      preview.id = 'lastCopiedPreview';
-      preview.className = 'mt-1 small text-muted';
-      document.getElementById('copyStatus').after(preview);
-    }
-    preview.textContent = text;
+  // ========== CATEGORY INLINE EDIT ==========
+  let currentEditId = null;
+
+  document.querySelectorAll('.edit-category-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const catId = btn.dataset.id;
+      const nameSpan = document.querySelector(`.category-name[data-id="${catId}"]`);
+      const editInput = document.querySelector(`.category-edit[data-id="${catId}"]`);
+      const deleteForm = document.querySelector(`.delete-category-form[data-id="${catId}"]`);
+
+      if (nameSpan && editInput) {
+        currentEditId = catId;
+        nameSpan.classList.add('d-none');
+        editInput.classList.remove('d-none');
+        btn.classList.add('d-none');
+        if (deleteForm) deleteForm.classList.remove('d-none');
+        editInput.value = nameSpan.dataset.name || nameSpan.textContent.trim();
+        editInput.focus();
+        editInput.select();
+      }
+    });
+  });
+
+  document.querySelectorAll('.category-edit').forEach(input => {
+    const hideEdit = (catId) => {
+      const nameSpan = document.querySelector(`.category-name[data-id="${catId}"]`);
+      const editBtn = document.querySelector(`.edit-category-btn[data-id="${catId}"]`);
+      const deleteForm = document.querySelector(`.delete-category-form[data-id="${catId}"]`);
+
+      input.classList.add('d-none');
+      if (nameSpan) nameSpan.classList.remove('d-none');
+      if (editBtn) editBtn.classList.remove('d-none');
+      if (deleteForm) deleteForm.classList.add('d-none');
+      currentEditId = null;
+    };
+
+    const saveEdit = async () => {
+      const catId = input.dataset.id;
+      if (currentEditId !== catId) return; // Already saved or cancelled
+
+      const nameSpan = document.querySelector(`.category-name[data-id="${catId}"]`);
+      const newName = input.value.trim();
+      const originalName = nameSpan.dataset.name || nameSpan.textContent.trim();
+
+      if (!newName || newName === originalName) {
+        input.value = originalName;
+        hideEdit(catId);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/masterprompts/category/${catId}/edit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+          },
+          body: 'name=' + encodeURIComponent(newName) + '&csrf_token=' + encodeURIComponent(csrfToken)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          nameSpan.textContent = data.name;
+          nameSpan.dataset.name = data.name;
+          input.value = data.name;
+        } else {
+          alert(data.error || 'Failed to save');
+          input.value = originalName;
+        }
+      } catch (err) {
+        console.error('Save error:', err);
+        alert('Error saving: ' + err.message);
+        input.value = originalName;
+      }
+
+      hideEdit(catId);
+    };
+
+    input.addEventListener('blur', () => {
+      setTimeout(saveEdit, 100); // Small delay to allow delete button click
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveEdit();
+      } else if (e.key === 'Escape') {
+        const catId = input.dataset.id;
+        const nameSpan = document.querySelector(`.category-name[data-id="${catId}"]`);
+        input.value = nameSpan.dataset.name || nameSpan.textContent.trim();
+        hideEdit(catId);
+      }
+    });
+  });
+
+  // ========== CLICK vs DRAG DETECTION ==========
+
+  function initClickDrag(container, apiEndpoint, extraData = {}) {
+    if (!container) return;
+
+    let draggedItem = null;
+    let mouseDownTime = 0;
+    let mouseDownItem = null;
+    let isDragging = false;
+    let dragTimeout = null;
+
+    const items = container.querySelectorAll('.draggable-item');
+
+    items.forEach(item => {
+      // Prevent drag on action buttons
+      item.querySelectorAll('.action-buttons').forEach(btn => {
+        btn.addEventListener('mousedown', (e) => e.stopPropagation());
+        btn.addEventListener('click', (e) => e.stopPropagation());
+      });
+
+      item.addEventListener('mousedown', (e) => {
+        // Ignore if clicking on buttons/forms/inputs
+        if (e.target.closest('.action-buttons') || e.target.closest('input')) return;
+
+        mouseDownTime = Date.now();
+        mouseDownItem = item;
+        isDragging = false;
+
+        // Start drag after delay
+        dragTimeout = setTimeout(() => {
+          isDragging = true;
+          item.setAttribute('draggable', 'true');
+          item.classList.add('dragging');
+
+          const dragEvent = new DragEvent('dragstart', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer: new DataTransfer()
+          });
+          dragEvent.dataTransfer.setData('text/plain', item.dataset.id);
+          dragEvent.dataTransfer.effectAllowed = 'move';
+          item.dispatchEvent(dragEvent);
+        }, DRAG_DELAY);
+      });
+
+      item.addEventListener('mouseup', (e) => {
+        clearTimeout(dragTimeout);
+
+        // If not dragging and quick click, navigate
+        if (!isDragging && mouseDownItem === item) {
+          const href = item.dataset.href;
+          if (href && !e.target.closest('.action-buttons') && !e.target.closest('input')) {
+            window.location.href = href;
+          }
+        }
+
+        mouseDownItem = null;
+        isDragging = false;
+      });
+
+      item.addEventListener('mouseleave', () => {
+        if (!isDragging) {
+          clearTimeout(dragTimeout);
+        }
+      });
+
+      // Drag events
+      item.addEventListener('dragstart', (e) => {
+        draggedItem = item;
+        item.classList.add('dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', item.dataset.id);
+        }
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        item.setAttribute('draggable', 'false');
+        items.forEach(i => i.classList.remove('drag-over'));
+        draggedItem = null;
+        isDragging = false;
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        if (draggedItem && item !== draggedItem) {
+          item.classList.add('drag-over');
+        }
+      });
+
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('drag-over');
+      });
+
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        item.classList.remove('drag-over');
+
+        if (draggedItem && item !== draggedItem) {
+          const allItems = [...container.querySelectorAll('.draggable-item')];
+          const draggedIdx = allItems.indexOf(draggedItem);
+          const targetIdx = allItems.indexOf(item);
+
+          if (draggedIdx < targetIdx) {
+            item.parentNode.insertBefore(draggedItem, item.nextSibling);
+          } else {
+            item.parentNode.insertBefore(draggedItem, item);
+          }
+
+          saveOrder(container, apiEndpoint, extraData);
+        }
+      });
+    });
   }
+
+  function saveOrder(container, apiEndpoint, extraData = {}) {
+    const items = container.querySelectorAll('.draggable-item');
+    const order = [...items].map(item => parseInt(item.dataset.id));
+
+    fetch(apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({ order, ...extraData })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.success) console.error('Reorder failed:', data.error);
+    })
+    .catch(err => console.error('Reorder error:', err));
+  }
+
+  // Initialize for categories
+  initClickDrag(
+    document.getElementById('categoriesList'),
+    '{{ url_for("masterprompts.reorder_categories") }}'
+  );
+
+  // Initialize for sections
+  const sectionsList = document.getElementById('sectionsList');
+  const categoryId = sectionsList ? sectionsList.dataset.categoryId : null;
+  initClickDrag(
+    sectionsList,
+    '{{ url_for("masterprompts.reorder_sections") }}',
+    { category_id: categoryId ? parseInt(categoryId) : null }
+  );
+
+  // Initialize for builder (no click navigation)
+  initClickDrag(
+    document.getElementById('builderList'),
+    '{{ url_for("masterprompts.reorder_builder") }}'
+  );
+
 })();
 </script>
 {% endblock %}

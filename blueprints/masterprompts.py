@@ -1,7 +1,16 @@
 """
 Masterprompts Blueprint - manage categories, sections, and builder assembly
 """
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_login import current_user, login_required
 from sqlalchemy import func
 
@@ -149,24 +158,6 @@ def create_category():
         return redirect(url_for("masterprompts.index"))
 
 
-@masterprompts_bp.route("/category/<int:cat_id>/edit", methods=["POST"])
-@login_required
-def edit_category(cat_id):
-    cat = MasterCategory.query.filter_by(
-        id=cat_id, user_id=current_user.id
-    ).first_or_404()
-    try:
-        name = validate_title(
-            request.form.get("name"), field_name="Category name", max_length=200
-        )
-        cat.name = name
-        db.session.commit()
-        return redirect(url_for("masterprompts.index", category_id=cat.id))
-    except ValidationError as e:
-        flash(str(e), "error")
-        return redirect(url_for("masterprompts.index", category_id=cat.id))
-
-
 @masterprompts_bp.route("/category/<int:cat_id>/delete", methods=["POST"])
 @login_required
 def delete_category(cat_id):
@@ -183,6 +174,24 @@ def delete_category(cat_id):
     db.session.commit()
     _reseq_categories(current_user.id)
     return redirect(url_for("masterprompts.index"))
+
+
+@masterprompts_bp.route("/category/<int:cat_id>/edit", methods=["POST"])
+@login_required
+def edit_category(cat_id):
+    """Update category name (AJAX endpoint)"""
+    cat = MasterCategory.query.filter_by(
+        id=cat_id, user_id=current_user.id
+    ).first_or_404()
+    try:
+        # Try form data first, then JSON
+        name = request.form.get("name") or (request.json or {}).get("name")
+        name = validate_title(name, field_name="Category name", max_length=200)
+        cat.name = name
+        db.session.commit()
+        return jsonify({"success": True, "name": name})
+    except ValidationError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 @masterprompts_bp.route("/category/<int:cat_id>/move/<direction>", methods=["POST"])
@@ -253,9 +262,24 @@ def create_section(cat_id):
         return redirect(url_for("masterprompts.index", category_id=cat.id))
 
 
+@masterprompts_bp.route("/section/<int:sec_id>", methods=["GET"])
+@login_required
+def view_section(sec_id):
+    """View/edit a single section."""
+    sec = MasterSection.query.filter_by(
+        id=sec_id, user_id=current_user.id
+    ).first_or_404()
+    return render_template(
+        "masterprompts/section.html",
+        section=sec,
+    )
+
+
 @masterprompts_bp.route("/section/<int:sec_id>/edit", methods=["POST"])
 @login_required
 def edit_section(sec_id):
+    from datetime import datetime
+
     sec = MasterSection.query.filter_by(
         id=sec_id, user_id=current_user.id
     ).first_or_404()
@@ -271,11 +295,13 @@ def edit_section(sec_id):
         )
         sec.title = title
         sec.body = body
+        sec.updated_at = datetime.utcnow()
         db.session.commit()
-        return redirect(url_for("masterprompts.index", category_id=sec.category_id))
+        flash("Section saved.", "success")
+        return redirect(url_for("masterprompts.view_section", sec_id=sec.id))
     except ValidationError as e:
         flash(str(e), "error")
-        return redirect(url_for("masterprompts.index", category_id=sec.category_id))
+        return redirect(url_for("masterprompts.view_section", sec_id=sec.id))
 
 
 @masterprompts_bp.route("/section/<int:sec_id>/delete", methods=["POST"])
@@ -368,3 +394,63 @@ def builder_move(sec_id, direction):
 def builder_clear():
     _save_builder([])
     return redirect(url_for("masterprompts.index"))
+
+
+# ----- Drag and Drop Reorder API -----
+
+
+@masterprompts_bp.route("/api/categories/reorder", methods=["POST"])
+@login_required
+def reorder_categories():
+    """Reorder categories via drag and drop. Expects JSON: {order: [id1, id2, ...]}"""
+    from flask import jsonify
+
+    data = request.get_json()
+    if not data or "order" not in data:
+        return jsonify({"error": "Missing order data"}), 400
+
+    order = data["order"]
+    for idx, cat_id in enumerate(order):
+        cat = MasterCategory.query.filter_by(id=cat_id, user_id=current_user.id).first()
+        if cat:
+            cat.position = idx
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@masterprompts_bp.route("/api/sections/reorder", methods=["POST"])
+@login_required
+def reorder_sections():
+    """Reorder sections via drag and drop. Expects JSON: {order: [id1, id2, ...], category_id: int}"""
+    from flask import jsonify
+
+    data = request.get_json()
+    if not data or "order" not in data:
+        return jsonify({"error": "Missing order data"}), 400
+
+    order = data["order"]
+    category_id = data.get("category_id")
+
+    for idx, sec_id in enumerate(order):
+        sec = MasterSection.query.filter_by(id=sec_id, user_id=current_user.id).first()
+        if sec:
+            sec.position = idx
+            if category_id:
+                sec.category_id = category_id
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@masterprompts_bp.route("/api/builder/reorder", methods=["POST"])
+@login_required
+def reorder_builder():
+    """Reorder builder sections via drag and drop. Expects JSON: {order: [id1, id2, ...]}"""
+    from flask import jsonify
+
+    data = request.get_json()
+    if not data or "order" not in data:
+        return jsonify({"error": "Missing order data"}), 400
+
+    order = data["order"]
+    _save_builder(order)
+    return jsonify({"success": True})

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Section - {{ section.title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">Edit Section</h2>
+                <form method="POST" action="{{ url_for('masterprompts.delete_section', sec_id=section.id) }}"
+                      onsubmit="return confirm('Delete this section?');" style="display: inline;">
+                    <button type="submit" class="btn btn-outline-danger" title="Delete Section">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <form method="POST" action="{{ url_for('masterprompts.edit_section', sec_id=section.id) }}">
+                            <div class="mb-3">
+                                <label class="form-label">Title *</label>
+                                <input type="text" name="title" class="form-control" value="{{ section.title }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Body (Markdown supported)</label>
+                                <textarea name="body" class="form-control" rows="12" id="bodyTextarea" required>{{ section.body }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <span class="text-muted small">
+                                    Category: {{ section.category.name if section.category else 'Unknown' }}
+                                </span>
+                                <br>
+                                <span class="text-muted small">
+                                    Last updated: {{ section.updated_at.strftime('%Y-%m-%d %H:%M') if section.updated_at else section.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('masterprompts.index', category_id=section.category_id) }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="bi bi-save"></i> Save Section
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Preview</h5>
+                                <form method="POST" action="{{ url_for('masterprompts.builder_add', sec_id=section.id) }}" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-primary" type="submit" title="Add to builder">
+                                        <i class="bi bi-plus-square"></i> Add to Builder
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="card-body">
+                                <div id="markdownPreview">{{ section.body | markdown }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Live preview update
+(function() {
+    const textarea = document.getElementById('bodyTextarea');
+    const preview = document.getElementById('markdownPreview');
+
+    if (textarea && preview) {
+        textarea.addEventListener('input', function() {
+            // Simple markdown rendering - for full markdown, use a library
+            // This is a basic placeholder; the actual rendering happens server-side
+            preview.innerHTML = textarea.value
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\n/g, '<br>');
+        });
+    }
+})();
+</script>
+{% endblock %}
