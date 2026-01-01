@@ -515,6 +515,7 @@ def create_app(config_name=None):
             today_progress_percent=today_progress_percent,
             missed_yesterday=missed_yesterday,
             overdue_todos=overdue_todos,
+            today_date=today.isoformat(),
         )
 
     @app.route("/tomorrow")

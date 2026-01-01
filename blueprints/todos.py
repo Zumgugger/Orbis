@@ -18,7 +18,7 @@ from flask_login import current_user, login_required
 from extensions import db
 from models import Todo
 from time_utils import get_local_tz, now_local, today_local, tomorrow_local
-from utilities import log_error, log_exception, log_warning
+from utilities import get_next_url, log_error, log_exception, log_warning
 from validation import (
     ValidationError,
     validate_date,
@@ -808,6 +808,92 @@ def unlink_calendar(todo_id):
     flash("Todo unlinked from calendar event.", "success")
 
     return redirect(url_for("todos.list_todos"))
+
+
+@todos_bp.route("/<int:todo_id>/reschedule_calendar", methods=["POST"])
+@login_required
+def reschedule_calendar(todo_id):
+    """Reschedule a todo's linked Google Calendar event to a new date/time"""
+    todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
+
+    if not todo.google_event_id:
+        flash("This todo is not linked to a calendar event.", "warning")
+        return redirect(get_next_url("todos.list_todos"))
+
+    try:
+        event_date = validate_date(request.form.get("event_date"), required=True)
+        event_time = validate_time(request.form.get("event_time"))
+        duration_hours, duration_minutes = validate_duration(
+            request.form.get("duration_hours"), request.form.get("duration_minutes")
+        )
+    except ValidationError as e:
+        flash(str(e), "error")
+        log_warning(
+            "Validation error rescheduling todo",
+            extra={"todo_id": todo.id, "error": str(e)},
+        )
+        return redirect(get_next_url("todos.list_todos"))
+
+    # Build event start/end time
+    if event_time:
+        tzinfo = get_local_tz()
+        start_dt = datetime.combine(event_date, event_time, tzinfo=tzinfo)
+        total_minutes = (duration_hours * 60) + duration_minutes
+        end_dt = start_dt + timedelta(minutes=total_minutes)
+    else:
+        # All-day event
+        start_dt = None
+        end_dt = None
+
+    try:
+        from flask import current_app
+
+        from blueprints.auth import get_google_token_for_user, oauth
+        from services import CalendarService
+
+        token = get_google_token_for_user(current_user)
+        if not token:
+            flash("You must authenticate with Google first.", "error")
+            return redirect(url_for("auth.login"))
+
+        calendar_service = CalendarService(current_app.logger)
+        result = calendar_service.update_event(
+            oauth_client=oauth.google,
+            token=token,
+            event_id=todo.google_event_id,
+            start_time=start_dt,
+            end_time=end_dt,
+            event_date=event_date if not start_dt else None,
+        )
+
+        if result == "token_invalid":
+            flash("Your Google session has expired. Please reconnect.", "warning")
+            session["next"] = url_for("todos.list_todos")
+            return redirect(url_for("auth.login"))
+        elif result:
+            # Update todo's time fields to match new schedule
+            todo.due_date = event_date
+            todo.due_time = event_time
+            if end_dt:
+                todo.end_time = end_dt.time()
+            todo.duration_minutes = (duration_hours * 60) + duration_minutes
+            db.session.commit()
+            flash("Calendar event rescheduled!", "success")
+        else:
+            flash("Failed to update calendar event.", "error")
+            log_error(
+                "CalendarService.update_event returned False",
+                extra={"todo_id": todo.id, "event_id": todo.google_event_id},
+            )
+    except Exception as e:
+        flash(f"Error rescheduling event: {str(e)}", "error")
+        log_exception(
+            e,
+            message="Exception rescheduling calendar event",
+            extra={"todo_id": todo.id},
+        )
+
+    return redirect(get_next_url("todos.list_todos"))
 
 
 @todos_bp.route("/<int:todo_id>/quick_schedule", methods=["POST"])
