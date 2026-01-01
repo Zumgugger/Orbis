@@ -112,9 +112,14 @@ def login():
     if next_arg:
         session["next"] = next_arg
     # Request offline access to obtain refresh_token
-    return oauth.google.authorize_redirect(
-        redirect_uri, prompt="consent", access_type="offline"
-    )
+    # Note: prompt="consent" forces consent screen every time (needed for refresh_token)
+    # We only force it on first login or explicit re-auth
+    force_consent = request.args.get("reauth") == "1"
+    if force_consent:
+        return oauth.google.authorize_redirect(
+            redirect_uri, prompt="consent", access_type="offline"
+        )
+    return oauth.google.authorize_redirect(redirect_uri, access_type="offline")
 
 
 @auth_bp.route("/callback")
@@ -156,7 +161,16 @@ def callback():
             user.last_login = datetime.utcnow()
             user.name = user_info.get("name", user.name)
             user.profile_pic = user_info.get("picture", user.profile_pic)
-            user.oauth_token = json.dumps(token)
+            # Preserve existing refresh_token if new token doesn't have one
+            # (happens when logging in without prompt="consent")
+            if token.get("refresh_token"):
+                user.oauth_token = json.dumps(token)
+            elif user.oauth_token:
+                # Keep existing token's refresh_token, update access_token
+                existing_token = user.get_oauth_token()
+                if existing_token and existing_token.get("refresh_token"):
+                    token["refresh_token"] = existing_token["refresh_token"]
+                    user.oauth_token = json.dumps(token)
         db.session.commit()
 
         # Log user in
