@@ -17,6 +17,73 @@
     </div>
 </div>
 
+<!-- Overdue Todos -->
+{% if overdue %}
+<div class="row mb-4">
+    <div class="col">
+        <h3 style="color: var(--bs-danger-text-emphasis);">Overdue ({{ overdue|length }})</h3>
+        <div class="list-group" id="todoListOverdue">
+            {% for todo in overdue %}
+            <div class="list-group-item todo-item priority-{{ todo.priority }}">
+                <div class="row align-items-center g-3">
+                    <div class="col-auto">
+                        <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn {% if todo.priority == 'high' %}btn-outline-danger{% elif todo.priority == 'medium' %}btn-outline-orange{% else %}btn-outline-warning{% endif %}" title="Mark as complete" data-bs-toggle="tooltip" data-bs-placement="top">
+                                <i class="bi bi-circle"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
+                        <h5 class="mb-1">{{ todo.title }}</h5>
+                        <small style="color: var(--bs-danger-text-emphasis);">
+                            <i class="bi bi-calendar-x"></i> Due {{ todo.due_date.strftime('%b %d') }}
+                            {% if todo.due_time %}
+                                at {{ todo.due_time.strftime('%H:%M') }}
+                            {% endif %}
+                        </small>
+                        {% if todo.description %}
+                            <p class="mb-1 text-muted">{{ todo.description }}</p>
+                        {% endif %}
+                    </div>
+                    {% if todo.duration_minutes %}
+                    <div class="col-auto">
+                        <span class="badge bg-info text-dark" title="Estimated duration" data-bs-toggle="tooltip" data-bs-placement="top">
+                            <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    <div class="col-auto">
+                        {% if todo.google_event_id %}
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#unlinkModalOverdue{{ todo.id }}" title="Linked to Google Calendar (click to manage)" data-bs-toggle="tooltip" data-bs-placement="top">
+                            <i class="bi bi-calendar-check-fill"></i>
+                        </button>
+                        {% else %}
+                        {# Overdue todos have due_date, can quick schedule #}
+                        <form action="{{ url_for('todos.quick_schedule', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-outline-info" title="Add to Google Calendar" data-bs-toggle="tooltip" data-bs-placement="top">
+                                <i class="bi bi-calendar-plus"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                        <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-outline-secondary" title="Set due to today" data-bs-toggle="tooltip" data-bs-placement="top">
+                                <i class="bi bi-calendar-check"></i>
+                            </button>
+                        </form>
+                        <form action="{{ url_for('todos.set_due_tomorrow', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-outline-secondary" title="Set due to tomorrow" data-bs-toggle="tooltip" data-bs-placement="top">
+                                <i class="bi bi-sunrise"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Pending Todos -->
 <div class="row mb-4">
     <div class="col">
@@ -92,10 +159,10 @@
     </div>
 </div>
 
-<!-- Completed Todos -->
+<!-- Completed Todos (today only - older completed are archived) -->
 <div class="row">
     <div class="col">
-        <h3>Completed ({{ completed|length }})</h3>
+        <h3><i class="bi bi-check-circle"></i> Completed Today ({{ completed|length }})</h3>
         {% if completed %}
             <div class="list-group">
                 {% for todo in completed %}
@@ -119,7 +186,7 @@
                 {% endfor %}
             </div>
         {% else %}
-            <p class="text-muted">No completed todos yet.</p>
+            <p class="text-muted">No completed todos today.</p>
         {% endif %}
     </div>
 </div>

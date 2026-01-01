@@ -421,11 +421,23 @@ def create_app(config_name=None):
 
         todos_today = Todo.query.filter(
             Todo.user_id == current_user.id,
+            Todo.status.in_(["pending", "in_progress"]),
             or_(
                 Todo.due_date == today,
                 and_(Todo.due_date.is_(None), Todo.due_time.isnot(None)),
             ),
         ).all()
+
+        # Get overdue todos (pending/in_progress with due_date before today)
+        overdue_todos = (
+            Todo.query.filter(
+                Todo.user_id == current_user.id,
+                Todo.status.in_(["pending", "in_progress"]),
+                Todo.due_date < today,
+            )
+            .order_by(Todo.due_date.desc())
+            .all()
+        )
 
         # Get all dailies that should be done today OR were completed today (including completed ones)
         dailies_today = []
@@ -502,6 +514,7 @@ def create_app(config_name=None):
             today_total=total_today,
             today_progress_percent=today_progress_percent,
             missed_yesterday=missed_yesterday,
+            overdue_todos=overdue_todos,
         )
 
     @app.route("/tomorrow")

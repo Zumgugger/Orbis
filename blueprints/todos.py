@@ -103,17 +103,42 @@ def list_todos():
     # Sync calendar events to todos first
     _sync_calendar_events_to_todos()
 
-    # Then get all todos
+    today = today_local()
+
+    # Get all todos for the user
     todos = (
         Todo.query.filter_by(user_id=current_user.id)
         .order_by(Todo.position.asc(), Todo.created_at.desc())
         .all()
     )
-    pending = [t for t in todos if t.status in ("pending", "in_progress")]
-    completed = [t for t in todos if t.status == "completed"]
+
+    # Separate into categories:
+    # - Overdue: pending todos with due_date before today
+    # - Pending: pending todos with due_date today or later (or no due_date)
+    # - Completed (today): completed today only (archive old completed)
+    overdue = []
+    pending = []
+    completed = []
+
+    for t in todos:
+        if t.status in ("pending", "in_progress"):
+            if t.due_date and t.due_date < today:
+                overdue.append(t)
+            else:
+                pending.append(t)
+        elif t.status == "completed":
+            # Only show completed todos from today (archive old ones)
+            if t.completed_at:
+                completed_date = t.completed_at.date()
+                if completed_date >= today:
+                    completed.append(t)
+            else:
+                # No completed_at timestamp - show it (legacy data)
+                completed.append(t)
 
     return render_template(
         "todos/list.html",
+        overdue=overdue,
         pending=pending,
         completed=completed,
     )
@@ -617,6 +642,9 @@ def set_due_today(todo_id):
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
     todo.due_date = date.today()
     db.session.commit()
+    next_page = request.args.get("next")
+    if next_page:
+        return redirect(next_page)
     return redirect(url_for("todos.list_todos"))
 
 
@@ -627,6 +655,9 @@ def set_due_tomorrow(todo_id):
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
     todo.due_date = date.today() + timedelta(days=1)
     db.session.commit()
+    next_page = request.args.get("next")
+    if next_page:
+        return redirect(next_page)
     return redirect(url_for("todos.list_todos"))
 
 
