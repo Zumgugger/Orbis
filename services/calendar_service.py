@@ -109,7 +109,32 @@ class CalendarService:
                 )
             return []
 
-        return self._parse_events(resp.json())
+        events = self._parse_events(resp.json())
+
+        # Filter events to only include those that START within the date range
+        # Google API returns events that OVERLAP the range, which includes
+        # multi-day events that start before or after the requested range
+        filtered_events = []
+        for event in events:
+            if event.get("all_day"):
+                # For all-day events, check if start_raw date is within range
+                start_raw = event.get("start_raw")
+                if start_raw:
+                    event_start_date = date.fromisoformat(start_raw)
+                    if start_date <= event_start_date < end_date:
+                        filtered_events.append(event)
+            else:
+                # For timed events, check if start_dt date is within range
+                start_dt = event.get("start_dt")
+                if start_dt:
+                    event_start_date = start_dt.date()
+                    if start_date <= event_start_date < end_date:
+                        filtered_events.append(event)
+                else:
+                    # No start time, include it (shouldn't happen)
+                    filtered_events.append(event)
+
+        return filtered_events
 
     def _parse_events(self, data: dict[str, Any]) -> list[dict[str, Any]]:
         """

@@ -642,17 +642,18 @@ def _parse_single_event(event_data: dict) -> dict:
 
     start_dt = None
     end_dt = None
+    start_raw = None
+    end_raw = None
 
     if all_day:
-        start_str = start.get("date")
-        end_str = end.get("date")
-        if start_str:
-            start_dt = dt.strptime(start_str, "%Y-%m-%d")
-        if end_str:
-            end_dt = dt.strptime(end_str, "%Y-%m-%d")
+        start_raw = start.get("date")
+        end_raw = end.get("date")
+        # Don't parse to datetime for all-day events - keep as raw date string
     else:
         start_str = start.get("dateTime")
         end_str = end.get("dateTime")
+        start_raw = start_str
+        end_raw = end_str
         if start_str:
             start_dt = dt.fromisoformat(start_str.replace("Z", "+00:00"))
         if end_str:
@@ -664,6 +665,8 @@ def _parse_single_event(event_data: dict) -> dict:
         "description": event_data.get("description", ""),
         "start_dt": start_dt,
         "end_dt": end_dt,
+        "start_raw": start_raw,
+        "end_raw": end_raw,
         "all_day": all_day,
     }
 
@@ -718,11 +721,19 @@ def _sync_calendar_events_to_todos() -> None:
                     oauth.google, token, todo.google_event_id
                 )
                 if event_data:
-                    # Event exists - parse and update todo
-                    event = _parse_single_event(event_data)
-                    _update_todo_from_event(todo, event, today)
+                    # Check if event is cancelled
+                    if event_data.get("status") == "cancelled":
+                        log_warning(
+                            f"Deleting todo {todo.id} - calendar event was cancelled"
+                        )
+                        db.session.delete(todo)
+                    else:
+                        # Event exists - parse and update todo
+                        event = _parse_single_event(event_data)
+                        _update_todo_from_event(todo, event, today)
                 else:
                     # Event was deleted from calendar - delete the todo
+                    log_warning(f"Deleting todo {todo.id} - calendar event not found")
                     db.session.delete(todo)
 
         # Create todos for NEW events within the 2-day window only
@@ -733,17 +744,26 @@ def _sync_calendar_events_to_todos() -> None:
 
             # Parse event times
             start_dt = event.get("start_dt")
-            due_date = start_dt.date() if start_dt else today
-            due_time = (
-                start_dt.time() if start_dt and not event.get("all_day") else None
-            )
+            is_all_day = event.get("all_day", False)
+
+            # For all-day events, parse the date from start_raw (format: YYYY-MM-DD)
+            if is_all_day:
+                start_raw = event.get("start_raw")
+                if start_raw:
+                    due_date = date.fromisoformat(start_raw)
+                else:
+                    due_date = today
+                due_time = None
+            else:
+                due_date = start_dt.date() if start_dt else today
+                due_time = start_dt.time() if start_dt else None
 
             end_dt = event.get("end_dt")
-            end_time = end_dt.time() if end_dt and not event.get("all_day") else None
+            end_time = end_dt.time() if end_dt and not is_all_day else None
 
             # Calculate duration
             duration_minutes = None
-            if start_dt and end_dt and not event.get("all_day"):
+            if start_dt and end_dt and not is_all_day:
                 duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
 
             # Create the todo
@@ -783,7 +803,16 @@ def _update_todo_from_event(todo: Todo, event: dict, today) -> None:
     end_dt = event.get("end_dt")
     is_all_day = event.get("all_day", False)
 
-    if start_dt and not is_all_day:
+    if is_all_day:
+        # For all-day events, parse date from start_raw
+        start_raw = event.get("start_raw")
+        if start_raw:
+            new_due_date = date.fromisoformat(start_raw)
+            if todo.due_date != new_due_date:
+                todo.due_date = new_due_date
+        todo.due_time = None
+        todo.end_time = None
+    elif start_dt:
         new_due_date = start_dt.date()
         new_due_time = start_dt.time()
         if todo.due_date != new_due_date:
@@ -799,12 +828,6 @@ def _update_todo_from_event(todo: Todo, event: dict, today) -> None:
             new_duration = int((end_dt - start_dt).total_seconds() / 60)
             if todo.duration_minutes != new_duration:
                 todo.duration_minutes = new_duration
-    elif start_dt and is_all_day:
-        new_due_date = start_dt.date()
-        if todo.due_date != new_due_date:
-            todo.due_date = new_due_date
-        todo.due_time = None
-        todo.end_time = None
 
 
 def _sync_calendar_completion(todo: Todo, mark_completed: bool) -> None:
