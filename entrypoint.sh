@@ -2,7 +2,7 @@
 set -e
 
 echo "Running database migrations..."
-flask db upgrade
+alembic upgrade head
 
 echo "Starting application..."
 exec "$@"
