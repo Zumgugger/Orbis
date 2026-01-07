@@ -3,12 +3,28 @@
 {% block title %}Tomorrow's List{% endblock %}
 
 {% block content %}
+<style>
+.btn.btn-outline-orange {
+    color: #fd7e14;
+    border-color: #fd7e14;
+}
+.btn.btn-outline-orange:hover,
+.btn.btn-outline-orange:focus {
+    color: #fff;
+    background-color: #fd7e14;
+    border-color: #fd7e14;
+}
+</style>
+
 <div class="row mb-4">
     <div class="col">
         <h1><i class="bi bi-sunrise"></i> Tomorrow's List</h1>
     </div>
     <div class="col text-end">
-        <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Google Calendar">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary" title="Back to Today">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info ms-2" title="Google Calendar">
             <i class="bi bi-calendar3"></i>
         </a>
         <a href="{{ url_for('todos.create_todo_tomorrow') }}" class="btn btn-outline-primary ms-2" title="Add todo for tomorrow">
@@ -26,48 +42,64 @@
 </div>
 <small class="text-muted d-block mb-3">{{ tomorrow_completed }}/{{ tomorrow_total }} completed</small>
 
-{% if calendar_tomorrow %}
-<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-calendar3"></i> Calendar Events (Tomorrow)</div>
-    <div class="list-group list-group-flush">
-        {% for ev in calendar_tomorrow %}
-        <div class="list-group-item d-flex justify-content-between align-items-start">
-            <div>
-                <strong>{{ ev.title }}</strong><br>
-                <small class="text-muted">
-                    {% if ev.all_day %}
-                        All-day
-                    {% else %}
-                        {{ ev.start }} – {{ ev.end }}
-                    {% endif %}
-                </small>
-            </div>
-            {% if ev.html_link %}
-            <a class="btn btn-sm btn-outline-secondary" href="{{ ev.html_link }}" target="_blank" rel="noopener noreferrer">
-                <i class="bi bi-box-arrow-up-right"></i>
-            </a>
-            {% endif %}
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
+{# Separate items into pending and completed #}
+{% set pending_focused = focused_habits|selectattr('last_increment_date', 'ne', target_date)|list %}
+{% set completed_focused = focused_habits|selectattr('last_increment_date', 'eq', target_date)|list %}
 
-{% if dailies or todos or focused_habits %}
-    {% if focused_habits %}
-    <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <div><i class="bi bi-lightning-charge"></i> Focused Habits</div>
-        </div>
+{% set pending_dailies = dailies|rejectattr('is_completed_on', target_date)|list if dailies else [] %}
+{% set completed_dailies = dailies|selectattr('is_completed_on', target_date)|list if dailies else [] %}
+
+{# Separate combined_todos into scheduled (with time), with due date only, and pending todos #}
+{% set scheduled_todos_pending = [] %}
+{% set scheduled_todos_completed = [] %}
+{% set due_date_todos_pending = [] %}
+{% set due_date_todos_completed = [] %}
+{% set no_due_date_todos_pending = [] %}
+{% set no_due_date_todos_completed = [] %}
+{% set calendar_events = [] %}
+
+{% for item in combined_todos %}
+    {% if item.kind == 'calendar' %}
+        {% set _ = calendar_events.append(item) %}
+    {% elif item.kind == 'todo' %}
+        {% set todo = item.todo %}
+        {% if todo.due_time %}
+            {% if todo.status == 'completed' %}
+                {% set _ = scheduled_todos_completed.append(item) %}
+            {% else %}
+                {% set _ = scheduled_todos_pending.append(item) %}
+            {% endif %}
+        {% elif todo.due_date %}
+            {% if todo.status == 'completed' %}
+                {% set _ = due_date_todos_completed.append(item) %}
+            {% else %}
+                {% set _ = due_date_todos_pending.append(item) %}
+            {% endif %}
+        {% else %}
+            {% if todo.status == 'completed' %}
+                {% set _ = no_due_date_todos_completed.append(item) %}
+            {% else %}
+                {% set _ = no_due_date_todos_pending.append(item) %}
+            {% endif %}
+        {% endif %}
+    {% endif %}
+{% endfor %}
+
+{% if dailies or combined_todos or focused_habits %}
+    <div class="card">
         <div class="list-group list-group-flush">
-            {% for habit in focused_habits %}
+
+            {# ===== PENDING ITEMS ===== #}
+
+            {# 1. Focused Habits (pending) - disabled for tomorrow #}
+            {% for habit in pending_focused %}
             <div class="list-group-item d-flex align-items-center gap-3">
                 <button class="btn btn-outline-success" disabled title="Not available yet">
                     <i class="bi bi-circle"></i>
                 </button>
                 <div class="flex-grow-1" onclick="window.location='{{ url_for('habits.edit_habit', habit_id=habit.id) }}'" style="cursor: pointer;">
                     <div class="d-flex align-items-center gap-2">
-                        <h5 class="mb-0 {% if habit.last_increment_date == target_date %}text-decoration-line-through text-muted{% endif %}">{{ habit.title }}</h5>
+                        <h5 class="mb-0">{{ habit.title }}</h5>
                         <span class="badge bg-warning text-dark">Focus</span>
                         <span class="badge bg-secondary">{{ habit.difficulty|title }}</span>
                     </div>
@@ -78,24 +110,20 @@
                 <span class="badge bg-{% if habit.count < 0 %}danger{% else %}success{% endif %}">{{ habit.count }}</span>
             </div>
             {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-    <div class="card mb-4">
-        <div class="list-group list-group-flush">
-            <!-- Dailies first -->
-            {% for daily in dailies %}
+
+            {# 2. Dailies (pending) #}
+            {% for daily in dailies if not daily.is_completed_on(target_date) %}
             <div class="list-group-item">
-                <div class="d-flex align-items-start gap-3">
+                <div class="d-flex align-items-center gap-3">
                     <form action="{{ url_for('dailies.toggle_for_date', daily_id=daily.id) }}?next=/tomorrow" method="POST" class="d-inline">
                         <input type="hidden" name="target_date" value="{{ target_date }}">
-                        <button type="submit" class="btn {% if daily.is_completed_on(target_date) %}btn-success{% else %}btn-outline-success{% endif %}" {% if daily.frequency == 'daily' %}disabled{% endif %} title="{% if daily.is_completed_on(target_date) %}Completed! Click to undo{% else %}Mark as complete{% endif %}">
-                            <i class="bi bi-{% if daily.is_completed_on(target_date) %}check-circle-fill{% else %}circle{% endif %}"></i>
+                        <button type="submit" class="btn btn-outline-success" {% if daily.frequency == 'daily' %}disabled{% endif %} title="Mark as complete">
+                            <i class="bi bi-circle"></i>
                         </button>
                     </form>
                     <div class="flex-grow-1" onclick="window.location='{{ url_for('dailies.edit_daily', daily_id=daily.id) }}'" style="cursor: pointer;">
                         <div class="d-flex align-items-center gap-2">
-                            <h5 class="mb-0 {% if daily.is_completed_on(target_date) %}text-decoration-line-through text-muted{% endif %}">{{ daily.title }}</h5>
+                            <h5 class="mb-0">{{ daily.title }}</h5>
                             {% if daily.id not in carryover_ids %}
                                 <span class="badge bg-secondary"><i class="bi bi-calendar3"></i> Scheduled</span>
                             {% endif %}
@@ -103,28 +131,13 @@
                                 <span class="streak-badge text-muted"><i class="bi bi-fire"></i> {{ daily.streak_count }}</span>
                             {% endif %}
                         </div>
-                        {% if daily.description %}
-                            <p class="mb-1 text-muted">{{ daily.description }}</p>
-                        {% endif %}
-                        <small class="text-muted">
-                            {% if daily.frequency == 'custom' %}
-                                {{ daily.get_weekdays()|join(', ')|title }}
-                            {% elif daily.frequency == 'daily' %}
-                                Every {{ daily.frequency_interval }} day{% if daily.frequency_interval != 1 %}s{% endif %}
-                            {% elif daily.frequency == 'weekly' %}
-                                Every {{ daily.frequency_interval }} week{% if daily.frequency_interval != 1 %}s{% endif %}
-                            {% elif daily.frequency == 'monthly' %}
-                                Every {{ daily.frequency_interval }} month{% if daily.frequency_interval != 1 %}s{% endif %}
-                            {% endif %}
-                        </small>
                     </div>
                 </div>
             </div>
             {% endfor %}
 
-            <!-- Calendar events then Todos -->
-            {% for item in combined_todos %}
-            {% if item.kind == 'calendar' %}
+            {# 3. Calendar events (always show at their time position) #}
+            {% for item in calendar_events %}
             {% set ev = item.event %}
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
@@ -145,68 +158,222 @@
                     {% endif %}
                 </div>
             </div>
-            {% else %}
+            {% endfor %}
+
+            {# 4. Scheduled todos with time (pending) #}
+            {% for item in scheduled_todos_pending %}
             {% set todo = item.todo %}
-            <div class="list-group-item todo-item priority-{{ todo.priority }}" draggable="true" data-todo-id="{{ todo.id }}">
-                <div class="row align-items-center g-3">
-                    <div class="col-auto reorder-controls" title="Tap to reorder">
-                        <button type="button" class="btn btn-outline-secondary btn-sm move-up" aria-label="Move up"><i class="bi bi-caret-up"></i></button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm move-down" aria-label="Move down"><i class="bi bi-caret-down"></i></button>
-                    </div>
-                    <div class="col-auto">
-                        <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" style="display: inline;">
-                            <button type="submit" class="btn {% if todo.priority == 'high' %}btn-outline-danger{% elif todo.priority == 'medium' %}btn-outline-orange{% else %}btn-outline-warning{% endif %}" title="Mark as complete" data-bs-toggle="tooltip" data-bs-placement="top">
-                                <i class="bi bi-circle"></i>
-                            </button>
-                        </form>
-                    </div>
-                    <div class="col" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
-                        <h5 class="mb-1 {% if todo.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">{{ todo.title }}</h5>
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <button type="submit" class="btn {% if todo.priority == 'high' %}btn-outline-danger{% elif todo.priority == 'medium' %}btn-outline-orange{% else %}btn-outline-warning{% endif %}" title="Mark as complete">
+                            <i class="bi bi-circle"></i>
+                        </button>
+                    </form>
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
+                        <h5 class="mb-0">{{ todo.title }}</h5>
                         {% if item.time_label %}
                         <small class="text-muted"><i class="bi bi-clock"></i> {{ item.time_label }}</small>
                         {% endif %}
-                        {% if todo.description %}
-                            <p class="mb-1 text-muted">{{ todo.description }}</p>
-                        {% endif %}
                     </div>
                     {% if todo.duration_minutes %}
-                    <div class="col-auto">
-                        <span class="badge bg-info text-dark" title="Estimated duration">
-                            <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
-                        </span>
-                    </div>
+                    <span class="badge bg-info text-dark" title="Estimated duration">
+                        <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                    </span>
                     {% endif %}
-                    <div class="col-auto">
-                        {% if todo.google_event_id %}
-                        <button type="button" class="btn btn-success" title="Linked to Google Calendar">
-                            <i class="bi bi-calendar-check-fill"></i>
-                        </button>
-                        {% elif todo.due_date or todo.due_time %}
-                        <form action="{{ url_for('todos.quick_schedule', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                            <button type="submit" class="btn btn-outline-info" title="Add to Google Calendar">
-                                <i class="bi bi-calendar-plus"></i>
-                            </button>
-                        </form>
-                        {% else %}
-                        <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#scheduleModal{{ todo.id }}" title="Add to Google Calendar">
+                    {% if todo.google_event_id %}
+                    <button type="button" class="btn btn-success btn-sm" title="Linked to Google Calendar">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </button>
+                    {% elif todo.due_date or todo.due_time %}
+                    <form action="{{ url_for('todos.quick_schedule', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-info btn-sm" title="Add to Google Calendar">
                             <i class="bi bi-calendar-plus"></i>
                         </button>
-                        {% endif %}
-                        <form action="{{ url_for('todos.set_due_today', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                            <button type="submit" class="btn btn-outline-secondary" title="Set due to today" data-bs-toggle="tooltip" data-bs-placement="top">
-                                <i class="bi bi-calendar-check"></i>
-                            </button>
-                        </form>
-                        <form action="{{ url_for('todos.set_due_tomorrow', todo_id=todo.id) }}" method="POST" style="display: inline;">
-                            <button type="submit" class="btn btn-outline-secondary" title="Set due to tomorrow" data-bs-toggle="tooltip" data-bs-placement="top">
-                                <i class="bi bi-sunrise"></i>
-                            </button>
-                        </form>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {# 5. Todos with due date only (pending) #}
+            {% for item in due_date_todos_pending %}
+            {% set todo = item.todo %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <button type="submit" class="btn {% if todo.priority == 'high' %}btn-outline-danger{% elif todo.priority == 'medium' %}btn-outline-orange{% else %}btn-outline-warning{% endif %}" title="Mark as complete">
+                            <i class="bi bi-circle"></i>
+                        </button>
+                    </form>
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
+                        <h5 class="mb-0">{{ todo.title }}</h5>
+                    </div>
+                    {% if todo.duration_minutes %}
+                    <span class="badge bg-info text-dark" title="Estimated duration">
+                        <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                    </span>
+                    {% endif %}
+                    {% if todo.google_event_id %}
+                    <button type="button" class="btn btn-success btn-sm" title="Linked to Google Calendar">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </button>
+                    {% elif todo.due_date %}
+                    <form action="{{ url_for('todos.quick_schedule', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-info btn-sm" title="Add to Google Calendar">
+                            <i class="bi bi-calendar-plus"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {# 6. Todos with no due date (pending) #}
+            {% for item in no_due_date_todos_pending %}
+            {% set todo = item.todo %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <button type="submit" class="btn {% if todo.priority == 'high' %}btn-outline-danger{% elif todo.priority == 'medium' %}btn-outline-orange{% else %}btn-outline-warning{% endif %}" title="Mark as complete">
+                            <i class="bi bi-circle"></i>
+                        </button>
+                    </form>
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
+                        <h5 class="mb-0">{{ todo.title }}</h5>
+                    </div>
+                    {% if todo.duration_minutes %}
+                    <span class="badge bg-info text-dark" title="Estimated duration">
+                        <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {# ===== COMPLETED ITEMS (scratched off) ===== #}
+
+            {# 1. Focused Habits (completed) #}
+            {% for habit in completed_focused %}
+            <div class="list-group-item d-flex align-items-center gap-3">
+                <button class="btn btn-success" disabled title="Completed">
+                    <i class="bi bi-check-circle-fill"></i>
+                </button>
+                <div class="flex-grow-1" onclick="window.location='{{ url_for('habits.edit_habit', habit_id=habit.id) }}'" style="cursor: pointer;">
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="mb-0 text-decoration-line-through text-muted">{{ habit.title }}</h5>
+                        <span class="badge bg-warning text-dark">Focus</span>
+                        <span class="badge bg-secondary">{{ habit.difficulty|title }}</span>
+                    </div>
+                    {% if habit.description %}
+                        <small class="text-muted">{{ habit.description }}</small>
+                    {% endif %}
+                </div>
+                <span class="badge bg-{% if habit.count < 0 %}danger{% else %}success{% endif %}">{{ habit.count }}</span>
+            </div>
+            {% endfor %}
+
+            {# 2. Dailies (completed) #}
+            {% for daily in dailies if daily.is_completed_on(target_date) %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('dailies.toggle_for_date', daily_id=daily.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <input type="hidden" name="target_date" value="{{ target_date }}">
+                        <button type="submit" class="btn btn-success" title="Completed! Click to undo">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </button>
+                    </form>
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('dailies.edit_daily', daily_id=daily.id) }}'" style="cursor: pointer;">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="mb-0 text-decoration-line-through text-muted">{{ daily.title }}</h5>
+                            {% if daily.streak_count > 0 %}
+                                <span class="streak-badge text-muted"><i class="bi bi-fire"></i> {{ daily.streak_count }}</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
-            {% endif %}
             {% endfor %}
+
+            {# 3. Scheduled todos with time (completed) #}
+            {% for item in scheduled_todos_completed %}
+            {% set todo = item.todo %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-outline-secondary" title="Reopen">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </button>
+                    </form>
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
+                        <h5 class="mb-0 text-decoration-line-through text-muted">{{ todo.title }}</h5>
+                        {% if item.time_label %}
+                        <small class="text-muted"><i class="bi bi-clock"></i> {{ item.time_label }}</small>
+                        {% endif %}
+                    </div>
+                    {% if todo.duration_minutes %}
+                    <span class="badge bg-info text-dark" title="Estimated duration">
+                        <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                    </span>
+                    {% endif %}
+                    {% if todo.google_event_id %}
+                    <button type="button" class="btn btn-success btn-sm" title="Linked to Google Calendar">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {# 4. Todos with due date only (completed) #}
+            {% for item in due_date_todos_completed %}
+            {% set todo = item.todo %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-outline-secondary" title="Reopen">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </button>
+                    </form>
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
+                        <h5 class="mb-0 text-decoration-line-through text-muted">{{ todo.title }}</h5>
+                    </div>
+                    {% if todo.duration_minutes %}
+                    <span class="badge bg-info text-dark" title="Estimated duration">
+                        <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                    </span>
+                    {% endif %}
+                    {% if todo.google_event_id %}
+                    <button type="button" class="btn btn-success btn-sm" title="Linked to Google Calendar">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {# 5. Todos with no due date (completed) #}
+            {% for item in no_due_date_todos_completed %}
+            {% set todo = item.todo %}
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <form action="{{ url_for('todos.toggle_todo', todo_id=todo.id) }}?next=/tomorrow" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-outline-secondary" title="Reopen">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </button>
+                    </form>
+                    <div class="flex-grow-1" onclick="window.location='{{ url_for('todos.edit_todo', todo_id=todo.id) }}'" style="cursor: pointer;">
+                        <h5 class="mb-0 text-decoration-line-through text-muted">{{ todo.title }}</h5>
+                    </div>
+                    {% if todo.duration_minutes %}
+                    <span class="badge bg-info text-dark" title="Estimated duration">
+                        <i class="bi bi-hourglass-split"></i> {{ todo.get_duration_display() }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
         </div>
     </div>
 {% else %}
@@ -214,25 +381,4 @@
         <i class="bi bi-info-circle"></i> Nothing scheduled for tomorrow yet.
     </div>
 {% endif %}
-
-<div class="text-end">
-    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary" title="Back to Today" data-bs-toggle="tooltip" data-bs-placement="top">
-        <i class="bi bi-arrow-left"></i>
-    </a>
-
-    <style>
-    .btn-outline-orange, .btn.btn-outline-orange {
-        color: #fd7e14;
-        border-color: #fd7e14;
-    }
-    .btn-outline-orange:hover,
-    .btn-outline-orange:focus,
-    .btn.btn-outline-orange:hover,
-    .btn.btn-outline-orange:focus {
-        color: #fff;
-        background-color: #fd7e14;
-        border-color: #fd7e14;
-    }
-    </style>
-</div>
 {% endblock %}
