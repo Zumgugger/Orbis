@@ -87,11 +87,11 @@
 {% endif %}
 
 {# Separate items into pending and completed #}
-{% set pending_focused = focused_habits|selectattr('last_increment_date', 'ne', target_date)|list %}
-{% set completed_focused = focused_habits|selectattr('last_increment_date', 'eq', target_date)|list %}
+{% set pending_focused = focused_habits|selectattr('last_increment_date', 'ne', target_date)|list if focused_habits else [] %}
+{% set completed_focused = focused_habits|selectattr('last_increment_date', 'eq', target_date)|list if focused_habits else [] %}
 
-{% set pending_dailies = dailies|rejectattr('is_completed_today')|list %}
-{% set completed_dailies = dailies|selectattr('is_completed_today')|list %}
+{% set pending_dailies = dailies|rejectattr('is_completed_today')|list if dailies else [] %}
+{% set completed_dailies = dailies|selectattr('is_completed_today')|list if dailies else [] %}
 
 {# Separate combined_todos into scheduled (with time), with due date only, and pending todos #}
 {% set scheduled_todos_pending = [] %}

@@ -7,7 +7,7 @@ Missing required settings will raise an error immediately.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -49,15 +49,15 @@ class Settings(BaseSettings):
     )
 
     # OAuth settings (optional for dev, required for production OAuth)
-    GOOGLE_CLIENT_ID: str | None = Field(
+    GOOGLE_CLIENT_ID: Optional[str] = Field(
         default=None,
         description="Google OAuth client ID",
     )
-    GOOGLE_CLIENT_SECRET: str | None = Field(
+    GOOGLE_CLIENT_SECRET: Optional[str] = Field(
         default=None,
         description="Google OAuth client secret",
     )
-    GOOGLE_CLIENT_SECRETS_FILE: str | None = Field(
+    GOOGLE_CLIENT_SECRETS_FILE: Optional[str] = Field(
         default=None,
         description="Path to Google OAuth secrets JSON file",
     )

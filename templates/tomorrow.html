@@ -42,12 +42,9 @@
 </div>
 <small class="text-muted d-block mb-3">{{ tomorrow_completed }}/{{ tomorrow_total }} completed</small>
 
-{# Separate items into pending and completed #}
-{% set pending_focused = focused_habits|selectattr('last_increment_date', 'ne', target_date)|list %}
-{% set completed_focused = focused_habits|selectattr('last_increment_date', 'eq', target_date)|list %}
-
-{% set pending_dailies = dailies|rejectattr('is_completed_on', target_date)|list if dailies else [] %}
-{% set completed_dailies = dailies|selectattr('is_completed_on', target_date)|list if dailies else [] %}
+{# Separate items into pending and completed - use inline conditionals for dailies since is_completed_on is a method #}
+{% set pending_focused = focused_habits|selectattr('last_increment_date', 'ne', target_date)|list if focused_habits else [] %}
+{% set completed_focused = focused_habits|selectattr('last_increment_date', 'eq', target_date)|list if focused_habits else [] %}
 
 {# Separate combined_todos into scheduled (with time), with due date only, and pending todos #}
 {% set scheduled_todos_pending = [] %}
