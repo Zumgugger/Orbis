@@ -7,7 +7,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Note, NoteType, get_tags_for_entity, sync_entity_tags
+from models import EntityTag, Note, NoteType, Tag, get_tags_for_entity, sync_entity_tags
 from validation import ValidationError, validate_title
 
 
@@ -27,14 +27,33 @@ def list_notes():
     """List all notes - All Notes tab"""
     type_id = request.args.get("type", "")
     search_q = request.args.get("q", "").strip()
+    filter_tag_id = request.args.get("tag", type=int)
 
     # Get or create user's note types
     note_types = NoteType.get_or_create_defaults(current_user.id)
+
+    # Get all tags for filter dropdown
+    all_tags = Tag.query.filter_by(user_id=current_user.id).order_by(Tag.name).all()
+
+    # Get selected tag for display
+    selected_tag = None
+    if filter_tag_id:
+        selected_tag = Tag.query.filter_by(
+            id=filter_tag_id, user_id=current_user.id
+        ).first()
 
     query = Note.query.filter_by(user_id=current_user.id)
 
     if type_id:
         query = query.filter_by(note_type_id=int(type_id))
+
+    # Filter by tag if specified
+    if filter_tag_id:
+        query = query.join(
+            EntityTag,
+            (EntityTag.entity_type == "note") & (EntityTag.entity_id == Note.id),
+        ).filter(EntityTag.tag_id == filter_tag_id)
+
     if search_q:
         query = query.filter(
             db.or_(
@@ -55,6 +74,8 @@ def list_notes():
         notes=notes,
         note_types=note_types,
         note_tags=note_tags,
+        all_tags=all_tags,
+        selected_tag=selected_tag,
         current_type_id=type_id,
         search_q=search_q,
         active_tab="all",
@@ -66,6 +87,7 @@ def list_notes():
 def list_by_type(type_id):
     """List notes filtered by a specific type tab"""
     search_q = request.args.get("q", "").strip()
+    filter_tag_id = request.args.get("tag", type=int)
 
     note_type = NoteType.query.filter_by(
         id=type_id, user_id=current_user.id
@@ -77,7 +99,24 @@ def list_by_type(type_id):
         .all()
     )
 
+    # Get all tags for filter dropdown
+    all_tags = Tag.query.filter_by(user_id=current_user.id).order_by(Tag.name).all()
+
+    # Get selected tag for display
+    selected_tag = None
+    if filter_tag_id:
+        selected_tag = Tag.query.filter_by(
+            id=filter_tag_id, user_id=current_user.id
+        ).first()
+
     query = Note.query.filter_by(user_id=current_user.id, note_type_id=type_id)
+
+    # Filter by tag if specified
+    if filter_tag_id:
+        query = query.join(
+            EntityTag,
+            (EntityTag.entity_type == "note") & (EntityTag.entity_id == Note.id),
+        ).filter(EntityTag.tag_id == filter_tag_id)
 
     if search_q:
         query = query.filter(
@@ -99,6 +138,8 @@ def list_by_type(type_id):
         notes=notes,
         note_types=note_types,
         note_tags=note_tags,
+        all_tags=all_tags,
+        selected_tag=selected_tag,
         current_type_id=str(type_id),
         current_note_type=note_type,
         search_q=search_q,

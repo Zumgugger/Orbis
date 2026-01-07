@@ -7,7 +7,38 @@
     <div class="col">
         <h1><i class="bi bi-journal-text"></i> My Notes</h1>
     </div>
-    <div class="col text-end">
+    <div class="col-auto d-flex align-items-center gap-2">
+        {# Tag Filter Dropdown #}
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="tagFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-tag"></i>
+                {% if selected_tag %}
+                    <span class="badge rounded-pill" style="background-color: {{ selected_tag.color }}20; color: {{ selected_tag.color }}; border: 1px solid {{ selected_tag.color }};">
+                        {{ selected_tag.name }}
+                    </span>
+                {% else %}
+                    Filter by Tag
+                {% endif %}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="tagFilterDropdown">
+                <li><a class="dropdown-item {% if not selected_tag %}active{% endif %}" href="{{ request.path }}">
+                    <i class="bi bi-x-circle"></i> All Notes
+                </a></li>
+                {% if all_tags %}
+                <li><hr class="dropdown-divider"></li>
+                {% for tag in all_tags %}
+                <li>
+                    <a class="dropdown-item {% if selected_tag and selected_tag.id == tag.id %}active{% endif %}"
+                       href="{{ request.path }}?tag={{ tag.id }}">
+                        <span class="badge rounded-pill me-1" style="background-color: {{ tag.color }}20; color: {{ tag.color }}; border: 1px solid {{ tag.color }};">
+                            {{ tag.name }}
+                        </span>
+                    </a>
+                </li>
+                {% endfor %}
+                {% endif %}
+            </ul>
+        </div>
         <a href="{{ url_for('notes.create_note', type_id=current_type_id if current_type_id else '') }}" class="btn btn-outline-primary">
             <i class="bi bi-plus-circle"></i> New Note
         </a>
