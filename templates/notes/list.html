@@ -8,63 +8,47 @@
         <h1><i class="bi bi-journal-text"></i> My Notes</h1>
     </div>
     <div class="col text-end">
-        <a href="{{ url_for('notes.create_note') }}" class="btn btn-outline-primary">
+        <a href="{{ url_for('notes.create_note', type_id=current_type_id if current_type_id else '') }}" class="btn btn-outline-primary">
             <i class="bi bi-plus-circle"></i> New Note
         </a>
     </div>
 </div>
 
-<!-- Sub-navigation -->
+<!-- Tab Navigation -->
 <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
-        <a class="nav-link active" href="{{ url_for('notes.list_notes') }}">
+        <a class="nav-link {% if active_tab == 'all' %}active{% endif %}" href="{{ url_for('notes.list_notes') }}">
             <i class="bi bi-list"></i> All Notes
         </a>
     </li>
+    {% for nt in note_types %}
     <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('notes.journal') }}">
-            <i class="bi bi-calendar-day"></i> Journal
+        <a class="nav-link {% if active_tab == nt.id %}active{% endif %}" href="{{ url_for('notes.list_by_type', type_id=nt.id) }}">
+            <i class="{{ nt.icon }}"></i> {{ nt.name }}
         </a>
     </li>
+    {% endfor %}
     <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('notes.weekly') }}">
-            <i class="bi bi-calendar-week"></i> Weekly
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('notes.categories') }}">
-            <i class="bi bi-tags"></i> Categories
+        <a class="nav-link text-success" href="{{ url_for('notes.manage_types') }}" title="Manage note types">
+            <i class="bi bi-plus-lg"></i>
         </a>
     </li>
 </ul>
 
-<!-- Filters -->
+<!-- Search -->
 <div class="row mb-3">
-    <div class="col-md-4 mb-2">
+    <div class="col-md-6">
         <form method="GET" class="d-flex gap-2">
             <input type="text" class="form-control" name="q" placeholder="Search notes..." value="{{ search_q }}">
-            <input type="hidden" name="type" value="{{ current_type }}">
-            <input type="hidden" name="category" value="{{ current_category }}">
             <button type="submit" class="btn btn-outline-secondary">
                 <i class="bi bi-search"></i>
             </button>
+            {% if search_q %}
+            <a href="{{ request.path }}" class="btn btn-outline-secondary" title="Clear search">
+                <i class="bi bi-x-lg"></i>
+            </a>
+            {% endif %}
         </form>
-    </div>
-    <div class="col-md-4 mb-2">
-        <select class="form-select" onchange="window.location.href='{{ url_for('notes.list_notes') }}?type='+this.value+'&category={{ current_category }}&q={{ search_q }}'">
-            <option value="">All Types</option>
-            {% for type_val, type_name in note_types %}
-            <option value="{{ type_val }}" {% if current_type == type_val %}selected{% endif %}>{{ type_name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-4 mb-2">
-        <select class="form-select" onchange="window.location.href='{{ url_for('notes.list_notes') }}?type={{ current_type }}&category='+this.value+'&q={{ search_q }}'">
-            <option value="">All Categories</option>
-            {% for cat in categories %}
-            <option value="{{ cat.id }}" {% if current_category|string == cat.id|string %}selected{% endif %}>{{ cat.name }}</option>
-            {% endfor %}
-        </select>
     </div>
 </div>
 
@@ -78,14 +62,27 @@
                     {% if note.pinned %}<i class="bi bi-pin-fill text-warning"></i> {% endif %}
                     {{ note.title }}
                 </h5>
+                {% if note.snippet %}
                 <p class="mb-1 text-muted small">{{ note.snippet }}</p>
+                {% endif %}
                 <div class="d-flex gap-2 flex-wrap">
-                    <span class="badge bg-secondary">{{ note.type_display }}</span>
-                    {% if note.category_ref %}
-                    <span class="badge bg-info">{{ note.category_ref.name }}</span>
+                    {% if note.type_ref %}
+                    <span class="badge bg-secondary">
+                        <i class="{{ note.type_ref.icon }}"></i> {{ note.type_ref.name }}
+                    </span>
                     {% endif %}
                     {% if note.entry_date %}
-                    <span class="badge bg-light text-dark">{{ note.entry_date.strftime('%b %d, %Y') }}</span>
+                    <span class="badge bg-light text-dark">
+                        <i class="bi bi-calendar"></i> {{ note.entry_date.strftime('%b %d, %Y') }}
+                    </span>
+                    {% endif %}
+                    {# Display tags - passed from blueprint as note_tags dict #}
+                    {% if note_tags and note_tags[note.id] %}
+                    {% for tag in note_tags[note.id] %}
+                    <span class="badge rounded-pill" style="background-color: {{ tag.color }}20; color: {{ tag.color }}; border: 1px solid {{ tag.color }};">
+                        {{ tag.name }}
+                    </span>
+                    {% endfor %}
                     {% endif %}
                 </div>
             </div>
@@ -97,7 +94,11 @@
 {% else %}
 <div class="alert alert-info">
     <i class="bi bi-info-circle"></i> No notes found.
+    {% if current_note_type %}
+    <a href="{{ url_for('notes.create_note', type_id=current_note_type.id) }}">Create your first {{ current_note_type.name }} note!</a>
+    {% else %}
     <a href="{{ url_for('notes.create_note') }}">Create your first note!</a>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

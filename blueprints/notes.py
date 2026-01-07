@@ -1,13 +1,13 @@
 """
-Notes Blueprint - handles notes and journaling
+Notes Blueprint - handles notes with custom type tabs
 """
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import Note, NoteCategory, sync_entity_tags
+from models import Note, NoteType, get_tags_for_entity, sync_entity_tags
 from validation import ValidationError, validate_title
 
 
@@ -20,43 +20,21 @@ def _parse_tag_ids(form_value: str) -> list[int]:
 
 notes_bp = Blueprint("notes", __name__, url_prefix="/notes")
 
-# Built-in prompts
-DAILY_PROMPTS = [
-    "What are you grateful for today?",
-    "What's the most important thing you want to accomplish?",
-    "How are you feeling right now?",
-    "What's one thing you learned recently?",
-    "What challenge are you facing?",
-]
-
-WEEKLY_PROMPTS = [
-    "What went well this week?",
-    "What was challenging?",
-    "What will you do differently next week?",
-    "What are your top 3 wins?",
-    "What are you looking forward to?",
-]
-
-
-def get_week_start(d: date) -> date:
-    """Get Monday of the week containing date d"""
-    return d - timedelta(days=d.weekday())
-
 
 @notes_bp.route("/")
 @login_required
 def list_notes():
-    """List all notes with filtering"""
-    note_type = request.args.get("type", "")
-    category_id = request.args.get("category", "")
+    """List all notes - All Notes tab"""
+    type_id = request.args.get("type", "")
     search_q = request.args.get("q", "").strip()
+
+    # Get or create user's note types
+    note_types = NoteType.get_or_create_defaults(current_user.id)
 
     query = Note.query.filter_by(user_id=current_user.id)
 
-    if note_type:
-        query = query.filter_by(note_type=note_type)
-    if category_id:
-        query = query.filter_by(category_id=int(category_id))
+    if type_id:
+        query = query.filter_by(note_type_id=int(type_id))
     if search_q:
         query = query.filter(
             db.or_(
@@ -66,16 +44,65 @@ def list_notes():
         )
 
     notes = query.order_by(Note.pinned.desc(), Note.updated_at.desc()).all()
-    categories = NoteCategory.query.filter_by(user_id=current_user.id).all()
+
+    # Get tags for all notes
+    note_tags = {}
+    for note in notes:
+        note_tags[note.id] = get_tags_for_entity(current_user.id, "note", note.id)
 
     return render_template(
         "notes/list.html",
         notes=notes,
-        categories=categories,
-        note_types=Note.TYPES,
-        current_type=note_type,
-        current_category=category_id,
+        note_types=note_types,
+        note_tags=note_tags,
+        current_type_id=type_id,
         search_q=search_q,
+        active_tab="all",
+    )
+
+
+@notes_bp.route("/type/<int:type_id>")
+@login_required
+def list_by_type(type_id):
+    """List notes filtered by a specific type tab"""
+    search_q = request.args.get("q", "").strip()
+
+    note_type = NoteType.query.filter_by(
+        id=type_id, user_id=current_user.id
+    ).first_or_404()
+
+    note_types = (
+        NoteType.query.filter_by(user_id=current_user.id)
+        .order_by(NoteType.position)
+        .all()
+    )
+
+    query = Note.query.filter_by(user_id=current_user.id, note_type_id=type_id)
+
+    if search_q:
+        query = query.filter(
+            db.or_(
+                Note.title.ilike(f"%{search_q}%"),
+                Note.content.ilike(f"%{search_q}%"),
+            )
+        )
+
+    notes = query.order_by(Note.pinned.desc(), Note.updated_at.desc()).all()
+
+    # Get tags for all notes
+    note_tags = {}
+    for note in notes:
+        note_tags[note.id] = get_tags_for_entity(current_user.id, "note", note.id)
+
+    return render_template(
+        "notes/list.html",
+        notes=notes,
+        note_types=note_types,
+        note_tags=note_tags,
+        current_type_id=str(type_id),
+        current_note_type=note_type,
+        search_q=search_q,
+        active_tab=type_id,
     )
 
 
@@ -83,12 +110,14 @@ def list_notes():
 @login_required
 def create_note():
     """Create a new note"""
+    # Get or create user's note types
+    note_types = NoteType.get_or_create_defaults(current_user.id)
+
     if request.method == "POST":
         try:
             title = validate_title(request.form.get("title"), max_length=200)
             content = request.form.get("content", "")
-            note_type = request.form.get("note_type", Note.TYPE_JOURNAL)
-            category_id = request.form.get("category_id") or None
+            note_type_id = request.form.get("note_type_id") or None
             entry_date_str = request.form.get("entry_date")
 
             entry_date = None
@@ -98,49 +127,43 @@ def create_note():
                 except ValueError:
                     pass
 
-            # Default entry_date for journal/weekly types
-            if note_type == Note.TYPE_JOURNAL and not entry_date:
-                entry_date = date.today()
-            elif note_type == Note.TYPE_WEEKLY and not entry_date:
-                entry_date = get_week_start(date.today())
-
             note = Note(
                 title=title,
                 content=content,
-                note_type=note_type,
-                category_id=int(category_id) if category_id else None,
+                note_type_id=int(note_type_id) if note_type_id else None,
                 entry_date=entry_date,
                 user_id=current_user.id,
             )
             db.session.add(note)
             db.session.commit()
 
+            # Sync tags
+            tag_ids = _parse_tag_ids(request.form.get("tag_ids", ""))
+            if tag_ids:
+                sync_entity_tags(current_user.id, "note", note.id, tag_ids)
+                db.session.commit()
+
             flash("Note created successfully!", "success")
 
-            # Redirect based on type
-            if note_type == Note.TYPE_JOURNAL:
-                return redirect(url_for("notes.journal"))
-            elif note_type == Note.TYPE_WEEKLY:
-                return redirect(url_for("notes.weekly"))
+            # Redirect to the note's type tab if set, otherwise all notes
+            if note_type_id:
+                return redirect(url_for("notes.list_by_type", type_id=note_type_id))
             return redirect(url_for("notes.list_notes"))
 
         except ValidationError as e:
             flash(str(e), "error")
 
     # Pre-fill type from query param
-    preset_type = request.args.get("type", Note.TYPE_JOURNAL)
+    preset_type_id = request.args.get("type_id", "")
     preset_date = request.args.get("date", "")
-    categories = NoteCategory.query.filter_by(user_id=current_user.id).all()
 
     return render_template(
         "notes/form.html",
         note=None,
         action="Create",
-        categories=categories,
-        note_types=Note.TYPES,
-        preset_type=preset_type,
+        note_types=note_types,
+        preset_type_id=preset_type_id,
         preset_date=preset_date,
-        prompts=DAILY_PROMPTS if preset_type == Note.TYPE_JOURNAL else [],
     )
 
 
@@ -149,14 +172,18 @@ def create_note():
 def edit_note(note_id):
     """Edit an existing note"""
     note = Note.query.filter_by(id=note_id, user_id=current_user.id).first_or_404()
+    note_types = (
+        NoteType.query.filter_by(user_id=current_user.id)
+        .order_by(NoteType.position)
+        .all()
+    )
 
     if request.method == "POST":
         try:
             note.title = validate_title(request.form.get("title"), max_length=200)
             note.content = request.form.get("content", "")
-            note.note_type = request.form.get("note_type", note.note_type)
-            category_id = request.form.get("category_id")
-            note.category_id = int(category_id) if category_id else None
+            note_type_id = request.form.get("note_type_id")
+            note.note_type_id = int(note_type_id) if note_type_id else None
 
             entry_date_str = request.form.get("entry_date")
             if entry_date_str:
@@ -176,28 +203,23 @@ def edit_note(note_id):
             db.session.commit()
             flash("Note updated successfully!", "success")
 
-            # Redirect based on type
-            if note.note_type == Note.TYPE_JOURNAL:
-                return redirect(url_for("notes.journal"))
-            elif note.note_type == Note.TYPE_WEEKLY:
-                return redirect(url_for("notes.weekly"))
+            # Redirect to the note's type tab if set, otherwise all notes
+            if note.note_type_id:
+                return redirect(
+                    url_for("notes.list_by_type", type_id=note.note_type_id)
+                )
             return redirect(url_for("notes.list_notes"))
 
         except ValidationError as e:
             flash(str(e), "error")
 
-    categories = NoteCategory.query.filter_by(user_id=current_user.id).all()
-    prompts = DAILY_PROMPTS if note.note_type == Note.TYPE_JOURNAL else []
-
     return render_template(
         "notes/form.html",
         note=note,
         action="Edit",
-        categories=categories,
-        note_types=Note.TYPES,
-        preset_type=note.note_type,
+        note_types=note_types,
+        preset_type_id=str(note.note_type_id) if note.note_type_id else "",
         preset_date=note.entry_date.isoformat() if note.entry_date else "",
-        prompts=prompts,
     )
 
 
@@ -206,15 +228,13 @@ def edit_note(note_id):
 def delete_note(note_id):
     """Delete a note"""
     note = Note.query.filter_by(id=note_id, user_id=current_user.id).first_or_404()
-    note_type = note.note_type
+    note_type_id = note.note_type_id
     db.session.delete(note)
     db.session.commit()
     flash("Note deleted successfully!", "success")
 
-    if note_type == Note.TYPE_JOURNAL:
-        return redirect(url_for("notes.journal"))
-    elif note_type == Note.TYPE_WEEKLY:
-        return redirect(url_for("notes.weekly"))
+    if note_type_id:
+        return redirect(url_for("notes.list_by_type", type_id=note_type_id))
     return redirect(url_for("notes.list_notes"))
 
 
@@ -228,113 +248,103 @@ def toggle_pin(note_id):
     return redirect(request.referrer or url_for("notes.list_notes"))
 
 
-# ---- Journal View ----
-@notes_bp.route("/journal")
+# ---- Note Types Management ----
+@notes_bp.route("/types")
 @login_required
-def journal():
-    """Journal view - daily entries"""
-    today = date.today()
-
-    # Today's entry
-    today_entry = Note.query.filter_by(
-        user_id=current_user.id,
-        note_type=Note.TYPE_JOURNAL,
-        entry_date=today,
-    ).first()
-
-    # Past entries grouped by month
-    past_entries = (
-        Note.query.filter_by(user_id=current_user.id, note_type=Note.TYPE_JOURNAL)
-        .filter(Note.entry_date < today)
-        .order_by(Note.entry_date.desc())
-        .all()
-    )
-
-    return render_template(
-        "notes/journal.html",
-        today=today,
-        today_entry=today_entry,
-        past_entries=past_entries,
-        prompts=DAILY_PROMPTS,
-    )
+def manage_types():
+    """Manage note types (tabs)"""
+    note_types = NoteType.get_or_create_defaults(current_user.id)
+    return render_template("notes/types.html", note_types=note_types)
 
 
-# ---- Weekly Reflection View ----
-@notes_bp.route("/weekly")
+@notes_bp.route("/types/create", methods=["POST"])
 @login_required
-def weekly():
-    """Weekly reflection view"""
-    today = date.today()
-    this_week_start = get_week_start(today)
-
-    # This week's reflection
-    this_week_entry = Note.query.filter_by(
-        user_id=current_user.id,
-        note_type=Note.TYPE_WEEKLY,
-        entry_date=this_week_start,
-    ).first()
-
-    # Past weekly entries
-    past_weeks = (
-        Note.query.filter_by(user_id=current_user.id, note_type=Note.TYPE_WEEKLY)
-        .filter(Note.entry_date < this_week_start)
-        .order_by(Note.entry_date.desc())
-        .all()
-    )
-
-    return render_template(
-        "notes/weekly.html",
-        this_week_start=this_week_start,
-        this_week_entry=this_week_entry,
-        past_weeks=past_weeks,
-        prompts=WEEKLY_PROMPTS,
-    )
-
-
-# ---- Categories Management ----
-@notes_bp.route("/categories")
-@login_required
-def categories():
-    """Manage note categories"""
-    cats = (
-        NoteCategory.query.filter_by(user_id=current_user.id)
-        .order_by(NoteCategory.name)
-        .all()
-    )
-    return render_template("notes/categories.html", categories=cats)
-
-
-@notes_bp.route("/categories/create", methods=["POST"])
-@login_required
-def create_category():
-    """Create a new category"""
+def create_type():
+    """Create a new note type"""
     name = request.form.get("name", "").strip()
+    icon = request.form.get("icon", "bi-file-text").strip()
+
     if not name:
-        flash("Category name is required.", "error")
-        return redirect(url_for("notes.categories"))
+        flash("Type name is required.", "error")
+        return redirect(url_for("notes.manage_types"))
 
-    if len(name) > 100:
-        flash("Category name too long (max 100 chars).", "error")
-        return redirect(url_for("notes.categories"))
+    if len(name) > 50:
+        flash("Type name too long (max 50 chars).", "error")
+        return redirect(url_for("notes.manage_types"))
 
-    cat = NoteCategory(name=name, user_id=current_user.id)
-    db.session.add(cat)
+    # Check for duplicate name
+    existing = NoteType.query.filter_by(user_id=current_user.id, name=name).first()
+    if existing:
+        flash("A type with that name already exists.", "error")
+        return redirect(url_for("notes.manage_types"))
+
+    # Get max position
+    max_pos = (
+        db.session.query(db.func.max(NoteType.position))
+        .filter_by(user_id=current_user.id)
+        .scalar()
+        or 0
+    )
+
+    note_type = NoteType(
+        name=name,
+        icon=icon,
+        position=max_pos + 1,
+        user_id=current_user.id,
+    )
+    db.session.add(note_type)
     db.session.commit()
-    flash("Category created!", "success")
-    return redirect(url_for("notes.categories"))
+    flash("Note type created!", "success")
+    return redirect(url_for("notes.manage_types"))
 
 
-@notes_bp.route("/categories/<int:cat_id>/delete", methods=["POST"])
+@notes_bp.route("/types/<int:type_id>/edit", methods=["POST"])
 @login_required
-def delete_category(cat_id):
-    """Delete a category"""
-    cat = NoteCategory.query.filter_by(
-        id=cat_id, user_id=current_user.id
+def edit_type(type_id):
+    """Edit a note type"""
+    note_type = NoteType.query.filter_by(
+        id=type_id, user_id=current_user.id
     ).first_or_404()
 
-    # Remove category from notes (don't delete notes)
-    Note.query.filter_by(category_id=cat_id).update({"category_id": None})
-    db.session.delete(cat)
+    name = request.form.get("name", "").strip()
+    icon = request.form.get("icon", note_type.icon).strip()
+
+    if not name:
+        flash("Type name is required.", "error")
+        return redirect(url_for("notes.manage_types"))
+
+    if len(name) > 50:
+        flash("Type name too long (max 50 chars).", "error")
+        return redirect(url_for("notes.manage_types"))
+
+    # Check for duplicate name (excluding self)
+    existing = NoteType.query.filter(
+        NoteType.user_id == current_user.id,
+        NoteType.name == name,
+        NoteType.id != type_id,
+    ).first()
+    if existing:
+        flash("A type with that name already exists.", "error")
+        return redirect(url_for("notes.manage_types"))
+
+    note_type.name = name
+    note_type.icon = icon
     db.session.commit()
-    flash("Category deleted!", "success")
-    return redirect(url_for("notes.categories"))
+    flash("Note type updated!", "success")
+    return redirect(url_for("notes.manage_types"))
+
+
+@notes_bp.route("/types/<int:type_id>/delete", methods=["POST"])
+@login_required
+def delete_type(type_id):
+    """Delete a note type"""
+    note_type = NoteType.query.filter_by(
+        id=type_id, user_id=current_user.id
+    ).first_or_404()
+
+    # Remove type from notes (don't delete notes)
+    Note.query.filter_by(note_type_id=type_id).update({"note_type_id": None})
+    db.session.delete(note_type)
+    db.session.commit()
+    flash("Note type deleted!", "success")
+    return redirect(url_for("notes.manage_types"))

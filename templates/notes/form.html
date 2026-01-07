@@ -24,17 +24,6 @@
                 {% endif %}
             </div>
             <div class="card-body">
-                {% if prompts %}
-                <div class="alert alert-light mb-3">
-                    <strong><i class="bi bi-lightbulb"></i> Prompts to consider:</strong>
-                    <ul class="mb-0 mt-2">
-                        {% for prompt in prompts %}
-                        <li>{{ prompt }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
                 <form method="POST">
                     <div class="mb-3">
                         <label for="title" class="form-label">Title *</label>
@@ -44,34 +33,23 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="note_type" class="form-label">Type</label>
-                            <select class="form-select" id="note_type" name="note_type">
-                                {% for type_val, type_name in note_types %}
-                                <option value="{{ type_val }}"
-                                    {% if (note and note.note_type == type_val) or (not note and preset_type == type_val) %}selected{% endif %}>
-                                    {{ type_name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="category_id" class="form-label">
-                                Category
-                                <a href="{{ url_for('notes.categories') }}" class="small text-muted">(manage)</a>
+                        <div class="col-md-6 mb-3">
+                            <label for="note_type_id" class="form-label">
+                                Type
+                                <a href="{{ url_for('notes.manage_types') }}" class="small text-muted">(manage)</a>
                             </label>
-                            <select class="form-select" id="category_id" name="category_id">
+                            <select class="form-select" id="note_type_id" name="note_type_id">
                                 <option value="">-- None --</option>
-                                {% for cat in categories %}
-                                <option value="{{ cat.id }}"
-                                    {% if note and note.category_id == cat.id %}selected{% endif %}>
-                                    {{ cat.name }}
+                                {% for nt in note_types %}
+                                <option value="{{ nt.id }}"
+                                    {% if (note and note.note_type_id == nt.id) or (not note and preset_type_id|string == nt.id|string) %}selected{% endif %}>
+                                    {{ nt.name }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4 mb-3" id="dateFieldContainer">
-                            <label for="entry_date" class="form-label">Date</label>
+                        <div class="col-md-6 mb-3">
+                            <label for="entry_date" class="form-label">Date (optional)</label>
                             <input type="date" class="form-control" id="entry_date" name="entry_date"
                                    value="{{ note.entry_date.isoformat() if note and note.entry_date else preset_date }}">
                         </div>
@@ -101,36 +79,4 @@
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const typeSelect = document.getElementById('note_type');
-    const dateContainer = document.getElementById('dateFieldContainer');
-    const dateInput = document.getElementById('entry_date');
-
-    function updateDateVisibility() {
-        const type = typeSelect.value;
-        if (type === 'journal' || type === 'weekly') {
-            dateContainer.style.display = 'block';
-            // Set default date if empty
-            if (!dateInput.value) {
-                const today = new Date();
-                if (type === 'weekly') {
-                    // Get Monday of this week
-                    const day = today.getDay();
-                    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-                    today.setDate(diff);
-                }
-                dateInput.value = today.toISOString().split('T')[0];
-            }
-        } else {
-            // Keep visible but not required for other types
-            dateContainer.style.display = 'block';
-        }
-    }
-
-    typeSelect.addEventListener('change', updateDateVisibility);
-    updateDateVisibility();
-});
-</script>
 {% endblock %}

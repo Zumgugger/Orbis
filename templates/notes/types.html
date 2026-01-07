@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Note Types - Orbis{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-folder2-open"></i> Manage Note Types</h1>
+        <p class="text-muted">Create custom tabs to organize your notes</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('notes.list_notes') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Notes
+        </a>
+    </div>
+</div>
+
+<!-- Create New Type -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Add New Type</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('notes.create_type') }}" method="POST" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label for="name" class="form-label">Type Name</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="e.g., Ideas, Work, Personal" required maxlength="50">
+            </div>
+            <div class="col-md-5">
+                <label for="icon" class="form-label">Icon (Bootstrap Icons)</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i id="iconPreview" class="bi bi-file-text"></i></span>
+                    <input type="text" class="form-control" id="icon" name="icon" value="bi-file-text" placeholder="bi-file-text">
+                </div>
+                <small class="text-muted">Browse icons at <a href="https://icons.getbootstrap.com/" target="_blank">icons.getbootstrap.com</a></small>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-success w-100">
+                    <i class="bi bi-plus"></i> Add
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Existing Types -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Your Note Types</h5>
+    </div>
+    <div class="card-body">
+        {% if note_types %}
+        <div class="list-group">
+            {% for nt in note_types %}
+            <div class="list-group-item">
+                <form action="{{ url_for('notes.edit_type', type_id=nt.id) }}" method="POST" class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        <i class="{{ nt.icon }} fs-4"></i>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="name" value="{{ nt.name }}" required maxlength="50">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="icon" value="{{ nt.icon }}" placeholder="bi-file-text">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-outline-primary btn-sm" title="Save changes">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{{ url_for('notes.list_by_type', type_id=nt.id) }}" class="btn btn-outline-secondary btn-sm" title="View notes">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </div>
+                    <div class="col-auto">
+                        <form action="{{ url_for('notes.delete_type', type_id=nt.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this type? Notes will be moved to uncategorized.');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete type">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No custom types yet. Add one above to get started!</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const iconInput = document.getElementById('icon');
+    const iconPreview = document.getElementById('iconPreview');
+
+    if (iconInput && iconPreview) {
+        iconInput.addEventListener('input', function() {
+            iconPreview.className = this.value || 'bi bi-file-text';
+        });
+    }
+});
+</script>
+{% endblock %}

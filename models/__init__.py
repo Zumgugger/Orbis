@@ -7,7 +7,7 @@ from models.goal import Goal, Milestone
 from models.habit import Habit, HabitLog
 from models.idea import Idea, IdeaFile
 from models.masterprompt import MasterCategory, MasterSection
-from models.note import Note, NoteCategory
+from models.note import Note, NoteCategory, NoteType
 from models.shared_title import SharedTitle
 from models.shopping import ShoppingList
 from models.tag import (
@@ -41,6 +41,7 @@ __all__ = [
     "MasterSection",
     "Note",
     "NoteCategory",
+    "NoteType",
     "SharedTitle",
     "Tag",
     "EntityTag",
