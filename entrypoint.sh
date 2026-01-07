@@ -1,8 +1,7 @@
 #!/bin/bash
-set -e
 
 echo "Running database migrations..."
-alembic upgrade head
+alembic upgrade head || echo "Migration failed or already applied, continuing..."
 
 echo "Starting application..."
 exec "$@"
