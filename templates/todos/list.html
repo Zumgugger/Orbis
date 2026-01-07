@@ -124,7 +124,7 @@
                 {% for todo in pending %}
                 <div class="list-group-item todo-item priority-{{ todo.priority }}" draggable="true" data-todo-id="{{ todo.id }}">
                     <div class="row align-items-center g-3">
-                        <div class="col-auto reorder-controls" title="Tap to reorder">
+                        <div class="col-auto reorder-controls d-none d-md-block" title="Drag to reorder">
                             <button type="button" class="btn btn-outline-secondary btn-sm move-up" aria-label="Move up"><i class="bi bi-caret-up"></i></button>
                             <button type="button" class="btn btn-outline-secondary btn-sm move-down" aria-label="Move down"><i class="bi bi-caret-down"></i></button>
                         </div>
@@ -396,41 +396,41 @@ document.addEventListener('DOMContentLoaded', () => {
     // Touch-friendly reorder buttons and long-press
     const isTouch = window.matchMedia('(pointer: coarse)').matches;
     if (isTouch) {
-        let longPressTimer;
-        let isDraggingEnabled = false;
+        // Mobile: simple tap to edit (no drag/drop)
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        const TAP_THRESHOLD = 150; // Max duration in ms for a tap
+        const MOVE_THRESHOLD = 10; // Max movement in px for a tap
 
         list.querySelectorAll('.todo-item').forEach(item => {
             const up = item.querySelector('.move-up');
             const down = item.querySelector('.move-down');
 
+            // Mobile touch handling - tap to edit only (no drag/drop on mobile)
             item.addEventListener('touchstart', (e) => {
                 if (e.target.closest('button') || e.target.closest('form')) return;
-
-                longPressTimer = setTimeout(() => {
-                    isDraggingEnabled = true;
-                    item.setAttribute('draggable', 'true');
-                    item.style.opacity = '0.5';
-                    if (navigator.vibrate) navigator.vibrate(50);
-                }, 500);
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
             });
 
             item.addEventListener('touchend', (e) => {
-                clearTimeout(longPressTimer);
-                if (!isDraggingEnabled) {
-                    if (!e.target.closest('button') && !e.target.closest('form')) {
+                if (!e.target.closest('button') && !e.target.closest('form')) {
+                    const touchEndX = e.changedTouches[0].clientX;
+                    const touchEndY = e.changedTouches[0].clientY;
+                    const touchDuration = Date.now() - touchStartTime;
+                    const moveX = Math.abs(touchEndX - touchStartX);
+                    const moveY = Math.abs(touchEndY - touchStartY);
+
+                    // Only navigate if it was a quick tap without much movement
+                    if (touchDuration < TAP_THRESHOLD && moveX < MOVE_THRESHOLD && moveY < MOVE_THRESHOLD) {
                         window.location = '{{ url_for('todos.edit_todo', todo_id=0) }}'.replace('0', item.dataset.todoId);
                     }
                 }
-                isDraggingEnabled = false;
-                item.style.opacity = '1';
             });
 
-            item.addEventListener('touchcancel', () => {
-                clearTimeout(longPressTimer);
-                isDraggingEnabled = false;
-                item.style.opacity = '1';
-            });
-
+            // Desktop: up/down button handlers
             if (up) {
                 up.addEventListener('click', () => {
                     const prev = item.previousElementSibling;
