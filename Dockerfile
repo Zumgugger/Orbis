@@ -29,6 +29,10 @@ RUN useradd --create-home --shell /bin/bash orbis \
 RUN mkdir -p /app/instance /app/uploads /app/db_backups \
     && chown -R orbis:orbis /app/instance /app/uploads /app/db_backups
 
+# Make entrypoint executable
+COPY --chown=orbis:orbis entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 USER orbis
 
 # Expose port
@@ -38,5 +42,6 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/ || exit 1
 
-# Run with gunicorn (2 workers for 2GB RAM)
+# Run entrypoint then gunicorn
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:create_app()"]
