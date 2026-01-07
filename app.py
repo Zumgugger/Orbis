@@ -533,8 +533,10 @@ def create_app(config_name=None):
         )
 
         # Recalculate progress to match displayed items
-        # Total: dailies + combined_todos (calendar + todos) + focused_habits
-        total_today = len(dailies_today) + len(combined_todos) + len(focused_habits)
+        # Only count completable items: dailies + todos + focused_habits
+        # Calendar events are not completable, so exclude them from total
+        todo_count = sum(1 for item in combined_todos if item["kind"] == "todo")
+        total_today = len(dailies_today) + todo_count + len(focused_habits)
         # Completed: dailies completed + todos completed + habits incremented today
         completed_today = (
             len([d for d in dailies_today if d.is_completed_today()])
@@ -547,6 +549,9 @@ def create_app(config_name=None):
         )
         today_progress_percent = (
             int(round((completed_today / total_today) * 100)) if total_today > 0 else 0
+        )
+        app.logger.debug(
+            f"TODAY PROGRESS: {completed_today}/{total_today} (dailies={len(dailies_today)}, todos={todo_count}, habits={len(focused_habits)}, calendar={len(combined_todos) - todo_count})"
         )
 
         return render_template(
@@ -600,9 +605,13 @@ def create_app(config_name=None):
         )
 
         # Progress for Tomorrow — count items shown in UI
-        # Total: dailies + combined_todos (calendar + todos) + focused_habits
+        # Only count completable items: dailies + todos + focused_habits
+        # Calendar events are not completable, so exclude them from total
+        todo_count_tomorrow = sum(
+            1 for item in combined_todos if item["kind"] == "todo"
+        )
         total_tomorrow = (
-            len(dailies_tomorrow) + len(combined_todos) + len(focused_habits)
+            len(dailies_tomorrow) + todo_count_tomorrow + len(focused_habits)
         )
         # Completed: dailies completed + todos completed + habits incremented
         completed_tomorrow = (
