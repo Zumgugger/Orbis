@@ -100,8 +100,18 @@ def create_app(config_name=None):
         # Content Security Policy - allow inline styles/scripts for app functionality
         csp = {
             "default-src": "'self'",
-            "script-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-            "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+            "script-src": [
+                "'self'",
+                "'unsafe-inline'",
+                "https://cdn.jsdelivr.net",
+                "https://cdn.quilljs.com",
+            ],
+            "style-src": [
+                "'self'",
+                "'unsafe-inline'",
+                "https://cdn.jsdelivr.net",
+                "https://cdn.quilljs.com",
+            ],
             "img-src": ["'self'", "data:", "https:"],
             "font-src": ["'self'", "https://cdn.jsdelivr.net"],
             "connect-src": "'self'",
