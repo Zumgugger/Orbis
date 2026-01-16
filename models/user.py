@@ -28,6 +28,9 @@ class User(UserMixin, db.Model):
     shared_calendar_id = db.Column(
         db.String(255), nullable=True
     )  # Secondary calendar for family blocks
+    default_google_account = db.Column(
+        db.String(255), nullable=True
+    )  # Default Google account email for phone login
 
     def __repr__(self) -> str:
         return f"<User {self.id}: {self.email}>"

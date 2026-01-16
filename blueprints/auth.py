@@ -7,7 +7,16 @@ import time
 from datetime import datetime
 
 from authlib.integrations.flask_client import OAuth
-from flask import Blueprint, current_app, flash, redirect, request, session, url_for
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    make_response,
+    redirect,
+    request,
+    session,
+    url_for,
+)
 from flask_login import current_user, login_required, login_user, logout_user
 
 from extensions import db
@@ -161,11 +170,28 @@ def login():
     # Note: prompt="consent" forces consent screen every time (needed for refresh_token)
     # We only force it on first login or explicit re-auth
     force_consent = request.args.get("reauth") == "1"
+
+    # Build authorization redirect kwargs
+    auth_kwargs = {"access_type": "offline"}
+
+    # Try to use default account for login_hint
+    # 1. Check if user is already logged in with a default account set
+    # 2. Otherwise check for a cookie that stores the preferred account
+    login_hint = None
+    if current_user.is_authenticated and current_user.default_google_account:
+        login_hint = current_user.default_google_account
+    else:
+        # Check for stored preference in cookie
+        login_hint = request.cookies.get("preferred_google_account")
+
+    if login_hint:
+        auth_kwargs["login_hint"] = login_hint
+
     if force_consent:
-        return oauth.google.authorize_redirect(
-            redirect_uri, prompt="consent", access_type="offline"
-        )
-    return oauth.google.authorize_redirect(redirect_uri, access_type="offline")
+        auth_kwargs["prompt"] = "consent"
+        return oauth.google.authorize_redirect(redirect_uri, **auth_kwargs)
+
+    return oauth.google.authorize_redirect(redirect_uri, **auth_kwargs)
 
 
 @auth_bp.route("/callback")
@@ -230,9 +256,23 @@ def callback():
         next_page = session.get("next")
         if next_page:
             session.pop("next")
-            return redirect(next_page)
+            target_url = next_page
+        else:
+            target_url = url_for("index")
 
-        return redirect(url_for("index"))
+        # Set cookie for preferred account if user has default set
+        resp = make_response(redirect(target_url))
+        if user.default_google_account:
+            # Set cookie to persist for 1 year
+            resp.set_cookie(
+                "preferred_google_account",
+                user.default_google_account,
+                max_age=365 * 24 * 60 * 60,
+                httponly=False,  # Allow access if needed
+                samesite="Lax",
+            )
+
+        return resp
 
     except Exception as e:
         flash(f"Authentication error: {str(e)}", "error")
@@ -268,10 +308,35 @@ def settings():
         current_user.shared_calendar_id = (
             shared_calendar_id if shared_calendar_id else None
         )
+
+        # Update default Google account
+        default_account = request.form.get("default_google_account", "").strip()
+        if default_account and "@" not in default_account:
+            flash("Invalid email format for default Google account.", "error")
+            return redirect(url_for("auth.settings"))
+
+        current_user.default_google_account = (
+            default_account if default_account else None
+        )
         db.session.commit()
 
         flash("Settings saved successfully!", "success")
-        return redirect(url_for("auth.settings"))
+
+        # Set cookie for preferred account
+        resp = make_response(redirect(url_for("auth.settings")))
+        if current_user.default_google_account:
+            resp.set_cookie(
+                "preferred_google_account",
+                current_user.default_google_account,
+                max_age=365 * 24 * 60 * 60,
+                httponly=False,
+                samesite="Lax",
+            )
+        else:
+            # Clear cookie if no default account set
+            resp.delete_cookie("preferred_google_account")
+
+        return resp
 
     # Get user's shared titles for display/management
     shared_titles = (
@@ -283,6 +348,7 @@ def settings():
     return render_template(
         "auth/settings.html",
         shared_calendar_id=current_user.shared_calendar_id or "",
+        default_google_account=current_user.default_google_account or "",
         shared_titles=shared_titles,
     )
 

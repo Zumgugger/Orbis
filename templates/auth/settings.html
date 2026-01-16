@@ -43,6 +43,34 @@
             </div>
         </div>
 
+        <!-- Google Account Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-google"></i> Google Account</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    On your phone, if you have multiple Google accounts linked, you can set a default account to skip the account selection screen.
+                </p>
+
+                <form method="POST" action="{{ url_for('auth.settings') }}">
+                    <div class="mb-3">
+                        <label for="default_google_account" class="form-label">Default Google Account (Optional)</label>
+                        <input type="email" class="form-control" id="default_google_account" name="default_google_account"
+                               value="{{ default_google_account }}"
+                               placeholder="e.g., markus.gugger@gmail.com">
+                        <div class="form-text">
+                            Enter your preferred Google account email. When logging in on your phone, this account will be pre-selected, so you won't be prompted to choose.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Account Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <!-- Shared Titles Management -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
