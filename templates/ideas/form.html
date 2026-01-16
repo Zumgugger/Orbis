@@ -26,13 +26,15 @@
             {% set entity_id = idea.id if idea else None %}
             {% include 'tags/_tag_input.html' %}
 
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-save"></i> Save
-                </button>
-                <a href="{{ url_for('ideas.list_ideas') }}" class="btn btn-secondary">
-                    <i class="bi bi-x-circle"></i> Cancel
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('ideas.list_ideas') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Cancel
                 </a>
+                <div>
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="bi bi-save"></i> Save Idea
+                    </button>
+                </div>
             </div>
         </form>
     </div>

@@ -54,6 +54,24 @@ def create_app(config_name=None):
 
     configure_logging(app)
 
+    # Validate OAuth credentials in development
+    if cfg_key == "development":
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
+        client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        if not client_id or not client_secret:
+            app.logger.warning(
+                "⚠️  MISSING GOOGLE OAUTH CREDENTIALS IN DEVELOPMENT\n"
+                "See SETUP_DEVELOPMENT.md for instructions on copying credentials from production.\n"
+                "You can use DEVELOPMENT_MODE=True to bypass OAuth if needed."
+            )
+        elif not client_id.startswith("1053107847673"):
+            app.logger.warning(
+                f"⚠️  WRONG GOOGLE CLIENT ID IN DEVELOPMENT\n"
+                f"Current: {client_id[:20]}...\n"
+                f"Expected: 1053107847673-...\n"
+                f"See SETUP_DEVELOPMENT.md for correct credentials."
+            )
+
     # Markdown filter for rendering section bodies (sanitized)
     allowed_tags = bleach.sanitizer.ALLOWED_TAGS.union(
         {"p", "pre", "code", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "hr"}
