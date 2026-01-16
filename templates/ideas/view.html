@@ -3,6 +3,8 @@
 {% block title %}{{ idea.title }}{% endblock %}
 
 {% block extra_css %}
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
 <style>
     #mindmap-container {
         height: 600px;
@@ -79,6 +81,76 @@
         color: #999;
         cursor: not-allowed;
     }
+
+    /* Light theme (default) */
+    .ql-editor-wrapper {
+        background-color: white;
+        border: 1px solid #ced4da;
+    }
+
+    /* Dark theme styling for Quill editor */
+    [data-bs-theme="dark"] .ql-editor-wrapper {
+        background-color: #2b3035;
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    [data-bs-theme="dark"] .ql-toolbar {
+        background-color: #212529;
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    [data-bs-theme="dark"] .ql-toolbar.ql-snow {
+        border-bottom-color: rgba(255, 255, 255, 0.15);
+    }
+
+    [data-bs-theme="dark"] .ql-toolbar .ql-stroke {
+        stroke: #dee2e6;
+    }
+
+    [data-bs-theme="dark"] .ql-toolbar .ql-fill {
+        fill: #dee2e6;
+    }
+
+    [data-bs-theme="dark"] .ql-toolbar button:hover,
+    [data-bs-theme="dark"] .ql-toolbar button.ql-active {
+        color: #fff;
+    }
+
+    [data-bs-theme="dark"] .ql-toolbar button:hover .ql-fill,
+    [data-bs-theme="dark"] .ql-toolbar button.ql-active .ql-fill,
+    [data-bs-theme="dark"] .ql-toolbar button:hover .ql-stroke,
+    [data-bs-theme="dark"] .ql-toolbar button.ql-active .ql-stroke {
+        fill: #fff;
+        stroke: #fff;
+    }
+
+    [data-bs-theme="dark"] .ql-container {
+        border-color: rgba(255, 255, 255, 0.15);
+        background-color: #2b3035;
+        color: #dee2e6;
+    }
+
+    [data-bs-theme="dark"] .ql-editor {
+        background-color: #2b3035;
+        color: #dee2e6;
+    }
+
+    [data-bs-theme="dark"] .ql-editor.ql-blank::before {
+        color: #6c757d;
+    }
+
+    [data-bs-theme="dark"] .ql-editor strong {
+        color: #fff;
+    }
+
+    [data-bs-theme="dark"] .ql-editor a {
+        color: #64b5f6;
+    }
+
+    /* Font size to match Bootstrap form-control */
+    .ql-editor {
+        font-size: 1rem;
+    }
 </style>
 {% endblock %}
 
@@ -153,8 +225,13 @@
         <div class="card mt-3">
             <div class="card-body">
                 <div class="mb-3" style="position: relative;">
-                    <label for="notes-editor" class="form-label">Markdown Notes</label>
-                    <textarea class="form-control" id="notes-editor" rows="20">{{ idea.notes or '' }}</textarea>
+                    <label for="notes-editor" class="form-label">Notes</label>
+                    <!-- Quill Editor Container -->
+                    <div id="notes-editor" style="height: 400px; border-radius: 0.375rem; position: relative;" class="ql-editor-wrapper">
+                        {{ idea.notes or '' }}
+                    </div>
+                    <!-- Hidden textarea to store content -->
+                    <textarea id="notes-content" name="notes" style="display: none;"></textarea>
                     <button type="button" id="selectionTodoBtn" title="Create todo from selection">
                         <i class="bi bi-check-square"></i>
                     </button>
@@ -288,6 +365,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Quill Editor -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
 <!-- MindElixir with fallback -->
 <script src="https://cdn.jsdelivr.net/npm/mind-elixir@0.18.1/dist/MindElixir.js"
         crossorigin="anonymous"
@@ -406,9 +486,10 @@
 
     // Save notes
     document.getElementById('saveNotesBtn').addEventListener('click', async () => {
-        const notes = document.getElementById('notes-editor').value;
+        // Get content from Quill editor
+        const notesContent = quillNotesEditor.root.innerHTML;
         const formData = new FormData();
-        formData.append('notes', notes);
+        formData.append('notes', notesContent);
 
         formData.append('csrf_token', window.csrfToken || '');
 
@@ -717,5 +798,26 @@
             return;
         }
     });
+
+    // Initialize Quill editor for notes
+    var quillNotesEditor = new Quill('#notes-editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                ['blockquote', 'code-block'],
+                [{ list: 'ordered'}, { list: 'bullet' }],
+                ['link'],
+                ['clean']
+            ]
+        },
+        placeholder: 'Write your notes here...'
+    });
+
+    // Set initial content if editing
+    {% if idea and idea.notes %}
+    quillNotesEditor.root.innerHTML = {{ idea.notes|tojson }};
+    {% endif %}
 </script>
 {% endblock %}
