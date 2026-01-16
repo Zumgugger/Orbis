@@ -122,56 +122,137 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('tomorrow') }}">
-                            <i class="bi bi-sunrise"></i> Tomorrow
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('todos.list_todos') }}">
-                            <i class="bi bi-check2-square"></i> Todos
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dailies.list_dailies') }}">
-                            <i class="bi bi-calendar-check"></i> Dailies
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('habits.list_habits') }}">
-                            <i class="bi bi-arrow-repeat"></i> Habits
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('goals.list') }}">
-                            <i class="bi bi-bullseye"></i> Goals
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('shopping.list') }}">
-                            <i class="bi bi-cart3"></i> Shopping
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('masterprompts.index') }}">
-                            <i class="bi bi-stars"></i> Masterprompts
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('ideas.list_ideas') }}">
-                            <i class="bi bi-lightbulb"></i> Ideas
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('notes.list_notes') }}">
-                            <i class="bi bi-journal-text"></i> Notes
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('tags.list_tags') }}">
-                            <i class="bi bi-tags"></i> Tags
-                        </a>
-                    </li>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_module_active('today') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('index') }}">
+                                <i class="bi bi-calendar-check"></i> Today
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('tomorrow') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('tomorrow') }}">
+                                <i class="bi bi-sunrise"></i> Tomorrow
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('todos') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('todos.list_todos') }}">
+                                <i class="bi bi-check2-square"></i> Todos
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('dailies') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dailies.list_dailies') }}">
+                                <i class="bi bi-calendar-check"></i> Dailies
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('habits') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('habits.list_habits') }}">
+                                <i class="bi bi-arrow-repeat"></i> Habits
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('goals') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('goals.list') }}">
+                                <i class="bi bi-bullseye"></i> Goals
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('shopping') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('shopping.list') }}">
+                                <i class="bi bi-cart3"></i> Shopping
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('masterprompts') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('masterprompts.index') }}">
+                                <i class="bi bi-stars"></i> Masterprompts
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('ideas') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('ideas.list_ideas') }}">
+                                <i class="bi bi-lightbulb"></i> Ideas
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('notes') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('notes.list_notes') }}">
+                                <i class="bi bi-journal-text"></i> Notes
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if current_user.is_module_active('tags') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('tags.list_tags') }}">
+                                <i class="bi bi-tags"></i> Tags
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                        <!-- Show all modules when not authenticated (for reference) -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('tomorrow') }}">
+                                <i class="bi bi-sunrise"></i> Tomorrow
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('todos.list_todos') }}">
+                                <i class="bi bi-check2-square"></i> Todos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dailies.list_dailies') }}">
+                                <i class="bi bi-calendar-check"></i> Dailies
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('habits.list_habits') }}">
+                                <i class="bi bi-arrow-repeat"></i> Habits
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('goals.list') }}">
+                                <i class="bi bi-bullseye"></i> Goals
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('shopping.list') }}">
+                                <i class="bi bi-cart3"></i> Shopping
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('masterprompts.index') }}">
+                                <i class="bi bi-stars"></i> Masterprompts
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('ideas.list_ideas') }}">
+                                <i class="bi bi-lightbulb"></i> Ideas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('notes.list_notes') }}">
+                                <i class="bi bi-journal-text"></i> Notes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('tags.list_tags') }}">
+                                <i class="bi bi-tags"></i> Tags
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item me-2 d-none d-md-block" style="max-width: 300px;">

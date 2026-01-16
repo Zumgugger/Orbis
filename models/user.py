@@ -31,6 +31,9 @@ class User(UserMixin, db.Model):
     default_google_account = db.Column(
         db.String(255), nullable=True
     )  # Default Google account email for phone login
+    active_modules = db.Column(
+        db.Text, nullable=True
+    )  # JSON string of active module names
 
     def __repr__(self) -> str:
         return f"<User {self.id}: {self.email}>"
@@ -55,6 +58,50 @@ class User(UserMixin, db.Model):
     def is_admin(self) -> bool:
         """Check if user is admin"""
         return self.role == "admin"
+
+    def get_active_modules(self) -> list[str]:
+        """Get list of active module names"""
+        if not self.active_modules:
+            # Default: all modules active
+            return [
+                "today",
+                "tomorrow",
+                "todos",
+                "dailies",
+                "habits",
+                "goals",
+                "shopping",
+                "masterprompts",
+                "ideas",
+                "notes",
+                "tags",
+            ]
+        try:
+            return json.loads(self.active_modules)
+        except Exception:
+            # If JSON is corrupted, return defaults
+            return [
+                "today",
+                "tomorrow",
+                "todos",
+                "dailies",
+                "habits",
+                "goals",
+                "shopping",
+                "masterprompts",
+                "ideas",
+                "notes",
+                "tags",
+            ]
+
+    def set_active_modules(self, modules: list[str]) -> None:
+        """Set active modules"""
+        self.active_modules = json.dumps(modules)
+        db.session.commit()
+
+    def is_module_active(self, module_name: str) -> bool:
+        """Check if a specific module is active"""
+        return module_name in self.get_active_modules()
 
     def to_dict(self) -> dict:
         """Convert to dictionary"""

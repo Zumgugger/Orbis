@@ -318,6 +318,11 @@ def settings():
         current_user.default_google_account = (
             default_account if default_account else None
         )
+
+        # Update active modules
+        active_modules = request.form.getlist("active_modules")
+        current_user.set_active_modules(active_modules)
+
         db.session.commit()
 
         flash("Settings saved successfully!", "success")
