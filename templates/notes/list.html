@@ -94,7 +94,7 @@
                     {{ note.title }}
                 </h5>
                 {% if note.snippet %}
-                <p class="mb-1 text-muted small">{{ note.snippet }}</p>
+                <p class="mb-1 text-muted small" style="white-space: pre-wrap; word-break: break-word;">{{ note.snippet|safe }}</p>
                 {% endif %}
                 <div class="d-flex gap-2 flex-wrap">
                     {% if note.type_ref %}

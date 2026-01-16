@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, Any, TypedDict
 
+import bleach
 from flask import jsonify, render_template, request, url_for
 
 # Re-export logging functions from centralized module for backward compatibility
@@ -472,3 +473,54 @@ def build_json_error(
     else:
         log_warning(message, extra=extra)
     return jsonify(payload), status
+
+
+def sanitize_html(html_content: str) -> str:
+    """
+    Sanitize HTML content to prevent XSS attacks.
+    Allows safe HTML tags commonly used in rich text editors (Quill).
+
+    Args:
+        html_content: Raw HTML content from editor
+
+    Returns:
+        Sanitized HTML safe for display
+    """
+    if not html_content:
+        return ""
+
+    # Tags allowed in WYSIWYG notes
+    allowed_tags = [
+        "p",
+        "br",
+        "strong",
+        "em",
+        "u",
+        "s",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "li",
+        "blockquote",
+        "a",
+        "code",
+        "pre",
+    ]
+
+    # Attributes allowed per tag
+    allowed_attributes = {"a": ["href", "title"]}
+
+    # Clean the HTML
+    cleaned = bleach.clean(
+        html_content, tags=allowed_tags, attributes=allowed_attributes, strip=True
+    )
+
+    # Convert http to https for links if needed
+    cleaned = cleaned.replace('href="http://', 'href="https://')
+
+    return cleaned

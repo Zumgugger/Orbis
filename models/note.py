@@ -1,6 +1,7 @@
 """
 Note model with types for journaling and note-taking
 """
+import re
 from datetime import datetime
 
 from extensions import db
@@ -119,7 +120,18 @@ class Note(db.Model):
 
     @property
     def snippet(self) -> str:
-        """Get first 120 chars of content"""
+        """Get first 120 chars of content (stripped of HTML tags)"""
         if not self.content:
             return ""
-        return self.content[:120] + ("..." if len(self.content) > 120 else "")
+        # Strip HTML tags
+        text = re.sub(r"<[^>]+>", "", self.content)
+        # Decode HTML entities
+        text = (
+            text.replace("&nbsp;", " ")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
+        )
+        # Remove extra whitespace
+        text = " ".join(text.split())
+        return text[:120] + ("..." if len(text) > 120 else "")

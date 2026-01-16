@@ -8,6 +8,7 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import EntityTag, Note, NoteType, Tag, get_tags_for_entity, sync_entity_tags
+from utilities import sanitize_html
 from validation import ValidationError, validate_title
 
 
@@ -157,7 +158,7 @@ def create_note():
     if request.method == "POST":
         try:
             title = validate_title(request.form.get("title"), max_length=200)
-            content = request.form.get("content", "")
+            content = sanitize_html(request.form.get("content", ""))
             note_type_id = request.form.get("note_type_id") or None
             entry_date_str = request.form.get("entry_date")
 
@@ -222,7 +223,7 @@ def edit_note(note_id):
     if request.method == "POST":
         try:
             note.title = validate_title(request.form.get("title"), max_length=200)
-            note.content = request.form.get("content", "")
+            note.content = sanitize_html(request.form.get("content", ""))
             note_type_id = request.form.get("note_type_id")
             note.note_type_id = int(note_type_id) if note_type_id else None
 
