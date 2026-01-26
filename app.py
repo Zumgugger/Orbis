@@ -157,6 +157,7 @@ def create_app(config_name=None):
     from blueprints.notes import notes_bp
     from blueprints.search import search_bp
     from blueprints.shopping import shopping_bp
+    from blueprints.stats import stats_bp
     from blueprints.tags import tags_bp
     from blueprints.todos import todos_bp
 
@@ -173,6 +174,7 @@ def create_app(config_name=None):
     app.register_blueprint(search_bp)
     app.register_blueprint(notes_bp)
     app.register_blueprint(tags_bp)
+    app.register_blueprint(stats_bp)
 
     # Error handlers
     @app.errorhandler(400)

@@ -205,6 +205,13 @@
                                value="{{ idea.title }}" required>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description <small class="text-muted">(max 255 chars)</small></label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  maxlength="255" placeholder="Brief description of this idea...">{{ idea.description or '' }}</textarea>
+                        <div class="form-text"><span id="descCharCount">{{ (idea.description or '')|length }}</span>/255</div>
+                    </div>
+
                     {# Tag Input Component #}
                     {% set entity_type = 'idea' %}
                     {% set entity_id = idea.id %}
@@ -224,6 +231,20 @@
     <div class="tab-pane fade show active" id="notes" role="tabpanel">
         <div class="card mt-3">
             <div class="card-body">
+                <!-- Checklist Section -->
+                <div class="mb-4">
+                    <label class="form-label"><i class="bi bi-check2-square"></i> Checklist</label>
+                    <div id="checklistContainer" class="mb-2">
+                        <!-- Checklist items will be rendered here -->
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="newChecklistItem" placeholder="Add checklist item..." maxlength="500">
+                        <button class="btn btn-outline-primary" type="button" id="addChecklistBtn">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <hr>
                 <div class="mb-3" style="position: relative;">
                     <label for="notes-editor" class="form-label">Notes</label>
                     <!-- Quill Editor Container -->
@@ -819,5 +840,184 @@
     {% if idea and idea.notes %}
     quillNotesEditor.root.innerHTML = {{ idea.notes|tojson }};
     {% endif %}
+
+    // ---- Autosave for Notes ----
+    let notesAutosaveTimeout = null;
+    quillNotesEditor.on('text-change', function() {
+        clearTimeout(notesAutosaveTimeout);
+        notesAutosaveTimeout = setTimeout(async () => {
+            const notesContent = quillNotesEditor.root.innerHTML;
+            const formData = new FormData();
+            formData.append('notes', notesContent);
+            formData.append('csrf_token', window.csrfToken || '');
+
+            try {
+                await fetch(`/ideas/${ideaId}/notes`, {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (e) {
+                console.error('Autosave failed:', e);
+            }
+        }, 1500); // Save 1.5 seconds after typing stops
+    });
+
+    // ---- Description character counter and autosave ----
+    const descField = document.getElementById('description');
+    const descCounter = document.getElementById('descCharCount');
+    let descAutosaveTimeout = null;
+
+    if (descField) {
+        descField.addEventListener('input', function() {
+            descCounter.textContent = this.value.length;
+
+            // Autosave description
+            clearTimeout(descAutosaveTimeout);
+            descAutosaveTimeout = setTimeout(async () => {
+                try {
+                    await fetch(`/ideas/${ideaId}/description`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': window.csrfToken || ''
+                        },
+                        body: JSON.stringify({ description: descField.value })
+                    });
+                } catch (e) {
+                    console.error('Description autosave failed:', e);
+                }
+            }, 1500);
+        });
+    }
+
+    // ---- Checklist functionality ----
+    const checklistContainer = document.getElementById('checklistContainer');
+    const newChecklistInput = document.getElementById('newChecklistItem');
+    const addChecklistBtn = document.getElementById('addChecklistBtn');
+
+    function renderChecklistItem(item) {
+        const div = document.createElement('div');
+        div.className = 'd-flex align-items-center gap-2 mb-2 checklist-item';
+        div.dataset.id = item.id;
+        div.innerHTML = `
+            <input type="checkbox" class="form-check-input" ${item.checked ? 'checked' : ''}
+                   onchange="toggleChecklistItem(${item.id})">
+            <span class="${item.checked ? 'text-decoration-line-through text-muted' : ''}">${escapeHtml(item.text)}</span>
+            <button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="deleteChecklistItem(${item.id})">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        return div;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function loadChecklist() {
+        try {
+            const response = await fetch(`/ideas/${ideaId}/checklist`);
+            const data = await response.json();
+            if (data.success) {
+                checklistContainer.innerHTML = '';
+                if (data.items.length === 0) {
+                    checklistContainer.innerHTML = '<p class="text-muted small">No checklist items yet.</p>';
+                } else {
+                    data.items.forEach(item => {
+                        checklistContainer.appendChild(renderChecklistItem(item));
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load checklist:', e);
+        }
+    }
+
+    async function addChecklistItem() {
+        const text = newChecklistInput.value.trim();
+        if (!text) return;
+
+        try {
+            const response = await fetch(`/ideas/${ideaId}/checklist/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.csrfToken || ''
+                },
+                body: JSON.stringify({ text })
+            });
+            const data = await response.json();
+            if (data.success) {
+                newChecklistInput.value = '';
+                // Remove "no items" message if present
+                const noItems = checklistContainer.querySelector('.text-muted');
+                if (noItems) noItems.remove();
+                checklistContainer.appendChild(renderChecklistItem(data.item));
+            }
+        } catch (e) {
+            console.error('Failed to add checklist item:', e);
+        }
+    }
+
+    window.toggleChecklistItem = async function(itemId) {
+        try {
+            const response = await fetch(`/ideas/${ideaId}/checklist/${itemId}/toggle`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': window.csrfToken || ''
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                // Update the item visually
+                const item = checklistContainer.querySelector(`[data-id="${itemId}"]`);
+                if (item) {
+                    const span = item.querySelector('span');
+                    if (data.checked) {
+                        span.classList.add('text-decoration-line-through', 'text-muted');
+                    } else {
+                        span.classList.remove('text-decoration-line-through', 'text-muted');
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to toggle checklist item:', e);
+        }
+    };
+
+    window.deleteChecklistItem = async function(itemId) {
+        try {
+            const response = await fetch(`/ideas/${ideaId}/checklist/${itemId}/delete`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': window.csrfToken || ''
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                const item = checklistContainer.querySelector(`[data-id="${itemId}"]`);
+                if (item) item.remove();
+                // Show "no items" if empty
+                if (checklistContainer.children.length === 0) {
+                    checklistContainer.innerHTML = '<p class="text-muted small">No checklist items yet.</p>';
+                }
+            }
+        } catch (e) {
+            console.error('Failed to delete checklist item:', e);
+        }
+    };
+
+    addChecklistBtn.addEventListener('click', addChecklistItem);
+    newChecklistInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addChecklistItem();
+        }
+    });
+
+    // Load checklist on page load
+    loadChecklist();
 </script>
 {% endblock %}

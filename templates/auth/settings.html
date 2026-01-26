@@ -7,20 +7,21 @@
     <div class="col-md-8">
         <h2 class="mb-4"><i class="bi bi-gear"></i> Settings</h2>
 
-        <!-- Shared Calendar Configuration -->
-        <div class="card mb-4">
-            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#familyCalendarSection"
-                 style="cursor: pointer;">
-                <h5 class="mb-0"><i class="bi bi-calendar-heart"></i> Family Calendar</h5>
-            </div>
-            <div class="collapse" id="familyCalendarSection">
-                <div class="card-body">
-                    <p class="text-muted mb-3">
-                        Configure a shared calendar to show simplified "blocks" of your activities to family members.
-                        They'll see when you're busy without seeing the details of your tasks.
-                    </p>
+        <!-- Unified Settings Form -->
+        <form method="POST" action="{{ url_for('auth.settings') }}" id="settingsForm">
+            <!-- Shared Calendar Configuration -->
+            <div class="card mb-4">
+                <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#familyCalendarSection"
+                     style="cursor: pointer;">
+                    <h5 class="mb-0"><i class="bi bi-calendar-heart"></i> Family Calendar</h5>
+                </div>
+                <div class="collapse" id="familyCalendarSection">
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Configure a shared calendar to show simplified "blocks" of your activities to family members.
+                            They'll see when you're busy without seeing the details of your tasks.
+                        </p>
 
-                    <form method="POST" action="{{ url_for('auth.settings') }}">
                         <div class="mb-3">
                             <label for="shared_calendar_id" class="form-label">Shared Calendar ID</label>
                             <input type="text" class="form-control" id="shared_calendar_id" name="shared_calendar_id"
@@ -37,28 +38,22 @@
                                 </ol>
                             </div>
                         </div>
-
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Calendar Settings
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Google Account Configuration -->
-        <div class="card mb-4">
-            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#googleAccountSection"
-                 style="cursor: pointer;">
-                <h5 class="mb-0"><i class="bi bi-google"></i> Google Account</h5>
-            </div>
-            <div class="collapse" id="googleAccountSection">
-                <div class="card-body">
-                    <p class="text-muted mb-3">
-                        On your phone, if you have multiple Google accounts linked, you can set a default account to skip the account selection screen.
-                    </p>
+            <!-- Google Account Configuration -->
+            <div class="card mb-4">
+                <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#googleAccountSection"
+                     style="cursor: pointer;">
+                    <h5 class="mb-0"><i class="bi bi-google"></i> Google Account</h5>
+                </div>
+                <div class="collapse" id="googleAccountSection">
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            On your phone, if you have multiple Google accounts linked, you can set a default account to skip the account selection screen.
+                        </p>
 
-                    <form method="POST" action="{{ url_for('auth.settings') }}">
                         <div class="mb-3">
                             <label for="default_google_account" class="form-label">Default Google Account (Optional)</label>
                             <input type="email" class="form-control" id="default_google_account" name="default_google_account"
@@ -68,16 +63,65 @@
                                 Enter your preferred Google account email. When logging in on your phone, this account will be pre-selected, so you won't be prompted to choose.
                             </div>
                         </div>
-
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Account Settings
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Shared Titles Management -->
+            <!-- Active Modules Configuration -->
+            <div class="card mb-4">
+                <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#activeModulesSection"
+                     style="cursor: pointer;">
+                    <h5 class="mb-0"><i class="bi bi-layers"></i> Active Modules</h5>
+                </div>
+                <div class="collapse" id="activeModulesSection">
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Select which modules you want to see in Orbis. Unselected modules will be hidden from the dashboard.
+                        </p>
+
+                        <div class="row">
+                            {% set module_config = [
+                                ('today', 'bi-calendar-check', "Today's List"),
+                                ('tomorrow', 'bi-sunrise', "Tomorrow's List"),
+                                ('todos', 'bi-check2-square', 'Todos'),
+                                ('dailies', 'bi-calendar-check', 'Dailies'),
+                                ('habits', 'bi-arrow-repeat', 'Habits'),
+                                ('goals', 'bi-bullseye', 'Goals'),
+                                ('shopping', 'bi-cart3', 'Shopping'),
+                                ('masterprompts', 'bi-stars', 'Masterprompts'),
+                                ('ideas', 'bi-lightbulb', 'Ideas'),
+                                ('notes', 'bi-journal-text', 'Notes'),
+                                ('tags', 'bi-tags', 'Tags'),
+                            ] %}
+                            {% for module_id, icon, label in module_config %}
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="module_{{ module_id }}"
+                                           name="active_modules" value="{{ module_id }}"
+                                           {% if current_user.is_module_active(module_id) %}checked{% endif %}>
+                                    <label class="form-check-label" for="module_{{ module_id }}">
+                                        <i class="bi {{ icon }}"></i> {{ label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save All Settings Button -->
+            <div class="d-flex justify-content-between mb-4">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-save"></i> Save All Settings
+                </button>
+            </div>
+        </form>
+
+        <!-- Shared Titles Management (separate form since it has different actions) -->
         <div class="card mb-4">
             <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#blockTitlesSection"
                  style="cursor: pointer;">
@@ -139,60 +183,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Active Modules Configuration -->
-        <div class="card mb-4">
-            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#activeModulesSection"
-                 style="cursor: pointer;">
-                <h5 class="mb-0"><i class="bi bi-layers"></i> Active Modules</h5>
-            </div>
-            <div class="collapse" id="activeModulesSection">
-                <div class="card-body">
-                    <p class="text-muted mb-3">
-                        Select which modules you want to see in Orbis. Unselected modules will be hidden from the dashboard.
-                    </p>
-
-                    <form method="POST" action="{{ url_for('auth.settings') }}">
-                        <div class="row">
-                            {% set module_config = [
-                                ('today', 'bi-calendar-check', "Today's List"),
-                                ('tomorrow', 'bi-sunrise', "Tomorrow's List"),
-                                ('todos', 'bi-check2-square', 'Todos'),
-                                ('dailies', 'bi-calendar-check', 'Dailies'),
-                                ('habits', 'bi-arrow-repeat', 'Habits'),
-                                ('goals', 'bi-bullseye', 'Goals'),
-                                ('shopping', 'bi-cart3', 'Shopping'),
-                                ('masterprompts', 'bi-stars', 'Masterprompts'),
-                                ('ideas', 'bi-lightbulb', 'Ideas'),
-                                ('notes', 'bi-journal-text', 'Notes'),
-                                ('tags', 'bi-tags', 'Tags'),
-                            ] %}
-                            {% for module_id, icon, label in module_config %}
-                            <div class="col-md-6 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="module_{{ module_id }}"
-                                           name="active_modules" value="{{ module_id }}"
-                                           {% if current_user.is_module_active(module_id) %}checked{% endif %}>
-                                    <label class="form-check-label" for="module_{{ module_id }}">
-                                        <i class="bi {{ icon }}"></i> {{ label }}
-                                    </label>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Module Settings
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Back Link -->
-        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Back
-        </a>
     </div>
 </div>
 {% endblock %}

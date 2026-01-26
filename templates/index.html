@@ -43,20 +43,28 @@
 
 {% if missed_yesterday and missed_yesterday|length > 0 %}
 <!-- Yesterday's Missed Dailies Popup -->
-<div class="alert alert-warning mb-4">
+<div class="alert alert-warning mb-4" id="yesterdayDailiesAlert">
     <div class="d-flex justify-content-between align-items-start">
-        <div>
+        <div class="flex-grow-1">
             <h5 class="alert-heading"><i class="bi bi-clock-history"></i> Yesterday's Dailies</h5>
-            <p class="mb-2">You have {{ missed_yesterday|length }} daily{% if missed_yesterday|length != 1 %}s{% endif %} from yesterday that weren't marked complete:</p>
-            <ul class="mb-3">
+            <p class="mb-2">Complete what you did yesterday:</p>
+
+            <!-- Yesterday's progress bar -->
+            <div class="progress mb-2" style="height: 15px;">
+                <div class="progress-bar bg-info" id="yesterdayProgressBar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <span id="yesterdayProgressText">0%</span>
+                </div>
+            </div>
+            <small class="text-muted d-block mb-2" id="yesterdayProgressCount">0/{{ missed_yesterday|length }} completed</small>
+
+            <ul class="mb-3 list-unstyled" id="yesterdayDailiesList">
                 {% for daily in missed_yesterday %}
-                <li class="d-flex align-items-center gap-2 mb-2">
-                    <form action="{{ url_for('dailies.complete_yesterday', daily_id=daily.id) }}" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-sm btn-success" title="Mark complete for yesterday">
-                            <i class="bi bi-check"></i>
-                        </button>
-                    </form>
-                    <span>{{ daily.title }}</span>
+                <li class="d-flex align-items-center gap-2 mb-2 yesterday-daily-item" data-daily-id="{{ daily.id }}">
+                    <button type="button" class="btn btn-sm btn-success complete-yesterday-btn"
+                            data-daily-id="{{ daily.id }}" title="Mark complete for yesterday">
+                        <i class="bi bi-check"></i>
+                    </button>
+                    <span class="daily-title">{{ daily.title }}</span>
                     {% if daily.streak_count > 0 %}
                     <span class="badge bg-warning text-dark">
                         <i class="bi bi-fire"></i> {{ daily.streak_count }} streak at risk
@@ -68,13 +76,129 @@
         </div>
     </div>
     <div class="d-flex gap-2">
-        <form action="{{ url_for('dailies.dismiss_yesterday') }}" method="POST">
-            <button type="submit" class="btn btn-outline-secondary btn-sm" onclick="return confirm('This will break streaks for any uncompleted dailies. Continue?');">
-                <i class="bi bi-x"></i> Dismiss (break streaks)
-            </button>
-        </form>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="dismissYesterdayBtn">
+            <i class="bi bi-x"></i> Dismiss remaining (break streaks)
+        </button>
     </div>
 </div>
+
+<script>
+(function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const list = document.getElementById('yesterdayDailiesList');
+    const alert = document.getElementById('yesterdayDailiesAlert');
+    const progressBar = document.getElementById('yesterdayProgressBar');
+    const progressText = document.getElementById('yesterdayProgressText');
+    const progressCount = document.getElementById('yesterdayProgressCount');
+    const dismissBtn = document.getElementById('dismissYesterdayBtn');
+
+    let totalYesterday = {{ missed_yesterday|length }};
+    let completedYesterday = 0;
+
+    function updateProgress() {
+        const pct = totalYesterday > 0 ? Math.round((completedYesterday / totalYesterday) * 100) : 0;
+        progressBar.style.width = pct + '%';
+        progressBar.setAttribute('aria-valuenow', pct);
+        progressText.textContent = pct + '%';
+        progressCount.textContent = completedYesterday + '/' + totalYesterday + ' completed';
+
+        // Hide alert if all done
+        const remaining = list.querySelectorAll('.yesterday-daily-item:not(.completed)');
+        if (remaining.length === 0) {
+            setTimeout(() => {
+                alert.style.transition = 'opacity 0.3s';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 300);
+            }, 500);
+        }
+    }
+
+    // Handle complete button clicks
+    list.addEventListener('click', async function(e) {
+        const btn = e.target.closest('.complete-yesterday-btn');
+        if (!btn) return;
+
+        const dailyId = btn.dataset.dailyId;
+        const item = btn.closest('.yesterday-daily-item');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
+        try {
+            const response = await fetch(`/dailies/${dailyId}/complete_yesterday`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                completedYesterday++;
+                item.classList.add('completed');
+                item.style.transition = 'opacity 0.3s, transform 0.3s';
+                item.style.opacity = '0.5';
+                item.style.transform = 'translateX(20px)';
+                btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-secondary');
+
+                // Fade out after a moment
+                setTimeout(() => {
+                    item.style.height = item.offsetHeight + 'px';
+                    item.style.overflow = 'hidden';
+                    item.style.transition = 'height 0.3s, opacity 0.3s, margin 0.3s, padding 0.3s';
+                    item.style.height = '0';
+                    item.style.marginBottom = '0';
+                    item.style.paddingTop = '0';
+                    item.style.paddingBottom = '0';
+                    item.style.opacity = '0';
+                }, 800);
+
+                updateProgress();
+            } else {
+                btn.innerHTML = '<i class="bi bi-x"></i>';
+                btn.disabled = false;
+            }
+        } catch (e) {
+            console.error('Failed to complete yesterday daily:', e);
+            btn.innerHTML = '<i class="bi bi-check"></i>';
+            btn.disabled = false;
+        }
+    });
+
+    // Handle dismiss button
+    dismissBtn.addEventListener('click', async function() {
+        if (!confirm('This will break streaks for any uncompleted dailies. Continue?')) return;
+
+        dismissBtn.disabled = true;
+
+        try {
+            const response = await fetch('/dailies/dismiss_yesterday', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                alert.style.transition = 'opacity 0.3s';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 300);
+            }
+        } catch (e) {
+            console.error('Failed to dismiss:', e);
+            dismissBtn.disabled = false;
+        }
+    });
+
+    updateProgress();
+})();
+</script>
 {% endif %}
 
 {% if everything_done %}

@@ -10,6 +10,7 @@ from models.masterprompt import MasterCategory, MasterSection
 from models.note import Note, NoteCategory, NoteType
 from models.shared_title import SharedTitle
 from models.shopping import ShoppingList
+from models.stats import DailyStats
 from models.tag import (
     SMART_TAG_KEYWORDS,
     TAG_COLORS,
@@ -52,4 +53,5 @@ __all__ = [
     "remove_tag_from_entity",
     "sync_entity_tags",
     "get_entities_by_tag",
+    "DailyStats",
 ]

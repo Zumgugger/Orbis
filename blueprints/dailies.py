@@ -235,15 +235,26 @@ def reorder():
 @dailies_bp.route("/<int:daily_id>/complete_yesterday", methods=["POST"])
 @login_required
 def complete_yesterday(daily_id):
-    """Mark a daily as complete for yesterday"""
+    """Mark a daily as complete for yesterday (supports both AJAX and form POST)"""
     daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
     yesterday = date.today() - timedelta(days=1)
 
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+    )
+
     if not daily.should_complete_on(yesterday):
+        if is_ajax:
+            return {
+                "success": False,
+                "error": "This daily was not scheduled for yesterday.",
+            }, 400
         flash("This daily was not scheduled for yesterday.", "warning")
         return redirect(request.referrer or url_for("index"))
 
     if daily.is_completed_on(yesterday):
+        if is_ajax:
+            return {"success": False, "error": "Already completed for yesterday."}, 400
         flash("Already completed for yesterday.", "info")
         return redirect(request.referrer or url_for("index"))
 
@@ -261,6 +272,30 @@ def complete_yesterday(daily_id):
     )
     db.session.add(log)
     db.session.commit()
+
+    if is_ajax:
+        # Count remaining missed dailies for yesterday
+        all_dailies = Daily.query.filter_by(user_id=current_user.id).all()
+        remaining = sum(
+            1
+            for d in all_dailies
+            if d.should_complete_on(yesterday) and not d.is_completed_on(yesterday)
+        )
+        completed = sum(
+            1
+            for d in all_dailies
+            if d.should_complete_on(yesterday) and d.is_completed_on(yesterday)
+        )
+        total = sum(1 for d in all_dailies if d.should_complete_on(yesterday))
+
+        return {
+            "success": True,
+            "message": f"'{daily.title}' marked complete for yesterday!",
+            "remaining": remaining,
+            "completed": completed,
+            "total": total,
+            "percentage": int(round((completed / total) * 100)) if total > 0 else 0,
+        }
 
     flash(f"'{daily.title}' marked complete for yesterday!", "success")
     return redirect(request.referrer or url_for("index"))
@@ -280,6 +315,16 @@ def dismiss_yesterday():
             daily.streak_count = 0
 
     db.session.commit()
+
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+    )
+    if is_ajax:
+        return {
+            "success": True,
+            "message": "Yesterday's missed dailies dismissed. Streaks reset.",
+        }
+
     flash("Yesterday's missed dailies dismissed. Streaks reset.", "info")
     return redirect(url_for("index"))
 

@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Stats Dashboard - Orbis{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        line-height: 1.2;
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+    }
+    .stat-icon {
+        font-size: 2rem;
+        opacity: 0.3;
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+    }
+    .motivation-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    .streak-fire {
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-graph-up-arrow"></i> Stats Dashboard</h1>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- Motivation Banner -->
+<div class="motivation-banner">
+    <h4 class="mb-0">{{ motivation }}</h4>
+</div>
+
+<!-- Filter Controls -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="tag" class="form-label">Filter by Tag</label>
+                <select name="tag" id="tag" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Items</option>
+                    {% for tag in all_tags %}
+                    <option value="{{ tag.id }}" {% if selected_tag and selected_tag.id == tag.id %}selected{% endif %}>
+                        {{ tag.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="days" class="form-label">Time Period</label>
+                <select name="days" id="days" class="form-select" onchange="this.form.submit()">
+                    <option value="7" {% if days_back == 7 %}selected{% endif %}>Last 7 days</option>
+                    <option value="30" {% if days_back == 30 %}selected{% endif %}>Last 30 days</option>
+                    <option value="90" {% if days_back == 90 %}selected{% endif %}>Last 90 days</option>
+                    <option value="365" {% if days_back == 365 %}selected{% endif %}>Last year</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Main Stats Cards -->
+<div class="row mb-4">
+    <!-- Perfect Days -->
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card h-100 bg-success text-white position-relative">
+            <div class="card-body">
+                <i class="bi bi-trophy stat-icon"></i>
+                <div class="stat-number">{{ perfect_days }}</div>
+                <div class="stat-label">Perfect Days (100%)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Streak -->
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card h-100 bg-warning text-dark position-relative">
+            <div class="card-body">
+                <i class="bi bi-fire stat-icon {% if current_streak >= 3 %}streak-fire{% endif %}"></i>
+                <div class="stat-number">{{ current_streak }}</div>
+                <div class="stat-label">Current Streak</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best Streak -->
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card h-100 bg-info text-white position-relative">
+            <div class="card-body">
+                <i class="bi bi-award stat-icon"></i>
+                <div class="stat-number">{{ best_streak }}</div>
+                <div class="stat-label">Best Streak</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Average Completion -->
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card h-100 bg-primary text-white position-relative">
+            <div class="card-body">
+                <i class="bi bi-percent stat-icon"></i>
+                <div class="stat-number">{{ avg_completion }}%</div>
+                <div class="stat-label">Avg Completion</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Secondary Stats -->
+<div class="row mb-4">
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <div class="stat-number text-success">{{ total_completions }}</div>
+                <div class="stat-label">Total Completions</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-check text-primary" style="font-size: 2rem;"></i>
+                <div class="stat-number text-primary">{{ total_daily_streaks }}</div>
+                <div class="stat-label">Combined Daily Streaks</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-lightning text-warning" style="font-size: 2rem;"></i>
+                <div class="stat-number text-warning">{{ best_daily_streak }}</div>
+                <div class="stat-label">Best Daily Streak</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-arrow-repeat text-info" style="font-size: 2rem;"></i>
+                <div class="stat-number text-info">{{ total_habit_count }}</div>
+                <div class="stat-label">Habit Counts</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if tag_stats %}
+<!-- Tag-Specific Stats -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-tag"></i> Stats for "{{ selected_tag.name }}"
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Todos</h6>
+                <div class="progress mb-2" style="height: 25px;">
+                    {% set todo_pct = (tag_stats.todo_completions / tag_stats.todo_total * 100) if tag_stats.todo_total > 0 else 0 %}
+                    <div class="progress-bar bg-success" style="width: {{ todo_pct }}%">
+                        {{ tag_stats.todo_completions }}/{{ tag_stats.todo_total }}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6>Dailies</h6>
+                <p class="mb-0">
+                    <strong>{{ tag_stats.daily_total }}</strong> dailies with this tag,
+                    <strong>{{ tag_stats.daily_completions }}</strong> total completions
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Completion Chart -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Completion Trend</h5>
+    </div>
+    <div class="card-body">
+        {% if chart_data %}
+        <div class="chart-container">
+            <canvas id="completionChart"></canvas>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-bar-chart" style="font-size: 3rem;"></i>
+            <p class="mt-3">No data yet. Complete some tasks to see your progress!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Days Table -->
+{% if recent_stats %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-calendar3"></i> Recent Days</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Todos</th>
+                        <th>Dailies</th>
+                        <th>Habits</th>
+                        <th>Total</th>
+                        <th>%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in recent_stats|reverse %}
+                    <tr {% if stat.completion_percentage == 100 %}class="table-success"{% elif stat.completion_percentage >= 80 %}class="table-info"{% endif %}>
+                        <td>{{ stat.stat_date.strftime('%a, %b %d') }}</td>
+                        <td>{{ stat.todos_completed }}/{{ stat.todos_total }}</td>
+                        <td>{{ stat.dailies_completed }}/{{ stat.dailies_total }}</td>
+                        <td>{{ stat.habits_completed }}/{{ stat.habits_total }}</td>
+                        <td>{{ stat.total_completed }}/{{ stat.total_items }}</td>
+                        <td>
+                            {% if stat.completion_percentage == 100 %}
+                            <span class="badge bg-success">{{ stat.completion_percentage }}% 🏆</span>
+                            {% elif stat.completion_percentage >= 80 %}
+                            <span class="badge bg-info">{{ stat.completion_percentage }}%</span>
+                            {% elif stat.completion_percentage >= 50 %}
+                            <span class="badge bg-warning text-dark">{{ stat.completion_percentage }}%</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ stat.completion_percentage }}%</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+{% if chart_data %}
+const ctx = document.getElementById('completionChart').getContext('2d');
+const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ chart_labels|tojson }},
+        datasets: [{
+            label: 'Completion %',
+            data: {{ chart_data|tojson }},
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.parsed.y + '%';
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    },
+                    color: isDark ? '#adb5bd' : '#666'
+                },
+                grid: {
+                    color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                }
+            },
+            x: {
+                ticks: {
+                    color: isDark ? '#adb5bd' : '#666'
+                },
+                grid: {
+                    color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

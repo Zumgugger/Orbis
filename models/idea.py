@@ -23,6 +23,7 @@ class Idea(db.Model):
     category = db.Column(db.String(100), nullable=True)
     notes = db.Column(db.Text, nullable=True)  # Markdown notes
     mindmap_data = db.Column(db.Text, nullable=True)  # JSON mindmap data
+    checklist_data = db.Column(db.Text, nullable=True)  # JSON checklist items
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -51,6 +52,51 @@ class Idea(db.Model):
             self.mindmap_data = json.dumps(data) if isinstance(data, dict) else data
         except Exception:
             self.mindmap_data = data
+
+    def get_checklist(self) -> list[dict]:
+        """Get checklist items as list of dicts [{id, text, checked}, ...]"""
+        if not self.checklist_data:
+            return []
+        try:
+            return json.loads(self.checklist_data)
+        except Exception:
+            return []
+
+    def set_checklist(self, items: list[dict]) -> None:
+        """Set checklist items from list"""
+        try:
+            self.checklist_data = json.dumps(items)
+        except Exception:
+            self.checklist_data = "[]"
+
+    def add_checklist_item(self, text: str) -> dict:
+        """Add a new checklist item and return it"""
+        items = self.get_checklist()
+        new_id = max([item.get("id", 0) for item in items], default=0) + 1
+        new_item = {"id": new_id, "text": text, "checked": False}
+        items.append(new_item)
+        self.set_checklist(items)
+        return new_item
+
+    def toggle_checklist_item(self, item_id: int) -> bool:
+        """Toggle a checklist item's checked state, return new state"""
+        items = self.get_checklist()
+        for item in items:
+            if item.get("id") == item_id:
+                item["checked"] = not item.get("checked", False)
+                self.set_checklist(items)
+                return item["checked"]
+        return False
+
+    def delete_checklist_item(self, item_id: int) -> bool:
+        """Delete a checklist item, return True if found"""
+        items = self.get_checklist()
+        original_len = len(items)
+        items = [item for item in items if item.get("id") != item_id]
+        if len(items) < original_len:
+            self.set_checklist(items)
+            return True
+        return False
 
 
 class IdeaFile(db.Model):

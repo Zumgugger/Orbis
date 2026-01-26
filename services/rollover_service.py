@@ -63,6 +63,9 @@ class RolloverService:
         while current_day < today:
             next_day = current_day + timedelta(days=1)
 
+            # Save stats for the day before rolling over
+            self._save_daily_stats(user.id, current_day)
+
             # Move pending todos forward by one day
             self._rollover_todos(user.id, current_day, next_day)
 
@@ -78,6 +81,57 @@ class RolloverService:
         self.session.commit()
 
         return result
+
+    def _save_daily_stats(self, user_id: int, stat_date: date) -> None:
+        """
+        Save completion statistics for a given date.
+
+        Args:
+            user_id: ID of the user
+            stat_date: Date to record stats for
+        """
+        from models import Daily, DailyStats, Habit, Todo
+
+        # Count todos for the date
+        todos = Todo.query.filter(
+            Todo.user_id == user_id,
+            Todo.due_date == stat_date,
+        ).all()
+        todos_completed = len([t for t in todos if t.status == "completed"])
+        todos_total = len(todos)
+
+        # Count dailies for the date
+        all_dailies = Daily.query.filter_by(user_id=user_id).all()
+        dailies_due = [d for d in all_dailies if d.should_complete_on(stat_date)]
+        dailies_completed = len(
+            [d for d in dailies_due if d.is_completed_on(stat_date)]
+        )
+        dailies_total = len(dailies_due)
+
+        # Count habits (focused habits that were incremented on this date)
+        focused_habits = Habit.query.filter_by(user_id=user_id, focused=True).all()
+        habits_completed = len(
+            [h for h in focused_habits if h.last_increment_date == stat_date]
+        )
+        habits_total = len(focused_habits)
+
+        # Only save if there was something to do
+        total_items = todos_total + dailies_total + habits_total
+        if total_items > 0:
+            stats = DailyStats.get_or_create(user_id, stat_date)
+            stats.todos_completed = todos_completed
+            stats.todos_total = todos_total
+            stats.dailies_completed = dailies_completed
+            stats.dailies_total = dailies_total
+            stats.habits_completed = habits_completed
+            stats.habits_total = habits_total
+            stats.total_completed = (
+                todos_completed + dailies_completed + habits_completed
+            )
+            stats.total_items = total_items
+            stats.completion_percentage = int(
+                round((stats.total_completed / total_items) * 100)
+            )
 
     def _get_missed_dailies(self, user_id: int, check_date: date) -> list[Daily]:
         """

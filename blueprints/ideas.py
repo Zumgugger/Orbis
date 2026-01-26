@@ -392,3 +392,110 @@ def reorder():
     except Exception:
         db.session.rollback()
         return {"success": False, "error": "Failed to persist order"}, 500
+
+
+# ---- Checklist Endpoints ----
+@ideas_bp.route("/<int:idea_id>/checklist", methods=["GET"])
+@login_required
+def get_checklist(idea_id):
+    """Get checklist items for an idea"""
+    idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
+    return jsonify({"success": True, "items": idea.get_checklist()})
+
+
+@ideas_bp.route("/<int:idea_id>/checklist/add", methods=["POST"])
+@login_required
+def add_checklist_item(idea_id):
+    """Add a new checklist item"""
+    try:
+        idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
+        payload = request.get_json(silent=True) or {}
+        text = payload.get("text", "").strip()
+
+        if not text:
+            return jsonify({"success": False, "error": "Text is required"}), 400
+        if len(text) > 500:
+            return (
+                jsonify({"success": False, "error": "Text too long (max 500 chars)"}),
+                400,
+            )
+
+        new_item = idea.add_checklist_item(text)
+        idea.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({"success": True, "item": new_item})
+    except Exception as e:
+        db.session.rollback()
+        log_exception(
+            e, message="Failed to add checklist item", extra={"idea_id": idea_id}
+        )
+        return jsonify({"success": False, "error": "Failed to add item"}), 500
+
+
+@ideas_bp.route("/<int:idea_id>/checklist/<int:item_id>/toggle", methods=["POST"])
+@login_required
+def toggle_checklist_item(idea_id, item_id):
+    """Toggle a checklist item's checked state"""
+    try:
+        idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
+        new_state = idea.toggle_checklist_item(item_id)
+        idea.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({"success": True, "checked": new_state})
+    except Exception as e:
+        db.session.rollback()
+        log_exception(
+            e,
+            message="Failed to toggle checklist item",
+            extra={"idea_id": idea_id, "item_id": item_id},
+        )
+        return jsonify({"success": False, "error": "Failed to toggle item"}), 500
+
+
+@ideas_bp.route("/<int:idea_id>/checklist/<int:item_id>/delete", methods=["POST"])
+@login_required
+def delete_checklist_item(idea_id, item_id):
+    """Delete a checklist item"""
+    try:
+        idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
+        if idea.delete_checklist_item(item_id):
+            idea.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Item not found"}), 404
+    except Exception as e:
+        db.session.rollback()
+        log_exception(
+            e,
+            message="Failed to delete checklist item",
+            extra={"idea_id": idea_id, "item_id": item_id},
+        )
+        return jsonify({"success": False, "error": "Failed to delete item"}), 500
+
+
+@ideas_bp.route("/<int:idea_id>/description", methods=["POST"])
+@login_required
+def save_description(idea_id):
+    """Save/update idea description"""
+    try:
+        idea = Idea.query.filter_by(id=idea_id, user_id=current_user.id).first_or_404()
+        payload = request.get_json(silent=True) or {}
+        description = payload.get("description", "").strip()
+
+        # Limit to 255 chars
+        if len(description) > 255:
+            description = description[:255]
+
+        idea.description = description if description else None
+        idea.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Description saved"})
+    except Exception as e:
+        db.session.rollback()
+        log_exception(
+            e, message="Failed to save description", extra={"idea_id": idea_id}
+        )
+        return jsonify({"success": False, "error": "Failed to save description"}), 500
