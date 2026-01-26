@@ -54,7 +54,7 @@ def dashboard():
 
     # Habit stats
     habits = Habit.query.filter_by(user_id=current_user.id).all()
-    total_habit_count = sum(h.current_count for h in habits)
+    total_habit_count = sum(h.count for h in habits)
 
     # Filter by tag if specified
     tag_stats = None
