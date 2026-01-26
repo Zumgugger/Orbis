@@ -152,40 +152,54 @@
         font-size: 1rem;
     }
 
-    /* Checklist styling inside Quill editor */
+    /* Checklist styling inside Quill editor - override Quill defaults */
     .ql-editor ul[data-checked] {
-        padding-left: 1.5em;
-        margin-left: 0.5em;
+        padding-left: 28px !important;
+        list-style: none !important;
+        margin-left: 0 !important;
+        pointer-events: auto !important;
     }
     .ql-editor ul[data-checked] > li {
-        list-style-type: none;
-        padding-left: 0.25em;
-        position: relative;
+        position: relative !important;
+        padding-left: 0 !important;
     }
     .ql-editor ul[data-checked] > li::before {
-        content: '';
-        position: absolute;
-        left: -1.25em;
-        top: 0.2em;
-        width: 1em;
-        height: 1em;
-        border: 2px solid #6c757d;
-        border-radius: 3px;
-        background: transparent;
-        cursor: pointer;
+        content: '' !important;
+        position: absolute !important;
+        left: -22px !important;
+        top: 4px !important;
+        width: 14px !important;
+        height: 14px !important;
+        border: 2px solid #6c757d !important;
+        border-radius: 3px !important;
+        background: transparent !important;
+        cursor: pointer !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     .ql-editor ul[data-checked="true"] > li::before {
-        background: #198754;
-        border-color: #198754;
+        background: #198754 !important;
+        border-color: #198754 !important;
     }
     .ql-editor ul[data-checked="true"] > li::after {
-        content: '✓';
-        position: absolute;
-        left: -1.1em;
-        top: 0.1em;
-        color: white;
-        font-size: 0.85em;
-        font-weight: bold;
+        content: '✓' !important;
+        position: absolute !important;
+        left: -22px !important;
+        top: 4px !important;
+        width: 14px !important;
+        height: 14px !important;
+        color: white !important;
+        font-size: 11px !important;
+        font-weight: bold !important;
+        line-height: 14px !important;
+        text-align: center !important;
+        pointer-events: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .ql-editor ul[data-checked="false"] > li::after {
+        content: none !important;
     }
     .ql-editor ul[data-checked="true"] > li {
         text-decoration: line-through;
@@ -882,60 +896,29 @@
     quillNotesEditor.root.innerHTML = {{ idea.notes|tojson }};
     {% endif %}
 
-    // Make checklist items clickable to toggle
+    // Make checklist items clickable to toggle - capture mousedown before Quill
     quillNotesEditor.root.addEventListener('mousedown', function(e) {
         const li = e.target.closest('li');
         if (!li) return;
         const ul = li.parentElement;
         if (!ul || !ul.hasAttribute('data-checked')) return;
 
-        // Check if clicked near the checkbox area (left side)
+        // Check if clicked in the checkbox area (left side, including the negative margin area)
         const rect = li.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-        if (clickX < 30) {
+        // Checkbox is positioned at -1.5em from li's left edge, so clicks from -30px to +10px hit it
+        if (clickX < 20) {
             e.preventDefault();
+            e.stopImmediatePropagation();
 
-            // Get the current checked state from the UL attribute
+            // Toggle the data-checked attribute directly on the UL
             const isCurrentlyChecked = ul.getAttribute('data-checked') === 'true';
+            ul.setAttribute('data-checked', isCurrentlyChecked ? 'false' : 'true');
 
-            // Use setTimeout to run after Quill's event processing
-            setTimeout(() => {
-                // Find index by getting text position
-                const selection = quillNotesEditor.getSelection();
-
-                // Calculate index from DOM position
-                let index = 0;
-                const allNodes = quillNotesEditor.root.querySelectorAll('li');
-                for (let i = 0; i < allNodes.length; i++) {
-                    if (allNodes[i] === li) {
-                        // Found our li, now get its text position
-                        const range = document.createRange();
-                        range.selectNodeContents(li);
-                        const preRange = document.createRange();
-                        preRange.setStart(quillNotesEditor.root, 0);
-                        preRange.setEnd(range.startContainer, range.startOffset);
-                        index = preRange.toString().length + i; // approximate
-                        break;
-                    }
-                }
-
-                // Toggle the format
-                const newFormat = isCurrentlyChecked ? 'unchecked' : 'checked';
-
-                // Find the blot and use its index
-                try {
-                    const blot = Quill.find(li);
-                    if (blot && typeof quillNotesEditor.getIndex === 'function') {
-                        index = quillNotesEditor.getIndex(blot);
-                    }
-                } catch(err) {
-                    console.log('Blot lookup failed, using fallback');
-                }
-
-                quillNotesEditor.formatLine(index, 1, 'list', newFormat);
-            }, 0);
+            // Trigger autosave by emitting a text-change event
+            quillNotesEditor.update('user');
         }
-    });
+    }, true); // Use capture phase to run before Quill's handlers
 
     // ---- Autosave for Notes ----
     let notesAutosaveTimeout = null;
