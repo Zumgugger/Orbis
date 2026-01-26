@@ -154,19 +154,19 @@
 
     /* Checklist styling inside Quill editor */
     .ql-editor ul[data-checked] {
-        padding-left: 2em;
-        margin-left: 0;
+        padding-left: 1.5em;
+        margin-left: 0.5em;
     }
     .ql-editor ul[data-checked] > li {
         list-style-type: none;
-        padding-left: 0;
+        padding-left: 0.25em;
         position: relative;
     }
     .ql-editor ul[data-checked] > li::before {
         content: '';
         position: absolute;
-        left: -1.5em;
-        top: 0.25em;
+        left: -1.25em;
+        top: 0.2em;
         width: 1em;
         height: 1em;
         border: 2px solid #6c757d;
@@ -181,10 +181,10 @@
     .ql-editor ul[data-checked="true"] > li::after {
         content: '✓';
         position: absolute;
-        left: -1.35em;
-        top: 0.15em;
+        left: -1.1em;
+        top: 0.1em;
         color: white;
-        font-size: 0.8em;
+        font-size: 0.85em;
         font-weight: bold;
     }
     .ql-editor ul[data-checked="true"] > li {
@@ -882,8 +882,8 @@
     quillNotesEditor.root.innerHTML = {{ idea.notes|tojson }};
     {% endif %}
 
-    // Make checklist items clickable to toggle using Quill's API
-    quillNotesEditor.root.addEventListener('click', function(e) {
+    // Make checklist items clickable to toggle
+    quillNotesEditor.root.addEventListener('mousedown', function(e) {
         const li = e.target.closest('li');
         if (!li) return;
         const ul = li.parentElement;
@@ -892,23 +892,48 @@
         // Check if clicked near the checkbox area (left side)
         const rect = li.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-        if (clickX < 40) {
+        if (clickX < 30) {
             e.preventDefault();
-            e.stopPropagation();
 
-            // Find the index of this list item in Quill
-            const blot = Quill.find(li);
-            if (blot) {
-                const index = quillNotesEditor.getIndex(blot);
-                const currentFormat = quillNotesEditor.getFormat(index);
+            // Get the current checked state from the UL attribute
+            const isCurrentlyChecked = ul.getAttribute('data-checked') === 'true';
 
-                // Toggle between checked and unchecked
-                if (currentFormat.list === 'checked') {
-                    quillNotesEditor.formatLine(index, 1, 'list', 'unchecked');
-                } else {
-                    quillNotesEditor.formatLine(index, 1, 'list', 'checked');
+            // Use setTimeout to run after Quill's event processing
+            setTimeout(() => {
+                // Find index by getting text position
+                const selection = quillNotesEditor.getSelection();
+
+                // Calculate index from DOM position
+                let index = 0;
+                const allNodes = quillNotesEditor.root.querySelectorAll('li');
+                for (let i = 0; i < allNodes.length; i++) {
+                    if (allNodes[i] === li) {
+                        // Found our li, now get its text position
+                        const range = document.createRange();
+                        range.selectNodeContents(li);
+                        const preRange = document.createRange();
+                        preRange.setStart(quillNotesEditor.root, 0);
+                        preRange.setEnd(range.startContainer, range.startOffset);
+                        index = preRange.toString().length + i; // approximate
+                        break;
+                    }
                 }
-            }
+
+                // Toggle the format
+                const newFormat = isCurrentlyChecked ? 'unchecked' : 'checked';
+
+                // Find the blot and use its index
+                try {
+                    const blot = Quill.find(li);
+                    if (blot && typeof quillNotesEditor.getIndex === 'function') {
+                        index = quillNotesEditor.getIndex(blot);
+                    }
+                } catch(err) {
+                    console.log('Blot lookup failed, using fallback');
+                }
+
+                quillNotesEditor.formatLine(index, 1, 'list', newFormat);
+            }, 0);
         }
     });
 
