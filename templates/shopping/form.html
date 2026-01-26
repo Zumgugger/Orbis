@@ -106,6 +106,73 @@
             itemsField.value = '';
         });
     }
+
+    {% if shopping_list and shopping_list.id %}
+    // Autosave functionality for items
+    let autosaveTimer = null;
+    let lastSavedItems = itemsField ? itemsField.value : '';
+    const autosaveDelay = 1500; // 1.5 seconds
+
+    // Create save status indicator
+    if (itemsField) {
+        const label = document.querySelector('label[for="items"]');
+        if (label && !document.getElementById('autosaveStatus')) {
+            const statusEl = document.createElement('small');
+            statusEl.className = 'text-muted ms-2';
+            statusEl.id = 'autosaveStatus';
+            label.appendChild(statusEl);
+        }
+    }
+
+    function showSaveStatus(status, isError = false) {
+        const statusEl = document.getElementById('autosaveStatus');
+        if (!statusEl) return;
+        statusEl.textContent = status;
+        statusEl.className = isError ? 'text-danger ms-2' : 'text-muted ms-2';
+        if (status === 'Saved') {
+            setTimeout(() => {
+                if (statusEl.textContent === 'Saved') {
+                    statusEl.textContent = '';
+                }
+            }, 2000);
+        }
+    }
+
+    async function autosaveItems() {
+        if (!itemsField) return;
+        const currentItems = itemsField.value;
+        if (currentItems === lastSavedItems) return;
+
+        showSaveStatus('Saving...');
+        try {
+            const response = await fetch('{{ url_for("shopping.autosave", id=shopping_list.id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.csrfToken || ''
+                },
+                body: JSON.stringify({ items: currentItems })
+            });
+            const result = await response.json();
+            if (result.success) {
+                lastSavedItems = currentItems;
+                showSaveStatus('Saved');
+            } else {
+                showSaveStatus('Save failed', true);
+            }
+        } catch (error) {
+            console.error('Autosave error:', error);
+            showSaveStatus('Save failed', true);
+        }
+    }
+
+    if (itemsField) {
+        itemsField.addEventListener('input', function() {
+            if (autosaveTimer) clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(autosaveItems, autosaveDelay);
+        });
+    }
+    {% endif %}
     let currentButton = null;
     let selectedText = '';
 

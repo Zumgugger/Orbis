@@ -304,6 +304,34 @@ def edit_section(sec_id):
         return redirect(url_for("masterprompts.view_section", sec_id=sec.id))
 
 
+@masterprompts_bp.route("/section/<int:sec_id>/autosave", methods=["POST"])
+@login_required
+def autosave_section(sec_id):
+    """Autosave section body via AJAX"""
+    from datetime import datetime
+
+    sec = MasterSection.query.filter_by(
+        id=sec_id, user_id=current_user.id
+    ).first_or_404()
+
+    data = request.get_json(silent=True) or {}
+    body = data.get("body")
+
+    if body is not None:
+        try:
+            body = validate_text(
+                body, field_name="Section body", required=True, max_length=50000
+            )
+            sec.body = body
+            sec.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({"success": True, "message": "Saved"})
+        except ValidationError as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+
+    return jsonify({"success": False, "error": "No body provided"}), 400
+
+
 @masterprompts_bp.route("/section/<int:sec_id>/delete", methods=["POST"])
 @login_required
 def delete_section(sec_id):

@@ -37,9 +37,9 @@
 **Solution:** Implement autosave with debounced JavaScript (save 1-2 seconds after typing stops).
 
 - [x] Add autosave JavaScript for Ideas notes editor (Quill)
-- [ ] Add autosave for Notes content
-- [ ] Add autosave for Masterprompts
-- [ ] Add autosave for Shopping list items
+- [x] Add autosave for Notes content
+- [x] Add autosave for Masterprompts
+- [x] Add autosave for Shopping list items
 - [x] No visual indicator needed per user request
 
 ---

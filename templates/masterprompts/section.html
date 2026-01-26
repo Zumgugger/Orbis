@@ -70,7 +70,6 @@
 
 {% block extra_js %}
 <script>
-// Live preview update
 (function() {
     const textarea = document.getElementById('bodyTextarea');
     const preview = document.getElementById('markdownPreview');
@@ -84,6 +83,72 @@
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/\n/g, '<br>');
+        });
+    }
+
+    // Autosave functionality
+    let autosaveTimer = null;
+    let lastSavedBody = textarea ? textarea.value : '';
+    const autosaveDelay = 1500; // 1.5 seconds
+
+    // Create save status indicator
+    if (textarea) {
+        const label = document.querySelector('label[for="bodyTextarea"]') ||
+                      document.querySelector('label.form-label:nth-of-type(2)');
+        if (label && !document.getElementById('autosaveStatus')) {
+            const statusEl = document.createElement('small');
+            statusEl.className = 'text-muted ms-2';
+            statusEl.id = 'autosaveStatus';
+            label.appendChild(statusEl);
+        }
+    }
+
+    function showSaveStatus(status, isError = false) {
+        const statusEl = document.getElementById('autosaveStatus');
+        if (!statusEl) return;
+        statusEl.textContent = status;
+        statusEl.className = isError ? 'text-danger ms-2' : 'text-muted ms-2';
+        if (status === 'Saved') {
+            setTimeout(() => {
+                if (statusEl.textContent === 'Saved') {
+                    statusEl.textContent = '';
+                }
+            }, 2000);
+        }
+    }
+
+    async function autosaveBody() {
+        if (!textarea) return;
+        const currentBody = textarea.value;
+        if (currentBody === lastSavedBody) return;
+
+        showSaveStatus('Saving...');
+        try {
+            const response = await fetch('{{ url_for("masterprompts.autosave_section", sec_id=section.id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.csrfToken || ''
+                },
+                body: JSON.stringify({ body: currentBody })
+            });
+            const result = await response.json();
+            if (result.success) {
+                lastSavedBody = currentBody;
+                showSaveStatus('Saved');
+            } else {
+                showSaveStatus('Save failed', true);
+            }
+        } catch (error) {
+            console.error('Autosave error:', error);
+            showSaveStatus('Save failed', true);
+        }
+    }
+
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            if (autosaveTimer) clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(autosaveBody, autosaveDelay);
         });
     }
 })();

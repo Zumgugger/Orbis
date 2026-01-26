@@ -1,7 +1,7 @@
 """
 Shopping Lists Blueprint - manage multiple shopping lists with text-based items
 """
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
@@ -142,3 +142,26 @@ def reorder():
     except Exception:
         db.session.rollback()
         return {"success": False, "error": "Failed to persist order"}, 500
+
+
+@shopping_bp.route("/<int:id>/autosave", methods=["POST"])
+@login_required
+def autosave(id):
+    """Autosave shopping list items via AJAX"""
+    shopping_list = ShoppingList.query.filter_by(
+        id=id, user_id=current_user.id
+    ).first_or_404()
+
+    data = request.get_json(silent=True) or {}
+    items = data.get("items")
+
+    if items is not None:
+        try:
+            items = validate_text(items, max_length=10000)
+            shopping_list.items = items
+            db.session.commit()
+            return jsonify({"success": True, "message": "Saved"})
+        except ValidationError as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+
+    return jsonify({"success": False, "error": "No items provided"}), 400

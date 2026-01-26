@@ -3,7 +3,7 @@ Notes Blueprint - handles notes with custom type tabs
 """
 from datetime import datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
@@ -278,6 +278,23 @@ def delete_note(note_id):
     if note_type_id:
         return redirect(url_for("notes.list_by_type", type_id=note_type_id))
     return redirect(url_for("notes.list_notes"))
+
+
+@notes_bp.route("/<int:note_id>/autosave", methods=["POST"])
+@login_required
+def autosave_note(note_id):
+    """Autosave note content via AJAX"""
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first_or_404()
+
+    data = request.get_json(silent=True) or {}
+    content = data.get("content")
+
+    if content is not None:
+        note.content = sanitize_html(content)
+        db.session.commit()
+        return jsonify({"success": True, "message": "Saved"})
+
+    return jsonify({"success": False, "error": "No content provided"}), 400
 
 
 @notes_bp.route("/<int:note_id>/toggle_pin", methods=["POST"])
