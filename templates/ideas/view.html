@@ -154,20 +154,20 @@
 
     /* Checklist styling inside Quill editor */
     .ql-editor ul[data-checked] {
-        padding-left: 0;
+        padding-left: 1.5em;
     }
     .ql-editor ul[data-checked] > li {
         list-style-type: none;
-        padding-left: 1.5em;
+        padding-left: 0.5em;
         position: relative;
     }
     .ql-editor ul[data-checked] > li::before {
         content: '';
         position: absolute;
-        left: 0;
-        top: 0.25em;
-        width: 1em;
-        height: 1em;
+        left: -1.3em;
+        top: 0.3em;
+        width: 0.9em;
+        height: 0.9em;
         border: 2px solid #6c757d;
         border-radius: 3px;
         background: transparent;
@@ -180,10 +180,10 @@
     .ql-editor ul[data-checked="true"] > li::after {
         content: '✓';
         position: absolute;
-        left: 0.15em;
-        top: 0.1em;
+        left: -1.2em;
+        top: 0.2em;
         color: white;
-        font-size: 0.8em;
+        font-size: 0.75em;
         font-weight: bold;
     }
     .ql-editor ul[data-checked="true"] > li {
@@ -891,13 +891,30 @@
         // Check if clicked near the checkbox area (left side)
         const rect = li.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-        if (clickX < 25) {
+        if (clickX < 30) {
             // Toggle the checked state
             const isChecked = ul.getAttribute('data-checked') === 'true';
-            ul.setAttribute('data-checked', isChecked ? 'false' : 'true');
+            const newState = isChecked ? 'false' : 'true';
+            ul.setAttribute('data-checked', newState);
 
-            // Trigger autosave
-            quillNotesEditor.update();
+            // Manually trigger autosave since DOM change doesn't trigger text-change
+            clearTimeout(notesAutosaveTimeout);
+            notesAutosaveTimeout = setTimeout(async () => {
+                const notesContent = quillNotesEditor.root.innerHTML;
+                const formData = new FormData();
+                formData.append('notes', notesContent);
+                formData.append('csrf_token', window.csrfToken || '');
+
+                try {
+                    await fetch(`/ideas/${ideaId}/notes`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    showSaveIndicator('Saved');
+                } catch (e) {
+                    console.error('Autosave failed:', e);
+                }
+            }, 500); // Save quicker for checkbox toggles
         }
     });
 
