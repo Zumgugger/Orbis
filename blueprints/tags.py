@@ -236,6 +236,17 @@ def api_list_tags():
     return jsonify([tag.to_dict() for tag in tags])
 
 
+@tags_bp.route("/api/top")
+@login_required
+def api_top_tags():
+    """API: Get top 7 most used tags for current user"""
+    tags = Tag.query.filter_by(user_id=current_user.id).all()
+    tag_usage = [(tag, tag.get_usage_count()) for tag in tags]
+    tag_usage.sort(key=lambda x: x[1], reverse=True)
+    top_tags = [tag for tag, count in tag_usage[:7] if count > 0]
+    return jsonify([tag.to_dict() for tag in top_tags])
+
+
 @tags_bp.route("/api/create", methods=["POST"])
 @login_required
 def api_create_tag():

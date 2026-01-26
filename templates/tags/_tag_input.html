@@ -91,6 +91,32 @@
     .smart-tag-btn:hover {
         border-style: solid;
     }
+    /* Quick tag buttons inside input */
+    .quick-tag-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15em 0.4em;
+        font-size: 0.7rem;
+        border-radius: 0.25rem;
+        background-color: transparent;
+        border: 1px solid;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        opacity: 0.6;
+    }
+    .quick-tag-btn:hover {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    .quick-tags-divider {
+        width: 1px;
+        height: 20px;
+        background-color: #dee2e6;
+        margin: 0 0.25rem;
+    }
+    [data-bs-theme="dark"] .quick-tags-divider {
+        background-color: rgba(255,255,255,0.2);
+    }
     [data-bs-theme="dark"] .tag-input-container {
         border-color: rgba(255,255,255,0.15);
         background-color: #2b3035;
@@ -116,8 +142,10 @@
         <div class="tag-input-container" id="tagInputContainer" onclick="document.getElementById('tagInputField').focus()">
             <div id="selectedTags"></div>
             <input type="text" class="tag-input-field" id="tagInputField"
-                   placeholder="Type to search or create tags..."
+                   placeholder="Search or add..."
                    autocomplete="off">
+            <div class="quick-tags-divider" id="quickTagsDivider" style="display: none;"></div>
+            <div id="quickTags" style="display: flex; flex-wrap: wrap; gap: 0.25rem;"></div>
         </div>
         <div class="tag-suggestions" id="tagSuggestions"></div>
     </div>
@@ -408,8 +436,58 @@
     if (titleInput) titleInput.addEventListener('input', debouncedSmartSuggestions);
     if (descInput) descInput.addEventListener('input', debouncedSmartSuggestions);
 
+    // Quick tags (top 7)
+    const quickTagsDiv = document.getElementById('quickTags');
+    const quickTagsDivider = document.getElementById('quickTagsDivider');
+    let topTags = [];
+
+    async function loadTopTags() {
+        try {
+            const resp = await fetch('/tags/api/top');
+            topTags = await resp.json();
+            renderQuickTags();
+        } catch (e) {
+            console.error('Failed to load top tags:', e);
+        }
+    }
+
+    function renderQuickTags() {
+        const availableTags = topTags.filter(tag => !selectedTagIds.includes(tag.id));
+        if (availableTags.length > 0) {
+            quickTagsDivider.style.display = 'block';
+            quickTagsDiv.innerHTML = availableTags.map(tag => `
+                <button type="button" class="quick-tag-btn"
+                        style="border-color: ${tag.color}; color: ${tag.color};"
+                        onclick="window.tagInputSelectQuickTag(${tag.id}); event.stopPropagation();"
+                        title="Add ${tag.name}">
+                    ${tag.name}
+                </button>
+            `).join('');
+        } else {
+            quickTagsDivider.style.display = 'none';
+            quickTagsDiv.innerHTML = '';
+        }
+    }
+
+    // Select quick tag - exposed globally
+    window.tagInputSelectQuickTag = function(tagId) {
+        const tag = topTags.find(t => t.id === tagId) || allTags.find(t => t.id === tagId);
+        if (tag) {
+            addSelectedTag(tag);
+            renderQuickTags();
+        }
+    };
+
+    // Update renderSelectedTags to also refresh quick tags
+    const origRenderSelectedTags = renderSelectedTags;
+    renderSelectedTags = function() {
+        origRenderSelectedTags.apply(this, arguments);
+        renderQuickTags();
+    };
+
     // Initialize
     loadTags().then(() => {
+        loadTopTags();
         updateSmartSuggestions();
     });
 })();
