@@ -1,7 +1,7 @@
 """Add note_types table and note_type_id column
 
 Revision ID: 20260107_add_note_types
-Revises: d2282fc449a4
+Revises: 20260101_add_dual_calendar
 Create Date: 2026-01-07
 """
 import sqlalchemy as sa
@@ -9,7 +9,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20260107_add_note_types"
-down_revision = "d2282fc449a4"
+down_revision = "20260101_add_dual_calendar"
 branch_labels = None
 depends_on = None
 
