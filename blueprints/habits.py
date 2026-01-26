@@ -108,8 +108,18 @@ def edit_habit(habit_id):
 def increment_habit(habit_id):
     """Increment habit count (+1)"""
     habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first_or_404()
+
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+    )
+
     target_date = None
-    target_date_str = request.form.get("target_date")
+    if is_ajax:
+        data = request.get_json(silent=True) or {}
+        target_date_str = data.get("target_date") or request.form.get("target_date")
+    else:
+        target_date_str = request.form.get("target_date")
+
     if target_date_str:
         try:
             target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
@@ -118,6 +128,18 @@ def increment_habit(habit_id):
 
     habit.increment(target_date=target_date)
     db.session.commit()
+
+    if is_ajax:
+        return jsonify(
+            {
+                "success": True,
+                "count": habit.count,
+                "last_increment_date": habit.last_increment_date.isoformat()
+                if habit.last_increment_date
+                else None,
+            }
+        )
+
     next_page = request.args.get("next") or request.form.get("next")
     if next_page:
         return redirect(next_page)

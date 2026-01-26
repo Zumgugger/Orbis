@@ -3,7 +3,7 @@ Dailies Blueprint - handles recurring daily tasks
 """
 from datetime import date, datetime, timedelta
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
@@ -152,8 +152,22 @@ def toggle_daily(daily_id):
     """Toggle daily completion status"""
     daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
 
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+    )
+
     if not daily.should_complete_today():
         frequency_name = daily.frequency.capitalize()
+        if is_ajax:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"This daily is not available today. It is set to {frequency_name}.",
+                    }
+                ),
+                400,
+            )
         flash(
             f"This daily is not available today. It is set to {frequency_name}.",
             "warning",
@@ -163,8 +177,19 @@ def toggle_daily(daily_id):
             return redirect(next_page)
         return redirect(url_for("dailies.list_dailies"))
 
+    was_completed = daily.is_completed_today()
     daily.toggle_completion()
     db.session.commit()
+
+    if is_ajax:
+        return jsonify(
+            {
+                "success": True,
+                "completed": not was_completed,
+                "streak_count": daily.streak_count,
+            }
+        )
+
     next_page = request.args.get("next")
     if next_page:
         return redirect(next_page)
@@ -187,23 +212,60 @@ def delete_daily(daily_id):
 def toggle_for_date(daily_id):
     """Toggle completion for a specific date (used on Tomorrow). Disabled for daily frequency."""
     daily = Daily.query.filter_by(id=daily_id, user_id=current_user.id).first_or_404()
-    target_date_str = request.form.get("target_date")
+
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+    )
+
+    # Get target date from form or JSON
+    if is_ajax:
+        data = request.get_json(silent=True) or {}
+        target_date_str = data.get("target_date") or request.form.get("target_date")
+    else:
+        target_date_str = request.form.get("target_date")
+
     next_page = request.args.get("next") or request.form.get("next")
+
     if not target_date_str:
+        if is_ajax:
+            return jsonify({"success": False, "error": "No target date provided."}), 400
         flash("No target date provided.", "error")
         return redirect(next_page or url_for("dailies.list_dailies"))
+
     try:
         target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
     except ValueError:
+        if is_ajax:
+            return jsonify({"success": False, "error": "Invalid target date."}), 400
         flash("Invalid target date.", "error")
         return redirect(next_page or url_for("dailies.list_dailies"))
 
     if daily.frequency == "daily":
+        if is_ajax:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Daily repetition cannot be scratched early.",
+                    }
+                ),
+                400,
+            )
         flash("Daily repetition cannot be scratched early.", "warning")
         return redirect(next_page or url_for("dailies.list_dailies"))
 
+    was_completed = daily.is_completed_on(target_date)
     daily.toggle_completion_on(target_date)
     db.session.commit()
+
+    if is_ajax:
+        return jsonify(
+            {
+                "success": True,
+                "completed": not was_completed,
+                "streak_count": daily.streak_count,
+            }
+        )
 
     if next_page:
         return redirect(next_page)

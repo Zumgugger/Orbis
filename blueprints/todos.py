@@ -602,6 +602,10 @@ def toggle_todo(todo_id):
     """Toggle todo completion status and sync with Google Calendar if linked"""
     todo = Todo.query.filter_by(id=todo_id, user_id=current_user.id).first_or_404()
 
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+    )
+
     if todo.status == "pending":
         todo.status = "completed"
         todo.completed_at = datetime.utcnow()
@@ -623,6 +627,15 @@ def toggle_todo(todo_id):
     # (completed todos may be removed from future blocks)
     if todo.sync_to_shared and todo.due_date:
         _sync_shared_blocks_for_todo(todo)
+
+    if is_ajax:
+        return jsonify(
+            {
+                "success": True,
+                "status": todo.status,
+                "completed": todo.status == "completed",
+            }
+        )
 
     next_page = request.args.get("next")
     if next_page:
