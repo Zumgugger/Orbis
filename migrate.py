@@ -6,28 +6,23 @@ Usage:
     python migrate.py          # Run all pending migrations
     python migrate.py status   # Show current migration status
     python migrate.py init     # Initialize schema_version table
+    python migrate.py stamp N  # Mark version N as applied without running it
 """
 
 import re
 import sys
 from pathlib import Path
 
+from app import create_app
+from database import db
 
-def get_db_connection():
-    """Get database connection using Flask app context."""
-    from app import create_app
-    from database import db
-
-    app = create_app()
-    with app.app_context():
-        return db.session, db
+app = create_app()
 
 
 def init_schema_version():
     """Create schema_version table if it doesn't exist."""
-    session, db = get_db_connection()
-    with session.get_bind().connect() as conn:
-        conn.execute(
+    with app.app_context():
+        db.session.execute(
             db.text(
                 """
             CREATE TABLE IF NOT EXISTS schema_version (
@@ -38,16 +33,12 @@ def init_schema_version():
         """
             )
         )
-        conn.commit()
+        db.session.commit()
     print("schema_version table ready")
 
 
 def get_current_version():
     """Get the current schema version from database."""
-    from app import create_app
-    from database import db
-
-    app = create_app()
     with app.app_context():
         try:
             result = db.session.execute(
@@ -80,34 +71,27 @@ def get_migration_files():
 
 def run_migration(version: int, filepath: Path):
     """Run a single migration file."""
-    from app import create_app
-    from database import db
-
-    app = create_app()
     with app.app_context():
         sql = filepath.read_text(encoding="utf-8")
 
         # Split by semicolons but handle edge cases
         statements = [s.strip() for s in sql.split(";") if s.strip()]
 
-        with db.session.get_bind().connect() as conn:
-            for statement in statements:
-                if statement and not statement.startswith("--"):
-                    try:
-                        conn.execute(db.text(statement))
-                    except Exception as e:
-                        print(f"  Error executing: {statement[:50]}...")
-                        print(f"  {e}")
-                        raise
+        for statement in statements:
+            if statement and not statement.startswith("--"):
+                try:
+                    db.session.execute(db.text(statement))
+                except Exception as e:
+                    print(f"  Error executing: {statement[:50]}...")
+                    print(f"  {e}")
+                    raise
 
-            # Record the migration
-            conn.execute(
-                db.text(
-                    "INSERT INTO schema_version (version, filename) VALUES (:v, :f)"
-                ),
-                {"v": version, "f": filepath.name},
-            )
-            conn.commit()
+        # Record the migration
+        db.session.execute(
+            db.text("INSERT INTO schema_version (version, filename) VALUES (:v, :f)"),
+            {"v": version, "f": filepath.name},
+        )
+        db.session.commit()
 
 
 def run_migrations():
@@ -155,12 +139,8 @@ def show_status():
 
 def stamp_version(version: int):
     """Mark a version as applied without running it."""
-    from app import create_app
-    from database import db
-
     init_schema_version()
 
-    app = create_app()
     with app.app_context():
         db.session.execute(
             db.text(
