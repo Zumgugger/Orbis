@@ -83,7 +83,7 @@
 ## Additional Tasks
 
 - [x] **Update this todolist** as items are completed
-- [ ] **Git commit and push** after all fixes are done
+- [x] **Git commit and push** after all fixes are done
 
 ---
 
@@ -91,4 +91,4 @@
 
 - Offline functionality scheduled for next session
 - Focus on database persistence over local storage where applicable
-- Autosave for Notes, Masterprompts, Shopping still pending
+- All autosave features completed ✓
