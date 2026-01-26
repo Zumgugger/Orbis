@@ -151,6 +151,51 @@
     .ql-editor {
         font-size: 1rem;
     }
+
+    /* Checklist styling inside Quill editor */
+    .ql-editor ul[data-checked] {
+        padding-left: 0;
+    }
+    .ql-editor ul[data-checked] > li {
+        list-style-type: none;
+        padding-left: 1.5em;
+        position: relative;
+    }
+    .ql-editor ul[data-checked] > li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.25em;
+        width: 1em;
+        height: 1em;
+        border: 2px solid #6c757d;
+        border-radius: 3px;
+        background: transparent;
+        cursor: pointer;
+    }
+    .ql-editor ul[data-checked="true"] > li::before {
+        background: #198754;
+        border-color: #198754;
+    }
+    .ql-editor ul[data-checked="true"] > li::after {
+        content: '✓';
+        position: absolute;
+        left: 0.15em;
+        top: 0.1em;
+        color: white;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+    .ql-editor ul[data-checked="true"] > li {
+        text-decoration: line-through;
+        color: #6c757d;
+    }
+
+    /* Custom toolbar button icon for checklist */
+    .ql-toolbar .ql-checklist::after {
+        content: '☑';
+        font-size: 14px;
+    }
 </style>
 {% endblock %}
 
@@ -231,20 +276,6 @@
     <div class="tab-pane fade show active" id="notes" role="tabpanel">
         <div class="card mt-3">
             <div class="card-body">
-                <!-- Checklist Section -->
-                <div class="mb-4">
-                    <label class="form-label"><i class="bi bi-check2-square"></i> Checklist</label>
-                    <div id="checklistContainer" class="mb-2">
-                        <!-- Checklist items will be rendered here -->
-                    </div>
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="newChecklistItem" placeholder="Add checklist item..." maxlength="500">
-                        <button class="btn btn-outline-primary" type="button" id="addChecklistBtn">
-                            <i class="bi bi-plus"></i> Add
-                        </button>
-                    </div>
-                </div>
-                <hr>
                 <div class="mb-3" style="position: relative;">
                     <label for="notes-editor" class="form-label">Notes</label>
                     <!-- Quill Editor Container -->
@@ -820,26 +851,55 @@
         }
     });
 
-    // Initialize Quill editor for notes
+    // Initialize Quill editor for notes with checklist support
+    // Register checklist format
+    var Parchment = Quill.import('parchment');
+    var ListItem = Quill.import('formats/list');
+
+    // Custom checklist handler
+    var toolbarOptions = {
+        container: [
+            [{ header: [1, 2, 3, 4, 5, 6, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            ['blockquote', 'code-block'],
+            [{ list: 'ordered'}, { list: 'bullet' }, { list: 'check' }],
+            ['link'],
+            ['clean']
+        ]
+    };
+
     var quillNotesEditor = new Quill('#notes-editor', {
         theme: 'snow',
         modules: {
-            toolbar: [
-                [{ header: [1, 2, 3, 4, 5, 6, false] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                ['blockquote', 'code-block'],
-                [{ list: 'ordered'}, { list: 'bullet' }],
-                ['link'],
-                ['clean']
-            ]
+            toolbar: toolbarOptions
         },
-        placeholder: 'Write your notes here...'
+        placeholder: 'Write your notes here... Use ☑ for checklists!'
     });
 
     // Set initial content if editing
     {% if idea and idea.notes %}
     quillNotesEditor.root.innerHTML = {{ idea.notes|tojson }};
     {% endif %}
+
+    // Make checklist items clickable to toggle
+    quillNotesEditor.root.addEventListener('click', function(e) {
+        const li = e.target.closest('li');
+        if (!li) return;
+        const ul = li.parentElement;
+        if (!ul || !ul.hasAttribute('data-checked')) return;
+
+        // Check if clicked near the checkbox area (left side)
+        const rect = li.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        if (clickX < 25) {
+            // Toggle the checked state
+            const isChecked = ul.getAttribute('data-checked') === 'true';
+            ul.setAttribute('data-checked', isChecked ? 'false' : 'true');
+
+            // Trigger autosave
+            quillNotesEditor.update();
+        }
+    });
 
     // ---- Autosave for Notes ----
     let notesAutosaveTimeout = null;
@@ -889,135 +949,5 @@
             }, 1500);
         });
     }
-
-    // ---- Checklist functionality ----
-    const checklistContainer = document.getElementById('checklistContainer');
-    const newChecklistInput = document.getElementById('newChecklistItem');
-    const addChecklistBtn = document.getElementById('addChecklistBtn');
-
-    function renderChecklistItem(item) {
-        const div = document.createElement('div');
-        div.className = 'd-flex align-items-center gap-2 mb-2 checklist-item';
-        div.dataset.id = item.id;
-        div.innerHTML = `
-            <input type="checkbox" class="form-check-input" ${item.checked ? 'checked' : ''}
-                   onchange="toggleChecklistItem(${item.id})">
-            <span class="${item.checked ? 'text-decoration-line-through text-muted' : ''}">${escapeHtml(item.text)}</span>
-            <button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="deleteChecklistItem(${item.id})">
-                <i class="bi bi-x"></i>
-            </button>
-        `;
-        return div;
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    async function loadChecklist() {
-        try {
-            const response = await fetch(`/ideas/${ideaId}/checklist`);
-            const data = await response.json();
-            if (data.success) {
-                checklistContainer.innerHTML = '';
-                if (data.items.length === 0) {
-                    checklistContainer.innerHTML = '<p class="text-muted small">No checklist items yet.</p>';
-                } else {
-                    data.items.forEach(item => {
-                        checklistContainer.appendChild(renderChecklistItem(item));
-                    });
-                }
-            }
-        } catch (e) {
-            console.error('Failed to load checklist:', e);
-        }
-    }
-
-    async function addChecklistItem() {
-        const text = newChecklistInput.value.trim();
-        if (!text) return;
-
-        try {
-            const response = await fetch(`/ideas/${ideaId}/checklist/add`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': window.csrfToken || ''
-                },
-                body: JSON.stringify({ text })
-            });
-            const data = await response.json();
-            if (data.success) {
-                newChecklistInput.value = '';
-                // Remove "no items" message if present
-                const noItems = checklistContainer.querySelector('.text-muted');
-                if (noItems) noItems.remove();
-                checklistContainer.appendChild(renderChecklistItem(data.item));
-            }
-        } catch (e) {
-            console.error('Failed to add checklist item:', e);
-        }
-    }
-
-    window.toggleChecklistItem = async function(itemId) {
-        try {
-            const response = await fetch(`/ideas/${ideaId}/checklist/${itemId}/toggle`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': window.csrfToken || ''
-                }
-            });
-            const data = await response.json();
-            if (data.success) {
-                // Update the item visually
-                const item = checklistContainer.querySelector(`[data-id="${itemId}"]`);
-                if (item) {
-                    const span = item.querySelector('span');
-                    if (data.checked) {
-                        span.classList.add('text-decoration-line-through', 'text-muted');
-                    } else {
-                        span.classList.remove('text-decoration-line-through', 'text-muted');
-                    }
-                }
-            }
-        } catch (e) {
-            console.error('Failed to toggle checklist item:', e);
-        }
-    };
-
-    window.deleteChecklistItem = async function(itemId) {
-        try {
-            const response = await fetch(`/ideas/${ideaId}/checklist/${itemId}/delete`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': window.csrfToken || ''
-                }
-            });
-            const data = await response.json();
-            if (data.success) {
-                const item = checklistContainer.querySelector(`[data-id="${itemId}"]`);
-                if (item) item.remove();
-                // Show "no items" if empty
-                if (checklistContainer.children.length === 0) {
-                    checklistContainer.innerHTML = '<p class="text-muted small">No checklist items yet.</p>';
-                }
-            }
-        } catch (e) {
-            console.error('Failed to delete checklist item:', e);
-        }
-    };
-
-    addChecklistBtn.addEventListener('click', addChecklistItem);
-    newChecklistInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addChecklistItem();
-        }
-    });
-
-    // Load checklist on page load
-    loadChecklist();
 </script>
 {% endblock %}
