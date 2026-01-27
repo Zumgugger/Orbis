@@ -10,6 +10,7 @@ from extensions import db
 
 # Re-export all models for backward compatibility
 from models import (
+    ApiKey,
     CompletionLog,
     Daily,
     Goal,
@@ -135,6 +136,7 @@ def _apply_legacy_migrations() -> None:
 __all__ = [
     "db",
     "init_db",
+    "ApiKey",
     "User",
     "RolloverState",
     "Todo",

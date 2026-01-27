@@ -350,11 +350,22 @@ def settings():
         .all()
     )
 
+    # Get API key info
+    from datetime import datetime
+
+    from models import ApiKey
+
+    api_key = ApiKey.query.filter_by(user_id=current_user.id).first()
+    api_key_to_display = session.pop("api_key_to_display", None)
+
     return render_template(
         "auth/settings.html",
         shared_calendar_id=current_user.shared_calendar_id or "",
         default_google_account=current_user.default_google_account or "",
         shared_titles=shared_titles,
+        api_key=api_key,
+        api_key_to_display=api_key_to_display,
+        now=datetime.utcnow,
     )
 
 
@@ -411,6 +422,65 @@ def update_shared_titles():
                 flash(f"'{title_obj.title}' is now {status} for work hours", "info")
 
     return redirect(url_for("auth.settings"))
+
+
+# API Key Management Routes
+@auth_bp.route("/api-key/generate", methods=["POST"])
+@login_required
+def generate_api_key():
+    """Generate a new API key for the user"""
+    from models import ApiKey
+
+    try:
+        plain_key, api_key_obj = ApiKey.create_for_user(current_user.id)
+        flash(
+            "API key generated successfully! Copy it now - it won't be shown again.",
+            "success",
+        )
+        # We'll pass the key through session for display in the template
+        session["api_key_to_display"] = plain_key
+        return redirect(url_for("auth.settings"))
+    except Exception as e:
+        current_app.logger.error(f"Error generating API key: {e}")
+        flash("Failed to generate API key. Please try again.", "error")
+        return redirect(url_for("auth.settings"))
+
+
+@auth_bp.route("/api-key/regenerate", methods=["POST"])
+@login_required
+def regenerate_api_key():
+    """Regenerate API key (invalidates old one)"""
+    from models import ApiKey
+
+    try:
+        plain_key, api_key_obj = ApiKey.create_for_user(current_user.id)
+        session["api_key_to_display"] = plain_key
+        flash(
+            "API key regenerated! Your old key is now invalid. Copy the new key immediately.",
+            "success",
+        )
+        return redirect(url_for("auth.settings"))
+    except Exception as e:
+        current_app.logger.error(f"Error regenerating API key: {e}")
+        flash("Failed to regenerate API key. Please try again.", "error")
+        return redirect(url_for("auth.settings"))
+
+
+@auth_bp.route("/api-key/revoke", methods=["POST"])
+@login_required
+def revoke_api_key():
+    """Revoke the user's API key"""
+    from models import ApiKey
+
+    try:
+        ApiKey.query.filter_by(user_id=current_user.id).delete()
+        db.session.commit()
+        flash("API key revoked successfully.", "success")
+        return redirect(url_for("auth.settings"))
+    except Exception as e:
+        current_app.logger.error(f"Error revoking API key: {e}")
+        flash("Failed to revoke API key. Please try again.", "error")
+        return redirect(url_for("auth.settings"))
 
 
 # Development Mode Routes

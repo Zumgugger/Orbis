@@ -2,6 +2,7 @@
 Database models package
 Re-exports all models for convenient importing
 """
+from models.api_key import ApiKey
 from models.daily import CompletionLog, Daily
 from models.goal import Goal, Milestone
 from models.habit import Habit, HabitLog
@@ -28,6 +29,7 @@ from models.user import RolloverState, User
 __all__ = [
     "User",
     "RolloverState",
+    "ApiKey",
     "Todo",
     "Daily",
     "CompletionLog",

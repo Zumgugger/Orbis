@@ -148,6 +148,7 @@ def create_app(config_name=None):
 
     # Register blueprints
     from blueprints.admin import admin_bp
+    from blueprints.api import api_bp
     from blueprints.auth import auth_bp
     from blueprints.dailies import dailies_bp
     from blueprints.goals import goals_bp
@@ -175,6 +176,7 @@ def create_app(config_name=None):
     app.register_blueprint(notes_bp)
     app.register_blueprint(tags_bp)
     app.register_blueprint(stats_bp)
+    app.register_blueprint(api_bp)
 
     # Error handlers
     @app.errorhandler(400)

@@ -123,6 +123,134 @@
 
         <!-- Shared Titles Management (separate form since it has different actions) -->
         <div class="card mb-4">
+            <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#apiAccessSection"
+                 style="cursor: pointer;">
+                <h5 class="mb-0"><i class="bi bi-key"></i> API Access</h5>
+            </div>
+            <div class="collapse" id="apiAccessSection">
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Generate an API key to allow external applications to create todos and notes in Orbis.
+                        Each user can have only one API key.
+                    </p>
+
+                    {% if api_key %}
+                    <!-- Existing API Key Section -->
+                    <div class="alert alert-info mb-3">
+                        <strong>API Key Status:</strong> Active
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Key Prefix</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" value="{{ api_key.key_prefix }}..." readonly>
+                            <span class="input-group-text text-muted">(masked for security)</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Created</label>
+                            <div class="text-muted">
+                                {{ api_key.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Used</label>
+                            <div class="text-muted">
+                                {% if api_key.last_used_at %}
+                                {{ api_key.last_used_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                Never
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Rate Limit Usage</label>
+                            <div class="progress" style="height: 25px;">
+                                {% set percentage = (api_key.requests_this_hour / 10 * 100) | int %}
+                                <div class="progress-bar {% if percentage >= 100 %}bg-danger{% elif percentage >= 70 %}bg-warning{% else %}bg-success{% endif %}"
+                                     role="progressbar"
+                                     style="width: {{ percentage }}%;"
+                                     aria-valuenow="{{ api_key.requests_this_hour }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="10">
+                                    {{ api_key.requests_this_hour }} / 10
+                                </div>
+                            </div>
+                            <small class="text-muted">Resets in {{ (api_key.get_reset_time() - now()).total_seconds() / 60 | int }} minutes</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <form method="POST" action="{{ url_for('auth.regenerate_api_key') }}" class="flex-grow-1">
+                            <button type="submit" class="btn btn-warning w-100"
+                                    onclick="return confirm('Regenerate API key? Your old key will stop working.');">
+                                <i class="bi bi-arrow-repeat"></i> Regenerate Key
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('auth.revoke_api_key') }}" class="flex-grow-1">
+                            <button type="submit" class="btn btn-danger w-100"
+                                    onclick="return confirm('Revoke API key? External applications won\'t be able to access your account.');">
+                                <i class="bi bi-trash"></i> Revoke Key
+                            </button>
+                        </form>
+                    </div>
+                    {% elif api_key_to_display %}
+                    <!-- New Key Display Modal -->
+                    <div class="alert alert-success mb-3">
+                        <strong>API Key Generated!</strong> Copy it now - you won't be able to see it again.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Your API Key (Copy Now)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace" id="apiKeyInput"
+                                   value="{{ api_key_to_display }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="copyBtn"
+                                    onclick="copyToClipboard(); this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy', 2000);">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        <small class="text-muted">Store this securely. You won't be able to see it again.</small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <form method="POST" action="{{ url_for('auth.settings') }}" class="flex-grow-1">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-check-lg"></i> I've Copied It
+                            </button>
+                        </form>
+                    </div>
+
+                    <script>
+                    function copyToClipboard() {
+                        const input = document.getElementById('apiKeyInput');
+                        input.select();
+                        document.execCommand('copy');
+                    }
+                    </script>
+                    {% else %}
+                    <!-- No API Key -->
+                    <div class="alert alert-secondary mb-3">
+                        <strong>No API key yet.</strong> Generate one to enable external access.
+                    </div>
+
+                    <form method="POST" action="{{ url_for('auth.generate_api_key') }}">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-plus-lg"></i> Generate API Key
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Shared Titles Management (separate form since it has different actions) -->
+        <div class="card mb-4">
             <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#blockTitlesSection"
                  style="cursor: pointer;">
                 <h5 class="mb-0"><i class="bi bi-collection"></i> Block Titles</h5>
