@@ -98,7 +98,7 @@
                 {% endif %}
             </div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" id="noteForm">
                     <div class="mb-3">
                         <label for="title" class="form-label">Title *</label>
                         <input type="text" class="form-control" id="title" name="title"
@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 
     // Handle form submission
-    document.querySelector('form').addEventListener('submit', function(e) {
+    document.getElementById('noteForm').addEventListener('submit', function(e) {
         // Get HTML from Quill editor
         var content = quill.root.innerHTML;
 

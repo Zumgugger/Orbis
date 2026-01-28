@@ -1,7 +1,7 @@
 """
 Goals Blueprint - handles goal tracking with milestone management
 """
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.orm import selectinload
 
@@ -92,6 +92,26 @@ def edit(id):
             return render_template("goals/form.html", goal=goal, action="Edit")
 
     return render_template("goals/form.html", goal=goal, action="Edit")
+
+
+@goals_bp.route("/<int:id>/autosave", methods=["POST"])
+@login_required
+def autosave(id):
+    """Autosave goal description via AJAX"""
+    goal = Goal.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+
+    data = request.get_json(silent=True) or {}
+    description = data.get("description")
+
+    if description is not None:
+        try:
+            goal.description = validate_text(description, max_length=5000)
+            db.session.commit()
+            return jsonify({"success": True, "message": "Saved"})
+        except ValidationError as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+
+    return jsonify({"success": False, "error": "No description provided"}), 400
 
 
 @goals_bp.route("/<int:id>/delete", methods=["POST"])

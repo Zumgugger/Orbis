@@ -40,7 +40,7 @@
                     </div>
 
                     <div class="mb-3 text-selectable-wrapper">
-                        <label for="description" class="form-label">Description</label>
+                        <label for="description" class="form-label">Description <small id="autosaveStatus" class="text-muted"></small></label>
                         <textarea class="form-control" id="description" name="description" rows="3">{% if goal %}{{ goal.description }}{% endif %}</textarea>
                         <button type="button" class="selection-todo-btn" data-source="goal-description" title="Create todo from selection">
                             <i class="bi bi-check-square"></i>
@@ -187,5 +187,60 @@
         }
     });
 })();
+
+{% if goal and goal.id %}
+// Autosave functionality for description
+(function() {
+    const descField = document.getElementById('description');
+    const statusEl = document.getElementById('autosaveStatus');
+    let autosaveTimer = null;
+    let lastSavedContent = descField.value;
+    const autosaveDelay = 1500; // 1.5 seconds
+
+    function showSaveStatus(status, isError = false) {
+        statusEl.textContent = status;
+        statusEl.className = isError ? 'text-danger' : 'text-muted';
+        if (status === 'Saved') {
+            setTimeout(() => {
+                if (statusEl.textContent === 'Saved') {
+                    statusEl.textContent = '';
+                }
+            }, 2000);
+        }
+    }
+
+    async function autosaveDescription() {
+        const currentContent = descField.value;
+        if (currentContent === lastSavedContent) return;
+
+        showSaveStatus('Saving...');
+        try {
+            const response = await fetch('{{ url_for("goals.autosave", id=goal.id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.csrfToken || ''
+                },
+                body: JSON.stringify({ description: currentContent })
+            });
+            const result = await response.json();
+            if (result.success) {
+                lastSavedContent = currentContent;
+                showSaveStatus('Saved');
+            } else {
+                showSaveStatus('Save failed', true);
+            }
+        } catch (error) {
+            console.error('Autosave error:', error);
+            showSaveStatus('Save failed', true);
+        }
+    }
+
+    descField.addEventListener('input', function() {
+        if (autosaveTimer) clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(autosaveDescription, autosaveDelay);
+    });
+})();
+{% endif %}
 </script>
 {% endblock %}
