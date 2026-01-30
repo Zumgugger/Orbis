@@ -24,7 +24,7 @@
 
                     {% if shopping_list.items %}
                         <div class="list-group list-group-flush" onclick="event.stopPropagation();">
-                            {% set checked_items = [item.strip() for item in shopping_list.checked_items.split('\n') if item.strip()] if shopping_list.checked_items else [] %}
+                            {% set checked_items = shopping_list.checked_items.split('\n') if shopping_list.checked_items else [] %}
                             {% for line in shopping_list.items.split('\n') if line.strip() %}
                             <label class="list-group-item d-flex align-items-center shopping-item py-2" data-list-id="{{ shopping_list.id }}">
                                 <input class="form-check-input me-2 shopping-check" type="checkbox" {% if line.strip() in checked_items %}checked{% endif %} data-item="{{ line.strip() }}">
