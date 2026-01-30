@@ -178,7 +178,8 @@ def save_checked(id):
     data = request.get_json(silent=True) or {}
     checked_items = data.get("checked_items", [])
 
-    if isinstance(checked_items, list):
+    # Use __builtins__.list to avoid shadowing from the list() function above
+    if isinstance(checked_items, __builtins__["list"]):
         try:
             # Join checked items with newlines
             checked_text = "\n".join(checked_items) if checked_items else ""
