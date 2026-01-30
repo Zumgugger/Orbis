@@ -93,6 +93,11 @@ def create_app(config_name=None):
 
     app.jinja_env.globals["csrf_token"] = generate_csrf
 
+    # Expose google_calendar_url helper to templates
+    from utilities import google_calendar_url
+
+    app.jinja_env.globals["google_calendar_url"] = google_calendar_url
+
     # Security headers (only in production)
     if cfg_key == "production":
         from flask_talisman import Talisman

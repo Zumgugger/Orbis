@@ -524,3 +524,25 @@ def sanitize_html(html_content: str) -> str:
     cleaned = cleaned.replace('href="http://', 'href="https://')
 
     return cleaned
+
+
+def google_calendar_url(account_email: str | None = None) -> str:
+    """
+    Generate a Google Calendar URL that opens to a specific account.
+
+    Args:
+        account_email: Email of the Google account to use (optional)
+
+    Returns:
+        Google Calendar URL with account parameter if email provided
+
+    Examples:
+        >>> google_calendar_url()
+        'https://calendar.google.com'
+        >>> google_calendar_url('user@example.com')
+        'https://calendar.google.com/calendar/u/user@example.com/r'
+    """
+    if account_email and account_email.strip():
+        # Use /u/{email}/r format to open specific account
+        return f"https://calendar.google.com/calendar/u/{account_email.strip()}/r"
+    return "https://calendar.google.com"

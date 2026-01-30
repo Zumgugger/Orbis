@@ -39,7 +39,7 @@
                 {% endif %}
             </ul>
         </div>
-        <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Open Google Calendar">
+        <a href="{{ google_calendar_url(current_user.default_google_account) }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info" title="Open Google Calendar">
             <i class="bi bi-calendar3"></i>
         </a>
         <a href="{{ url_for('todos.create_todo') }}" class="btn btn-outline-primary">
