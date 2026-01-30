@@ -165,3 +165,27 @@ def autosave(id):
             return jsonify({"success": False, "error": str(e)}), 400
 
     return jsonify({"success": False, "error": "No items provided"}), 400
+
+
+@shopping_bp.route("/<int:id>/save-checked", methods=["POST"])
+@login_required
+def save_checked(id):
+    """Save checked items state via AJAX"""
+    shopping_list = ShoppingList.query.filter_by(
+        id=id, user_id=current_user.id
+    ).first_or_404()
+
+    data = request.get_json(silent=True) or {}
+    checked_items = data.get("checked_items", [])
+
+    if isinstance(checked_items, list):
+        try:
+            # Join checked items with newlines
+            checked_text = "\n".join(checked_items) if checked_items else ""
+            shopping_list.checked_items = checked_text
+            db.session.commit()
+            return jsonify({"success": True, "message": "Checked items saved"})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 400
+
+    return jsonify({"success": False, "error": "Invalid checked_items format"}), 400

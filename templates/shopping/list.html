@@ -24,9 +24,10 @@
 
                     {% if shopping_list.items %}
                         <div class="list-group list-group-flush" onclick="event.stopPropagation();">
+                            {% set checked_items = shopping_list.checked_items.split('\n') if shopping_list.checked_items else [] %}
                             {% for line in shopping_list.items.split('\n') if line.strip() %}
-                            <label class="list-group-item d-flex align-items-center shopping-item py-2">
-                                <input class="form-check-input me-2 shopping-check" type="checkbox">
+                            <label class="list-group-item d-flex align-items-center shopping-item py-2" data-list-id="{{ shopping_list.id }}">
+                                <input class="form-check-input me-2 shopping-check" type="checkbox" {% if line in checked_items %}checked{% endif %} data-item="{{ line }}">
                                 <span class="flex-grow-1 shopping-text">{{ line }}</span>
                             </label>
                             {% endfor %}
@@ -47,11 +48,23 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Scratchable items (visual only)
+    // Persistent checkmarks with auto-save
     document.querySelectorAll('.shopping-check').forEach(cb => {
         cb.addEventListener('change', (e) => {
             const item = e.target.closest('.shopping-item');
             if (item) item.classList.toggle('checked', e.target.checked);
+
+            // Save checked state
+            const listId = e.target.closest('.shopping-item').dataset.listId;
+            const checkedItems = Array.from(
+                document.querySelectorAll(`.shopping-item[data-list-id="${listId}"] .shopping-check:checked`)
+            ).map(cb => cb.dataset.item);
+
+            fetch(`{{ url_for('shopping.save_checked', id=0) }}`.replace('/0/', `/${listId}/`), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ checked_items: checkedItems })
+            }).catch(() => {});
         });
     });
 

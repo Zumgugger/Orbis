@@ -18,6 +18,9 @@ class ShoppingList(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     items = db.Column(db.Text, nullable=True)  # Text field for list items
+    checked_items = db.Column(
+        db.Text, nullable=True, default=""
+    )  # Checked state tracking
     position = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
