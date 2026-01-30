@@ -170,30 +170,62 @@
 
     /**
      * Increment habit with optimistic UI update
+     * On /today page: scratches off and marks complete
+     * On /habits/ page: just updates the count
      */
-    function incrementHabit(listItem, btn, url, extraData = {}) {
+    function incrementHabit(listItem, btn, url, extraData = {}, isHabitsPage = false) {
         const title = listItem.querySelector('h5');
         const icon = btn.querySelector('i');
         const countBadge = listItem.querySelector('.badge.bg-success, .badge.bg-danger');
+        // For /habits/ page: find the count text inside progress bar (format: "X / Y")
+        const progressCountDiv = listItem.querySelector('.progress > div[style*="position: absolute"]');
+        const progressBar = listItem.querySelector('.progress-bar');
 
-        // Optimistic UI update - mark as done for today
-        btn.classList.remove('btn-outline-success');
-        btn.classList.add('btn-success');
-        icon.className = 'bi bi-check-circle-fill';
-        if (title) {
-            title.classList.add('text-decoration-line-through', 'text-muted');
+        // On /habits/ page, just update count - no scratch-off
+        if (isHabitsPage) {
+            // Update count in progress bar
+            if (progressCountDiv) {
+                const match = progressCountDiv.textContent.match(/(-?\d+)\s*\/\s*(\d+)/);
+                if (match) {
+                    const currentCount = parseInt(match[1]);
+                    const maxCount = parseInt(match[2]);
+                    const newCount = currentCount + 1;
+                    progressCountDiv.textContent = `${newCount} / ${maxCount}`;
+                    // Update progress bar width and color
+                    if (progressBar) {
+                        const newPct = Math.min(100, Math.max(0, (newCount / maxCount) * 100));
+                        progressBar.style.width = newPct + '%';
+                        progressBar.setAttribute('aria-valuenow', newCount);
+                        if (newCount < 0) {
+                            progressBar.classList.remove('bg-success');
+                            progressBar.classList.add('bg-danger');
+                        } else {
+                            progressBar.classList.remove('bg-danger');
+                            progressBar.classList.add('bg-success');
+                        }
+                    }
+                }
+            }
+        } else {
+            // On /today page: mark as done for today with scratch-off
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success');
+            icon.className = 'bi bi-check-circle-fill';
+            if (title) {
+                title.classList.add('text-decoration-line-through', 'text-muted');
+            }
+
+            // Increment count badge
+            if (countBadge) {
+                const currentCount = parseInt(countBadge.textContent) || 0;
+                countBadge.textContent = currentCount + 1;
+                countBadge.classList.remove('bg-danger');
+                countBadge.classList.add('bg-success');
+            }
+
+            completedCount++;
+            updateProgressBar();
         }
-
-        // Increment count badge
-        if (countBadge) {
-            const currentCount = parseInt(countBadge.textContent) || 0;
-            countBadge.textContent = currentCount + 1;
-            countBadge.classList.remove('bg-danger');
-            countBadge.classList.add('bg-success');
-        }
-
-        completedCount++;
-        updateProgressBar();
 
         // Background sync
         fetch(url, {
@@ -210,12 +242,116 @@
             if (!data.success) {
                 console.error('Increment failed:', data.error);
                 // Could revert here, but habit increments rarely fail
-            } else if (data.count !== undefined && countBadge) {
-                countBadge.textContent = data.count;
+            } else if (data.count !== undefined) {
+                // Update count badge on /today page
+                if (countBadge) {
+                    countBadge.textContent = data.count;
+                    if (data.count >= 0) {
+                        countBadge.classList.remove('bg-danger');
+                        countBadge.classList.add('bg-success');
+                    } else {
+                        countBadge.classList.remove('bg-success');
+                        countBadge.classList.add('bg-danger');
+                    }
+                }
+                // Sync progress bar count on /habits/ page
+                if (progressCountDiv) {
+                    const match = progressCountDiv.textContent.match(/(-?\d+)\s*\/\s*(\d+)/);
+                    if (match) {
+                        const maxCount = parseInt(match[2]);
+                        progressCountDiv.textContent = `${data.count} / ${maxCount}`;
+                        if (progressBar) {
+                            const newPct = Math.min(100, Math.max(0, (data.count / maxCount) * 100));
+                            progressBar.style.width = newPct + '%';
+                            progressBar.setAttribute('aria-valuenow', data.count);
+                            if (data.count < 0) {
+                                progressBar.classList.remove('bg-success');
+                                progressBar.classList.add('bg-danger');
+                            } else {
+                                progressBar.classList.remove('bg-danger');
+                                progressBar.classList.add('bg-success');
+                            }
+                        }
+                    }
+                }
             }
         })
         .catch(error => {
             console.error('Increment error:', error);
+        });
+    }
+
+    /**
+     * Decrement habit with optimistic UI update (for /habits/ page)
+     */
+    function decrementHabit(listItem, btn, url) {
+        // For /habits/ page: find the count text inside progress bar (format: "X / Y")
+        const progressCountDiv = listItem.querySelector('.progress > div[style*="position: absolute"]');
+        const progressBar = listItem.querySelector('.progress-bar');
+
+        // Update count in progress bar optimistically
+        if (progressCountDiv) {
+            const match = progressCountDiv.textContent.match(/(-?\d+)\s*\/\s*(\d+)/);
+            if (match) {
+                const currentCount = parseInt(match[1]);
+                const maxCount = parseInt(match[2]);
+                const newCount = currentCount - 1;
+                progressCountDiv.textContent = `${newCount} / ${maxCount}`;
+                // Update progress bar width and color
+                if (progressBar) {
+                    const newPct = Math.min(100, Math.max(0, (newCount / maxCount) * 100));
+                    progressBar.style.width = newPct + '%';
+                    progressBar.setAttribute('aria-valuenow', newCount);
+                    if (newCount < 0) {
+                        progressBar.classList.remove('bg-success');
+                        progressBar.classList.add('bg-danger');
+                    } else {
+                        progressBar.classList.remove('bg-danger');
+                        progressBar.classList.add('bg-success');
+                    }
+                }
+            }
+        }
+
+        // Background sync
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Decrement failed:', data.error);
+            } else if (data.count !== undefined) {
+                // Sync with server count
+                if (progressCountDiv) {
+                    const match = progressCountDiv.textContent.match(/(-?\d+)\s*\/\s*(\d+)/);
+                    if (match) {
+                        const maxCount = parseInt(match[2]);
+                        progressCountDiv.textContent = `${data.count} / ${maxCount}`;
+                        if (progressBar) {
+                            const newPct = Math.min(100, Math.max(0, (data.count / maxCount) * 100));
+                            progressBar.style.width = newPct + '%';
+                            progressBar.setAttribute('aria-valuenow', data.count);
+                            if (data.count < 0) {
+                                progressBar.classList.remove('bg-success');
+                                progressBar.classList.add('bg-danger');
+                            } else {
+                                progressBar.classList.remove('bg-danger');
+                                progressBar.classList.add('bg-success');
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Decrement error:', error);
         });
     }
 
@@ -261,7 +397,19 @@
             if (listItem) {
                 const targetDateInput = form.querySelector('input[name="target_date"]');
                 const extraData = targetDateInput ? { target_date: targetDateInput.value } : {};
-                incrementHabit(listItem, btn, action, extraData);
+                // Check if we're on the habits list page (no target_date means /habits/ page)
+                const isHabitsPage = !targetDateInput;
+                incrementHabit(listItem, btn, action, extraData, isHabitsPage);
+            }
+            return;
+        }
+
+        // Handle habit decrement (only on /habits/ page)
+        if (action.includes('/habits/') && action.includes('/decrement')) {
+            e.preventDefault();
+            const listItem = btn.closest('.list-group-item');
+            if (listItem) {
+                decrementHabit(listItem, btn, action);
             }
             return;
         }

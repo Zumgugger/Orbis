@@ -151,8 +151,25 @@ def increment_habit(habit_id):
 def decrement_habit(habit_id):
     """Decrement habit count (-1)"""
     habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first_or_404()
+
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+    )
+
     habit.decrement()
     db.session.commit()
+
+    if is_ajax:
+        return jsonify(
+            {
+                "success": True,
+                "count": habit.count,
+            }
+        )
+
+    next_page = request.args.get("next") or request.form.get("next")
+    if next_page:
+        return redirect(next_page)
     return redirect(url_for("habits.list_habits"))
 
 
