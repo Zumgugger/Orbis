@@ -9,7 +9,7 @@ from models import ShoppingList, sync_entity_tags
 from validation import ValidationError, validate_text, validate_title
 
 
-def _parse_tag_ids(form_value: str) -> list[int]:
+def _parse_tag_ids(form_value: str) -> "list[int]":
     """Parse comma-separated tag IDs from form input."""
     if not form_value:
         return []
