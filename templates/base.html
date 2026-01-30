@@ -492,8 +492,8 @@
                         return;
                     }
 
-                    // ? key: Show keyboard shortcuts help
-                    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    // Ctrl + ? key: Show keyboard shortcuts help
+                    if (e.key === '?' && e.ctrlKey && !e.metaKey) {
                         const activeTag = document.activeElement.tagName;
                         // Only trigger if not in an input field
                         if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
@@ -541,7 +541,7 @@
                                                     <tr><td><kbd>Alt + H</kbd></td><td>Home</td></tr>
                                                     <tr><td><kbd>Alt + T</kbd></td><td>Tomorrow</td></tr>
                                                     <tr><td><kbd>Ctrl/Cmd + K</kbd></td><td>Focus nav</td></tr>
-                                                    <tr><td><kbd>?</kbd></td><td>Show this help</td></tr>
+                                                    <tr><td><kbd>Ctrl/Cmd + ?</kbd></td><td>Show this help</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
