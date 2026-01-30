@@ -60,11 +60,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll(`.shopping-item[data-list-id="${listId}"] .shopping-check:checked`)
             ).map(cb => cb.dataset.item);
 
+            console.log('Saving checked items for list', listId, ':', checkedItems);
+
             fetch(`{{ url_for('shopping.save_checked', id=0) }}`.replace('/0/', `/${listId}/`), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ checked_items: checkedItems })
-            }).catch(() => {});
+            })
+            .then(response => response.json())
+            .then(data => console.log('Save response:', data))
+            .catch(error => console.error('Save error:', error));
         });
     });
 
