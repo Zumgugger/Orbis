@@ -544,10 +544,15 @@ def create_app(config_name=None):
 
         # Check if everything is done (no pending items)
         pending_todos = [t for t in todos_today if t.status == "pending"]
+        # Get overdue todos that are still pending (not completed)
+        pending_overdue = [
+            t for t in overdue_todos if t.status in ["pending", "in_progress"]
+        ]
         everything_done = (
             len(pending_todos) == 0
             and len(dailies_not_done) == 0
             and len(focused_not_done) == 0
+            and len(pending_overdue) == 0
         )
 
         # Progress for Today
@@ -570,11 +575,29 @@ def create_app(config_name=None):
         )
 
         # Recalculate progress to match displayed items
-        # Only count completable items: dailies + todos + focused_habits
+        # Only count completable items: dailies + todos + focused_habits + overdue_todos
         # Calendar events are not completable, so exclude them from total
         todo_count = sum(1 for item in combined_todos if item["kind"] == "todo")
-        total_today = len(dailies_today) + todo_count + len(focused_habits)
-        # Completed: dailies completed + todos completed + habits incremented today
+        # Count overdue todos that are still pending
+        overdue_pending_count = len(
+            [t for t in overdue_todos if t.status in ["pending", "in_progress"]]
+        )
+        total_today = (
+            len(dailies_today)
+            + todo_count
+            + len(focused_habits)
+            + overdue_pending_count
+        )
+        # Completed: dailies completed + todos completed + habits incremented today + overdue todos completed today
+        overdue_completed_today = len(
+            [
+                t
+                for t in overdue_todos
+                if t.status == "completed"
+                and t.completed_at
+                and t.completed_at.date() == today
+            ]
+        )
         completed_today = (
             len([d for d in dailies_today if d.is_completed_today()])
             + sum(
@@ -583,12 +606,13 @@ def create_app(config_name=None):
                 if item["kind"] == "todo" and item["todo"].status == "completed"
             )
             + len([h for h in focused_habits if h.last_increment_date == today])
+            + overdue_completed_today
         )
         today_progress_percent = (
             int(round((completed_today / total_today) * 100)) if total_today > 0 else 0
         )
         app.logger.debug(
-            f"TODAY PROGRESS: {completed_today}/{total_today} (dailies={len(dailies_today)}, todos={todo_count}, habits={len(focused_habits)}, calendar={len(combined_todos) - todo_count})"
+            f"TODAY PROGRESS: {completed_today}/{total_today} (dailies={len(dailies_today)}, todos={todo_count}, habits={len(focused_habits)}, overdue_pending={overdue_pending_count}, overdue_completed_today={overdue_completed_today}, calendar={len(combined_todos) - todo_count})"
         )
 
         return render_template(
