@@ -9,6 +9,7 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import Habit, HabitLog, sync_entity_tags
+from time_utils import today_local
 from validation import (
     ValidationError,
     validate_difficulty,
@@ -125,6 +126,9 @@ def increment_habit(habit_id):
             target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
         except ValueError:
             target_date = None
+
+    if target_date is None:
+        target_date = today_local()
 
     habit.increment(target_date=target_date)
     db.session.commit()

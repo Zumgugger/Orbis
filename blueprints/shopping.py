@@ -190,3 +190,33 @@ def save_checked(id):
             return jsonify({"success": False, "error": str(e)}), 400
 
     return jsonify({"success": False, "error": "Invalid checked_items format"}), 400
+
+
+@shopping_bp.route("/<int:id>/remove-item", methods=["POST"])
+@login_required
+def remove_item(id):
+    """Remove a single item from the shopping list via AJAX"""
+    shopping_list = ShoppingList.query.filter_by(
+        id=id, user_id=current_user.id
+    ).first_or_404()
+
+    data = request.get_json(silent=True) or {}
+    item = (data.get("item") or "").strip()
+    if not item:
+        return jsonify({"success": False, "error": "Missing item"}), 400
+
+    lines = [line for line in (shopping_list.items or "").split("\n") if line.strip()]
+    new_lines = [line for line in lines if line.strip() != item]
+    if len(new_lines) == len(lines):
+        return jsonify({"success": False, "error": "Item not found"}), 404
+
+    shopping_list.items = "\n".join(new_lines)
+
+    checked_lines = [
+        line for line in (shopping_list.checked_items or "").split("\n") if line.strip()
+    ]
+    checked_lines = [line for line in checked_lines if line.strip() != item]
+    shopping_list.checked_items = "\n".join(checked_lines)
+
+    db.session.commit()
+    return jsonify({"success": True, "remaining": len(new_lines)})

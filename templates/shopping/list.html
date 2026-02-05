@@ -28,6 +28,9 @@
                             {% for line in shopping_list.items.split('\n') if line.strip() %}
                             <label class="list-group-item d-flex align-items-center shopping-item py-2" data-list-id="{{ shopping_list.id }}">
                                 <input class="form-check-input me-2 shopping-check" type="checkbox" {% if line.strip() in checked_items %}checked{% endif %} data-item="{{ line.strip() }}">
+                                <button class="btn btn-sm btn-outline-danger shopping-remove me-2" type="button" title="Remove item" aria-label="Remove item" data-item="{{ line.strip() }}">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
                                 <span class="flex-grow-1 shopping-text">{{ line }}</span>
                             </label>
                             {% endfor %}
@@ -76,6 +79,38 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.json())
             .then(data => console.log('Save response:', data))
             .catch(error => console.error('Save error:', error));
+        });
+    });
+
+    // Remove a single item permanently
+    document.querySelectorAll('.shopping-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const itemRow = e.target.closest('.shopping-item');
+            if (!itemRow) return;
+
+            const listId = itemRow.dataset.listId;
+            const itemText = btn.dataset.item;
+
+            fetch(`{{ url_for('shopping.remove_item', id=0) }}`.replace('/0/', `/${listId}/`), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ item: itemText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    itemRow.remove();
+                } else {
+                    console.error('Remove error:', data.error);
+                }
+            })
+            .catch(error => console.error('Remove error:', error));
         });
     });
 
@@ -201,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <style>
 .shopping-item.checked .shopping-text { text-decoration: line-through; color: var(--bs-secondary-color); opacity: 0.7; }
+.shopping-remove { padding: 0 6px; line-height: 1.2; }
 .shopping-list-item.dragging { opacity: 0.6; }
 @media (max-width: 576px) {
   .drag-handle { display: none !important; }
